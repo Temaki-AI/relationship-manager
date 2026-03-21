@@ -9,9 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Edit, Trash2, Phone, Mail, Calendar, MessageSquare, Video, Coffee, Bell } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Phone, Mail, Calendar, MessageSquare, Coffee, Bell, Heart, MapPin, Gift, StickyNote, Plus } from 'lucide-react';
 import type { Contact, Interaction } from '@/lib/db';
-import { formatDate, formatRelativeDate, calculateRelationshipHealth, getHealthBadge, parseTags, parseGiftIdeas } from '@/lib/utils';
+import { formatDate, formatRelativeDate, calculateRelationshipHealth, getHealthBadge, parseTags, parseGiftIdeas, getInitials, getAvatarColor } from '@/lib/utils';
 
 export default function ContactDetail() {
   const params = useParams();
@@ -57,26 +57,15 @@ export default function ContactDetail() {
       const res = await fetch('/api/interactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contact_id: id,
-          ...interactionForm,
-        }),
+        body: JSON.stringify({ contact_id: id, ...interactionForm }),
       });
 
       if (res.ok) {
-        // Refresh contact data
         const refreshRes = await fetch(`/api/contacts/${id}`);
         const data = await refreshRes.json();
         setContact(data.contact);
         setInteractions(data.interactions);
-        
-        // Reset form
-        setInteractionForm({
-          type: 'call',
-          date: new Date().toISOString().split('T')[0],
-          summary: '',
-          notes: '',
-        });
+        setInteractionForm({ type: 'call', date: new Date().toISOString().split('T')[0], summary: '', notes: '' });
         setShowLogForm(false);
       }
     } catch (error) {
@@ -86,7 +75,6 @@ export default function ContactDetail() {
 
   async function handleDelete() {
     if (!confirm('Are you sure you want to delete this contact?')) return;
-
     try {
       await fetch(`/api/contacts/${id}`, { method: 'DELETE' });
       router.push('/contacts');
@@ -101,26 +89,49 @@ export default function ContactDetail() {
       await fetch('/api/reminders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contact_id: id,
-          ...reminderForm,
-        }),
+        body: JSON.stringify({ contact_id: id, ...reminderForm }),
       });
-
       setReminderForm({ title: '', notes: '', remind_at: '' });
       setShowReminderForm(false);
-      alert('Reminder set!');
     } catch (error) {
       console.error('Failed to set reminder:', error);
     }
   }
 
+  const interactionTypeConfig: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
+    call: { icon: Phone, color: 'text-blue-600', bg: 'bg-blue-100' },
+    message: { icon: MessageSquare, color: 'text-emerald-600', bg: 'bg-emerald-100' },
+    meetup: { icon: Coffee, color: 'text-amber-600', bg: 'bg-amber-100' },
+    email: { icon: Mail, color: 'text-purple-600', bg: 'bg-purple-100' },
+  };
+
   if (loading) {
-    return <div className="text-center py-12">Loading...</div>;
+    return (
+      <div className="space-y-6 max-w-3xl mx-auto">
+        <div className="skeleton h-10 w-20" />
+        <div className="flex items-center gap-4">
+          <div className="skeleton w-20 h-20 rounded-full" />
+          <div className="space-y-2">
+            <div className="skeleton h-8 w-48" />
+            <div className="skeleton h-4 w-32" />
+          </div>
+        </div>
+        <div className="skeleton h-32 rounded-xl" />
+        <div className="skeleton h-48 rounded-xl" />
+      </div>
+    );
   }
 
   if (!contact) {
-    return <div className="text-center py-12">Contact not found</div>;
+    return (
+      <div className="text-center py-16">
+        <div className="text-4xl mb-3">😢</div>
+        <h3 className="text-lg font-semibold">Contact not found</h3>
+        <Link href="/contacts">
+          <Button variant="outline" className="mt-4">Back to contacts</Button>
+        </Link>
+      </div>
+    );
   }
 
   const health = calculateRelationshipHealth(contact);
@@ -128,273 +139,299 @@ export default function ContactDetail() {
   const giftIdeas = parseGiftIdeas(contact.gift_ideas);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <Link href="/contacts">
-          <Button variant="outline">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
+    <div className="max-w-3xl mx-auto space-y-6">
+      {/* Back button */}
+      <div className="animate-fade-in">
+        <Link href="/contacts" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          Back
         </Link>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowReminderForm(!showReminderForm)}>
-            <Bell className="w-4 h-4 mr-2" />
-            Reminder
+      </div>
+
+      {/* Profile Header */}
+      <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5 animate-fade-in-up">
+        <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br ${getAvatarColor(contact.name)} flex items-center justify-center text-white text-2xl sm:text-3xl font-bold shadow-lg flex-shrink-0`}>
+          {getInitials(contact.name)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{contact.name}</h1>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
+            {contact.email && (
+              <a href={`mailto:${contact.email}`} className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                <Mail className="w-3.5 h-3.5" />
+                {contact.email}
+              </a>
+            )}
+            {contact.phone && (
+              <a href={`tel:${contact.phone}`} className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                <Phone className="w-3.5 h-3.5" />
+                {contact.phone}
+              </a>
+            )}
+            {contact.birthday && (
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" />
+                {formatDate(contact.birthday)}
+              </span>
+            )}
+          </div>
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {tags.map((tag) => (
+                <span key={tag} className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Actions */}
+        <div className="flex gap-2 sm:flex-shrink-0">
+          <Button variant="outline" size="sm" onClick={() => setShowReminderForm(!showReminderForm)}>
+            <Bell className="w-3.5 h-3.5" />
           </Button>
           <Link href={`/contacts/${id}/edit`}>
-            <Button variant="outline">
-              <Edit className="w-4 h-4 mr-2" />
-              Edit
+            <Button variant="outline" size="sm">
+              <Edit className="w-3.5 h-3.5" />
             </Button>
           </Link>
-          <Button variant="destructive" onClick={handleDelete}>
-            <Trash2 className="w-4 h-4 mr-2" />
-            Delete
+          <Button variant="outline" size="sm" onClick={handleDelete} className="text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30">
+            <Trash2 className="w-3.5 h-3.5" />
           </Button>
         </div>
       </div>
 
-      {/* Contact Info Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">{contact.name}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {contact.email && (
-            <div className="flex items-center gap-2 text-gray-600">
-              <Mail className="w-4 h-4" />
-              <a href={`mailto:${contact.email}`} className="hover:underline">
-                {contact.email}
-              </a>
-            </div>
-          )}
-
-          {contact.phone && (
-            <div className="flex items-center gap-2 text-gray-600">
-              <Phone className="w-4 h-4" />
-              <a href={`tel:${contact.phone}`} className="hover:underline">
-                {contact.phone}
-              </a>
-            </div>
-          )}
-
-          {contact.birthday && (
-            <div className="flex items-center gap-2 text-gray-600">
-              <Calendar className="w-4 h-4" />
-              <span>Birthday: {formatDate(contact.birthday)}</span>
-            </div>
-          )}
-
-          {contact.how_we_met && (
-            <div>
-              <p className="text-sm font-medium text-gray-700">How we met</p>
-              <p className="text-gray-600">{contact.how_we_met}</p>
-            </div>
-          )}
-
-          {tags.length > 0 && (
-            <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">Tags</p>
-              <div className="flex flex-wrap gap-1">
-                {tags.map((tag) => (
-                  <Badge key={tag} variant="outline">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Reminder Form */}
       {showReminderForm && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardHeader>
-            <CardTitle className="text-lg">Set Reminder</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSetReminder} className="space-y-4">
-              <div>
-                <Label>What to remember</Label>
-                <Input
-                  required
-                  placeholder="Follow up about their new job"
-                  value={reminderForm.title}
-                  onChange={(e) => setReminderForm({ ...reminderForm, title: e.target.value })}
-                />
+        <Card className="animate-slide-down border-primary/20 bg-primary/5">
+          <CardContent className="pt-5 pb-4">
+            <form onSubmit={handleSetReminder} className="space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Bell className="w-4 h-4 text-primary" />
+                <span className="font-medium text-sm">Set a reminder</span>
               </div>
-              <div>
-                <Label>When</Label>
-                <Input
-                  type="datetime-local"
-                  required
-                  value={reminderForm.remind_at}
-                  onChange={(e) => setReminderForm({ ...reminderForm, remind_at: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Notes (optional)</Label>
-                <Textarea
-                  placeholder="Additional context..."
-                  value={reminderForm.notes}
-                  onChange={(e) => setReminderForm({ ...reminderForm, notes: e.target.value })}
-                  rows={2}
-                />
-              </div>
+              <Input
+                required
+                placeholder="What to remember..."
+                value={reminderForm.title}
+                onChange={(e) => setReminderForm({ ...reminderForm, title: e.target.value })}
+                className="bg-white"
+              />
+              <Input
+                type="datetime-local"
+                required
+                value={reminderForm.remind_at}
+                onChange={(e) => setReminderForm({ ...reminderForm, remind_at: e.target.value })}
+                className="bg-white"
+              />
+              <Textarea
+                placeholder="Notes (optional)"
+                value={reminderForm.notes}
+                onChange={(e) => setReminderForm({ ...reminderForm, notes: e.target.value })}
+                rows={2}
+                className="bg-white"
+              />
               <div className="flex gap-2">
-                <Button type="submit">Set Reminder</Button>
-                <Button type="button" variant="outline" onClick={() => setShowReminderForm(false)}>
-                  Cancel
-                </Button>
+                <Button type="submit" size="sm">Save reminder</Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setShowReminderForm(false)}>Cancel</Button>
               </div>
             </form>
           </CardContent>
         </Card>
       )}
 
-      {/* Relationship Health */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Relationship Health</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">{getHealthBadge(health)}</span>
-              <span className="text-2xl font-bold">{health}%</span>
+      {/* Health + How We Met row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 stagger-children">
+        {/* Health Card */}
+        <Card className="border-0 shadow-sm overflow-hidden relative">
+          <div className={`absolute inset-0 opacity-5 ${
+            health >= 75 ? 'bg-emerald-500' : health >= 50 ? 'bg-amber-500' : 'bg-red-500'
+          }`} />
+          <CardContent className="relative pt-5 pb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Heart className={`w-4 h-4 ${
+                  health >= 75 ? 'text-emerald-500 fill-emerald-500' : health >= 50 ? 'text-amber-500' : 'text-red-500'
+                }`} />
+                <span className="text-sm font-medium">{getHealthBadge(health)}</span>
+              </div>
+              <span className={`text-2xl font-bold ${
+                health >= 75 ? 'text-emerald-600' : health >= 50 ? 'text-amber-600' : 'text-red-500'
+              }`}>{health}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
+            <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
               <div
-                className={`h-3 rounded-full ${
-                  health >= 75 ? 'bg-green-500' : health >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                className={`h-full rounded-full animate-health-fill ${
+                  health >= 75 ? 'bg-gradient-to-r from-emerald-400 to-green-500'
+                    : health >= 50 ? 'bg-gradient-to-r from-amber-400 to-orange-500'
+                    : 'bg-gradient-to-r from-red-400 to-rose-500'
                 }`}
                 style={{ width: `${health}%` }}
               />
             </div>
-            <p className="text-sm text-gray-600">
-              Last contact: {formatRelativeDate(contact.last_contacted)}
-            </p>
-            <p className="text-xs text-gray-500">
-              Target frequency: Every {contact.contact_frequency} days
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+              <span>{formatRelativeDate(contact.last_contacted)}</span>
+              <span>Every {contact.contact_frequency}d</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* How We Met / Notes preview */}
+        {(contact.how_we_met || contact.notes) && (
+          <Card className="border-0 shadow-sm">
+            <CardContent className="pt-5 pb-4">
+              {contact.how_we_met && (
+                <div className="mb-3">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground">How you met</span>
+                  </div>
+                  <p className="text-sm text-foreground">{contact.how_we_met}</p>
+                </div>
+              )}
+              {contact.notes && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <StickyNote className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground">Notes</span>
+                  </div>
+                  <p className="text-sm text-foreground line-clamp-3 whitespace-pre-wrap">{contact.notes}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Gift Ideas */}
       {giftIdeas.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>🎁 Gift Ideas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="list-disc list-inside space-y-1">
+        <Card className="animate-fade-in-up border-0 shadow-sm">
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Gift className="w-4 h-4 text-amber-500" />
+              <span className="text-sm font-semibold">Gift ideas</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
               {giftIdeas.map((idea, i) => (
-                <li key={i} className="text-gray-700">{idea}</li>
+                <span key={i} className="px-3 py-1 text-xs rounded-full bg-amber-50 text-amber-700 border border-amber-200/50">
+                  {idea}
+                </span>
               ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Notes */}
-      {contact.notes && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Notes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-700 whitespace-pre-wrap">{contact.notes}</p>
+            </div>
           </CardContent>
         </Card>
       )}
 
       {/* Interactions */}
-      <Card>
-        <CardHeader>
+      <Card className="animate-fade-in-up border-0 shadow-sm">
+        <CardHeader className="pb-3">
           <div className="flex justify-between items-center">
-            <CardTitle>Interactions</CardTitle>
-            <Button onClick={() => setShowLogForm(!showLogForm)}>
-              Log Interaction
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-muted-foreground" />
+              <CardTitle className="text-base font-semibold">
+                Interactions
+                {interactions.length > 0 && (
+                  <span className="text-muted-foreground font-normal ml-1.5 text-sm">({interactions.length})</span>
+                )}
+              </CardTitle>
+            </div>
+            <Button size="sm" onClick={() => setShowLogForm(!showLogForm)} className="shadow-sm">
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              Log
             </Button>
           </div>
         </CardHeader>
         <CardContent>
           {showLogForm && (
-            <form onSubmit={handleLogInteraction} className="space-y-4 mb-6 p-4 border rounded-lg bg-gray-50">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleLogInteraction} className="animate-slide-down space-y-3 mb-6 p-4 rounded-xl bg-muted/40 border border-border/50">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Type</Label>
+                  <Label className="text-xs">Type</Label>
                   <select
-                    className="w-full h-9 rounded-md border border-input bg-white px-3 py-1 text-sm"
+                    className="w-full h-9 rounded-lg border border-input bg-white px-3 py-1 text-sm mt-1"
                     value={interactionForm.type}
                     onChange={(e) => setInteractionForm({ ...interactionForm, type: e.target.value })}
                   >
-                    <option value="call">Call</option>
-                    <option value="message">Message</option>
-                    <option value="meetup">Meetup</option>
-                    <option value="email">Email</option>
+                    <option value="call">📞 Call</option>
+                    <option value="message">💬 Message</option>
+                    <option value="meetup">☕ Meetup</option>
+                    <option value="email">✉️ Email</option>
                   </select>
                 </div>
                 <div>
-                  <Label>Date</Label>
+                  <Label className="text-xs">Date</Label>
                   <Input
                     type="date"
                     value={interactionForm.date}
                     onChange={(e) => setInteractionForm({ ...interactionForm, date: e.target.value })}
+                    className="mt-1 bg-white"
                   />
                 </div>
               </div>
               <div>
-                <Label>Summary</Label>
+                <Label className="text-xs">Summary</Label>
                 <Input
-                  placeholder="Quick summary..."
+                  placeholder="What happened?"
                   value={interactionForm.summary}
                   onChange={(e) => setInteractionForm({ ...interactionForm, summary: e.target.value })}
+                  className="mt-1 bg-white"
                 />
               </div>
               <div>
-                <Label>Notes (optional)</Label>
+                <Label className="text-xs">Notes</Label>
                 <Textarea
-                  placeholder="Additional details..."
+                  placeholder="Any details to remember..."
                   value={interactionForm.notes}
                   onChange={(e) => setInteractionForm({ ...interactionForm, notes: e.target.value })}
-                  rows={3}
+                  rows={2}
+                  className="mt-1 bg-white"
                 />
               </div>
               <div className="flex gap-2">
-                <Button type="submit">Save</Button>
-                <Button type="button" variant="outline" onClick={() => setShowLogForm(false)}>
-                  Cancel
-                </Button>
+                <Button type="submit" size="sm">Save</Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setShowLogForm(false)}>Cancel</Button>
               </div>
             </form>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-0">
             {interactions.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No interactions logged yet</p>
+              <div className="text-center py-10">
+                <div className="text-3xl mb-2">💬</div>
+                <p className="text-sm text-muted-foreground">No interactions yet</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Log your first conversation above</p>
+              </div>
             ) : (
-              interactions.map((interaction) => (
-                <div key={interaction.id} className="border-l-2 border-gray-300 pl-4 py-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    {interaction.type === 'call' && <Phone className="w-4 h-4 text-blue-600" />}
-                    {interaction.type === 'message' && <MessageSquare className="w-4 h-4 text-green-600" />}
-                    {interaction.type === 'meetup' && <Coffee className="w-4 h-4 text-orange-600" />}
-                    {interaction.type === 'email' && <Mail className="w-4 h-4 text-purple-600" />}
-                    <span className="font-medium capitalize">{interaction.type}</span>
-                    <span className="text-sm text-gray-500">• {formatDate(interaction.date)}</span>
+              interactions.map((interaction, index) => {
+                const config = interactionTypeConfig[interaction.type] || interactionTypeConfig.call;
+                const Icon = config.icon;
+                return (
+                  <div key={interaction.id} className="flex gap-3 group">
+                    {/* Timeline line + dot */}
+                    <div className="flex flex-col items-center">
+                      <div className={`w-8 h-8 rounded-full ${config.bg} flex items-center justify-center flex-shrink-0`}>
+                        <Icon className={`w-3.5 h-3.5 ${config.color}`} />
+                      </div>
+                      {index < interactions.length - 1 && (
+                        <div className="w-px flex-1 bg-border my-1" />
+                      )}
+                    </div>
+                    {/* Content */}
+                    <div className={`flex-1 pb-5 ${index < interactions.length - 1 ? '' : 'pb-0'}`}>
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-medium text-sm capitalize">{interaction.type}</span>
+                        <span className="text-xs text-muted-foreground">{formatDate(interaction.date)}</span>
+                      </div>
+                      {interaction.summary && (
+                        <p className="text-sm text-foreground mt-0.5">{interaction.summary}</p>
+                      )}
+                      {interaction.notes && (
+                        <p className="text-xs text-muted-foreground mt-1">{interaction.notes}</p>
+                      )}
+                    </div>
                   </div>
-                  {interaction.summary && (
-                    <p className="text-gray-700">{interaction.summary}</p>
-                  )}
-                  {interaction.notes && (
-                    <p className="text-sm text-gray-600 mt-1">{interaction.notes}</p>
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </CardContent>

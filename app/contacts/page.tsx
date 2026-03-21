@@ -3,12 +3,22 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Download } from 'lucide-react';
+import { Search, Download, UserPlus, Sparkles } from 'lucide-react';
 import type { Contact } from '@/lib/db';
-import { formatRelativeDate, calculateRelationshipHealth, getHealthColor, parseTags } from '@/lib/utils';
+import { formatRelativeDate, calculateRelationshipHealth, parseTags, getInitials, getAvatarColor } from '@/lib/utils';
+
+function SkeletonGrid() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {[1, 2, 3, 4, 5, 6].map(i => (
+        <div key={i} className="skeleton h-44 rounded-xl" />
+      ))}
+    </div>
+  );
+}
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -54,149 +64,187 @@ export default function ContactsPage() {
     setFilteredContacts(filtered);
   }, [search, selectedTag, contacts]);
 
-  // Get all unique tags
   const allTags = Array.from(
     new Set(contacts.flatMap((c) => parseTags(c.tags)))
   ).sort();
 
   if (loading) {
-    return <div className="text-center py-12">Loading...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="skeleton h-9 w-40" />
+          <div className="skeleton h-9 w-32" />
+        </div>
+        <SkeletonGrid />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Contacts</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold">Your people</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {contacts.length} {contacts.length === 1 ? 'contact' : 'contacts'}
+          </p>
+        </div>
         <div className="flex gap-2">
           <a href="/api/export/csv" download>
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
+            <Button variant="outline" size="sm" className="text-muted-foreground">
+              <Download className="w-3.5 h-3.5 mr-1.5" />
+              Export
             </Button>
           </a>
           <Link href="/contacts/new">
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Contact
+            <Button size="sm">
+              <UserPlus className="w-3.5 h-3.5 mr-1.5" />
+              Add contact
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                type="text"
-                placeholder="Search contacts..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+      {/* Search & Filters */}
+      <div className="space-y-3 animate-fade-in-up">
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <Input
+            type="text"
+            placeholder="Search by name, email, or notes..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10 h-11 bg-white border-border/60 focus:border-primary/40 rounded-xl"
+          />
+        </div>
 
-            {allTags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={selectedTag === null ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedTag(null)}
-                >
-                  All
-                </Button>
-                {allTags.map((tag) => (
-                  <Button
-                    key={tag}
-                    variant={selectedTag === tag ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSelectedTag(tag)}
-                  >
-                    {tag}
-                  </Button>
-                ))}
-              </div>
-            )}
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              onClick={() => setSelectedTag(null)}
+              className={`px-3 py-1 text-xs font-medium rounded-full transition-all ${
+                selectedTag === null
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/70'
+              }`}
+            >
+              All
+            </button>
+            {allTags.map((tag) => (
+              <button
+                key={tag}
+                onClick={() => setSelectedTag(tag)}
+                className={`px-3 py-1 text-xs font-medium rounded-full transition-all ${
+                  selectedTag === tag
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Results */}
-      <div className="text-sm text-gray-600">
-        Showing {filteredContacts.length} of {contacts.length} contacts
+        )}
       </div>
 
-      {/* Contact List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredContacts.map((contact) => {
-          const health = calculateRelationshipHealth(contact);
-          const tags = parseTags(contact.tags);
+      {/* Contact Grid */}
+      {filteredContacts.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 stagger-children">
+          {filteredContacts.map((contact) => {
+            const health = calculateRelationshipHealth(contact);
+            const tags = parseTags(contact.tags);
 
-          return (
-            <Link key={contact.id} href={`/contacts/${contact.id}`}>
-              <Card className="hover:shadow-lg transition-shadow h-full">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">{contact.name}</CardTitle>
-                      {contact.email && (
-                        <p className="text-sm text-gray-500 truncate">{contact.email}</p>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {/* Relationship Health */}
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-gray-600">Relationship Health</span>
-                        <span className="font-medium">{health}%</span>
+            return (
+              <Link key={contact.id} href={`/contacts/${contact.id}`}>
+                <Card className="group hover:shadow-md border-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 h-full">
+                  <CardContent className="pt-5 pb-4 px-4 sm:px-5">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${getAvatarColor(contact.name)} flex items-center justify-center text-white text-sm font-semibold shadow-sm flex-shrink-0`}>
+                        {getInitials(contact.name)}
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm group-hover:text-primary transition-colors truncate">
+                          {contact.name}
+                        </p>
+                        {contact.email && (
+                          <p className="text-xs text-muted-foreground truncate">{contact.email}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Health Bar */}
+                    <div className="mb-3">
+                      <div className="flex justify-between text-[10px] mb-1">
+                        <span className="text-muted-foreground">Health</span>
+                        <span className={`font-semibold ${
+                          health >= 75 ? 'text-emerald-600' : health >= 50 ? 'text-amber-600' : 'text-red-500'
+                        }`}>{health}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
                         <div
-                          className={`h-2 rounded-full ${
+                          className={`h-full rounded-full animate-health-fill ${
                             health >= 75
-                              ? 'bg-green-500'
+                              ? 'bg-gradient-to-r from-emerald-400 to-green-500'
                               : health >= 50
-                              ? 'bg-yellow-500'
-                              : 'bg-red-500'
+                              ? 'bg-gradient-to-r from-amber-400 to-orange-500'
+                              : 'bg-gradient-to-r from-red-400 to-rose-500'
                           }`}
                           style={{ width: `${health}%` }}
                         />
                       </div>
                     </div>
 
-                    {/* Last Contact */}
-                    <p className="text-sm text-gray-600">
-                      Last contact: {formatRelativeDate(contact.last_contacted)}
+                    {/* Meta */}
+                    <p className="text-[11px] text-muted-foreground mb-2">
+                      {formatRelativeDate(contact.last_contacted)}
                     </p>
 
                     {/* Tags */}
                     {tags.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {tags.map((tag) => (
-                          <Badge key={tag} variant="outline" className="text-xs">
+                          <span
+                            key={tag}
+                            className="inline-flex px-2 py-0.5 text-[10px] font-medium rounded-full bg-muted text-muted-foreground"
+                          >
                             {tag}
-                          </Badge>
+                          </span>
                         ))}
                       </div>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
-      </div>
-
-      {filteredContacts.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center text-gray-500">
-            No contacts found. Try adjusting your filters.
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <Card className="animate-scale-in border-0 shadow-sm">
+          <CardContent className="py-16 text-center">
+            {contacts.length === 0 ? (
+              <>
+                <div className="text-5xl mb-4">👥</div>
+                <h3 className="text-lg font-semibold">No contacts yet</h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+                  Add the people who matter to you and start tracking your relationships.
+                </p>
+                <Link href="/contacts/new">
+                  <Button className="mt-4">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Add your first contact
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="text-4xl mb-3">🔍</div>
+                <h3 className="text-lg font-semibold">No matches</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Try adjusting your search or filters
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       )}

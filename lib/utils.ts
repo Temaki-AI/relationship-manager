@@ -80,3 +80,22 @@ export function parseGiftIdeas(ideasString: string | null): string[] {
     return [];
   }
 }
+
+export function getInitials(name: string): string {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+}
+
+export function getAvatarColor(name: string): string {
+  const colors = [
+    'from-rose-400 to-pink-500',
+    'from-violet-400 to-purple-500',
+    'from-blue-400 to-indigo-500',
+    'from-emerald-400 to-teal-500',
+    'from-amber-400 to-orange-500',
+    'from-cyan-400 to-blue-500',
+    'from-fuchsia-400 to-pink-500',
+    'from-lime-400 to-green-500',
+  ];
+  const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+  return colors[index];
+}
