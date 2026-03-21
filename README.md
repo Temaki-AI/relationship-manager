@@ -7,6 +7,10 @@ A local-first personal CRM to help you maintain meaningful relationships. Track 
 - 📊 **Relationship Health Dashboard** - Visual health scores based on contact frequency
 - 👥 **Contact Management** - Full contact profiles with tags, notes, and gift ideas
 - 💬 **Interaction Logging** - Track calls, messages, meetups, and emails
+- 🔔 **Reminders** - Set follow-up alerts for any contact (NEW in v1.1)
+- 👨‍👩‍👧 **Contact Groups** - Organize contacts (Family, Work, etc.) (NEW in v1.1)
+- ⚙️ **Custom Fields** - Add your own data fields (NEW in v1.1)
+- 📥 **CSV Export** - Download all contacts with one click (NEW in v1.1)
 - 🎂 **Birthday Reminders** - Upcoming birthdays at a glance
 - ⚠️ **Action Items** - See who you should reach out to
 - 🔍 **Search & Filter** - Find contacts by name, tags, or notes
