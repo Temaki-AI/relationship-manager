@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Download } from 'lucide-react';
 import type { Contact } from '@/lib/db';
 import { formatRelativeDate, calculateRelationshipHealth, getHealthColor, parseTags } from '@/lib/utils';
 
@@ -68,12 +68,20 @@ export default function ContactsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Contacts</h1>
-        <Link href="/contacts/new">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Contact
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <a href="/api/export/csv" download>
+            <Button variant="outline">
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+          </a>
+          <Link href="/contacts/new">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Contact
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}

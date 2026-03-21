@@ -17,6 +17,7 @@ db.exec(`
     tags TEXT,
     notes TEXT,
     gift_ideas TEXT,
+    custom_fields TEXT,
     last_contacted DATE,
     contact_frequency INTEGER DEFAULT 14,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -34,9 +35,37 @@ db.exec(`
     FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
   );
 
+  CREATE TABLE IF NOT EXISTS reminders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    contact_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    notes TEXT,
+    remind_at DATETIME NOT NULL,
+    completed_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS contact_groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    color TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS contact_group_members (
+    contact_id INTEGER NOT NULL,
+    group_id INTEGER NOT NULL,
+    PRIMARY KEY (contact_id, group_id),
+    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE,
+    FOREIGN KEY (group_id) REFERENCES contact_groups(id) ON DELETE CASCADE
+  );
+
   CREATE INDEX IF NOT EXISTS idx_contacts_last_contacted ON contacts(last_contacted);
   CREATE INDEX IF NOT EXISTS idx_interactions_contact_id ON interactions(contact_id);
   CREATE INDEX IF NOT EXISTS idx_interactions_date ON interactions(date);
+  CREATE INDEX IF NOT EXISTS idx_reminders_contact_id ON reminders(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_reminders_remind_at ON reminders(remind_at);
 `);
 
 // Check if we need seed data
@@ -84,6 +113,7 @@ export type Contact = {
   tags: string | null;
   notes: string | null;
   gift_ideas: string | null;
+  custom_fields: string | null;
   last_contacted: string | null;
   contact_frequency: number;
   created_at: string;
@@ -97,5 +127,22 @@ export type Interaction = {
   type: string;
   summary: string | null;
   notes: string | null;
+  created_at: string;
+};
+
+export type Reminder = {
+  id: number;
+  contact_id: number;
+  title: string;
+  notes: string | null;
+  remind_at: string;
+  completed_at: string | null;
+  created_at: string;
+};
+
+export type ContactGroup = {
+  id: number;
+  name: string;
+  color: string | null;
   created_at: string;
 };

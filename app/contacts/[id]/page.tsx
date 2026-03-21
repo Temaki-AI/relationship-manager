@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Edit, Trash2, Phone, Mail, Calendar, MessageSquare, Video, Coffee } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Phone, Mail, Calendar, MessageSquare, Video, Coffee, Bell } from 'lucide-react';
 import type { Contact, Interaction } from '@/lib/db';
 import { formatDate, formatRelativeDate, calculateRelationshipHealth, getHealthBadge, parseTags, parseGiftIdeas } from '@/lib/utils';
 
@@ -21,11 +21,17 @@ export default function ContactDetail() {
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [showLogForm, setShowLogForm] = useState(false);
+  const [showReminderForm, setShowReminderForm] = useState(false);
   const [interactionForm, setInteractionForm] = useState({
     type: 'call',
     date: new Date().toISOString().split('T')[0],
     summary: '',
     notes: '',
+  });
+  const [reminderForm, setReminderForm] = useState({
+    title: '',
+    notes: '',
+    remind_at: '',
   });
 
   useEffect(() => {
@@ -89,6 +95,26 @@ export default function ContactDetail() {
     }
   }
 
+  async function handleSetReminder(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await fetch('/api/reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact_id: id,
+          ...reminderForm,
+        }),
+      });
+
+      setReminderForm({ title: '', notes: '', remind_at: '' });
+      setShowReminderForm(false);
+      alert('Reminder set!');
+    } catch (error) {
+      console.error('Failed to set reminder:', error);
+    }
+  }
+
   if (loading) {
     return <div className="text-center py-12">Loading...</div>;
   }
@@ -112,6 +138,10 @@ export default function ContactDetail() {
           </Button>
         </Link>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowReminderForm(!showReminderForm)}>
+            <Bell className="w-4 h-4 mr-2" />
+            Reminder
+          </Button>
           <Link href={`/contacts/${id}/edit`}>
             <Button variant="outline">
               <Edit className="w-4 h-4 mr-2" />
@@ -177,6 +207,52 @@ export default function ContactDetail() {
           )}
         </CardContent>
       </Card>
+
+      {/* Reminder Form */}
+      {showReminderForm && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="text-lg">Set Reminder</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSetReminder} className="space-y-4">
+              <div>
+                <Label>What to remember</Label>
+                <Input
+                  required
+                  placeholder="Follow up about their new job"
+                  value={reminderForm.title}
+                  onChange={(e) => setReminderForm({ ...reminderForm, title: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>When</Label>
+                <Input
+                  type="datetime-local"
+                  required
+                  value={reminderForm.remind_at}
+                  onChange={(e) => setReminderForm({ ...reminderForm, remind_at: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Notes (optional)</Label>
+                <Textarea
+                  placeholder="Additional context..."
+                  value={reminderForm.notes}
+                  onChange={(e) => setReminderForm({ ...reminderForm, notes: e.target.value })}
+                  rows={2}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit">Set Reminder</Button>
+                <Button type="button" variant="outline" onClick={() => setShowReminderForm(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Relationship Health */}
       <Card>

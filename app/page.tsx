@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, MessageSquare, AlertCircle, Cake, ArrowRight } from 'lucide-react';
+import { Users, MessageSquare, AlertCircle, Cake, ArrowRight, Bell } from 'lucide-react';
 import type { Contact } from '@/lib/db';
 import { formatRelativeDate, calculateRelationshipHealth, parseTags } from '@/lib/utils';
 
@@ -23,25 +23,38 @@ type Birthday = {
   daysUntil: number;
 };
 
+type Reminder = {
+  id: number;
+  contact_id: number;
+  contact_name: string;
+  title: string;
+  notes: string | null;
+  remind_at: string;
+};
+
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [actionItems, setActionItems] = useState<Contact[]>([]);
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [statsRes, contactsRes] = await Promise.all([
+        const [statsRes, contactsRes, remindersRes] = await Promise.all([
           fetch('/api/stats'),
-          fetch('/api/contacts')
+          fetch('/api/contacts'),
+          fetch('/api/reminders')
         ]);
 
         const statsData = await statsRes.json();
         const contactsData = await contactsRes.json();
+        const remindersData = await remindersRes.json();
 
         setStats(statsData.stats);
         setBirthdays(statsData.upcomingBirthdays || []);
+        setReminders(remindersData.reminders || []);
 
         // Get full contact details for action items
         const actionContacts = contactsData.contacts.filter((c: Contact) =>
@@ -185,6 +198,47 @@ export default function Dashboard() {
                   <Badge>{birthday.birthday.substring(5)}</Badge>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Upcoming Reminders */}
+      {reminders.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>🔔 Upcoming Reminders</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {reminders.slice(0, 5).map((reminder) => {
+                const remindDate = new Date(reminder.remind_at);
+                const now = new Date();
+                const isPast = remindDate < now;
+                const isToday = remindDate.toDateString() === now.toDateString();
+                
+                return (
+                  <div
+                    key={reminder.id}
+                    className={`flex items-start justify-between p-3 border rounded-lg ${
+                      isPast ? 'bg-red-50 border-red-200' : isToday ? 'bg-yellow-50 border-yellow-200' : ''
+                    }`}
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Bell className={`w-4 h-4 ${isPast ? 'text-red-600' : 'text-gray-600'}`} />
+                        <Link href={`/contacts/${reminder.contact_id}`} className="font-medium hover:underline">
+                          {reminder.contact_name}
+                        </Link>
+                      </div>
+                      <p className="text-sm text-gray-700 mt-1">{reminder.title}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {isPast ? '⚠️ Overdue' : isToday ? '📅 Today' : remindDate.toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
