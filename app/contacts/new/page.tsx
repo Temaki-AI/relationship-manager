@@ -8,11 +8,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, UserPlus } from 'lucide-react';
+import { ArrowLeft, UserPlus, Sparkles } from 'lucide-react';
 
 export default function NewContact() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const [enriching, setEnriching] = useState(false);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -24,6 +25,51 @@ export default function NewContact() {
     gift_ideas: '',
     contact_frequency: 14,
   });
+
+  async function handleEnrich() {
+    if (!form.email) {
+      alert('Please enter an email address first');
+      return;
+    }
+
+    setEnriching(true);
+    try {
+      const res = await fetch('/api/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email }),
+      });
+
+      const result = await res.json();
+
+      if (result.success && result.data) {
+        const enriched = result.data;
+
+        // Auto-fill fields that are empty
+        setForm((prev) => ({
+          ...prev,
+          name: enriched.name || prev.name,
+          phone: enriched.phone || prev.phone,
+          notes: enriched.suggestedNotes
+            ? prev.notes
+              ? `${prev.notes}\n\n${enriched.suggestedNotes}`
+              : enriched.suggestedNotes
+            : prev.notes,
+        }));
+
+        alert(
+          result.found
+            ? `✨ Found data! ${enriched.name ? 'Name' : ''}${enriched.phone ? ', Phone' : ''}${enriched.location ? ', Location' : ''} enriched.`
+            : 'No public profile found for this email.'
+        );
+      }
+    } catch (error) {
+      console.error('Enrichment failed:', error);
+      alert('Failed to enrich contact data');
+    } finally {
+      setEnriching(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -79,15 +125,37 @@ export default function NewContact() {
                 <Label htmlFor="name">Name</Label>
                 <Input id="name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Who is this person?" className="mt-1" />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="their@email.com" className="mt-1" />
+              <div>
+                <div className="flex items-end justify-between gap-2">
+                  <div className="flex-1">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="their@email.com" className="mt-1" />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleEnrich}
+                    disabled={!form.email || enriching}
+                    className="shrink-0"
+                  >
+                    {enriching ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+                        Enriching...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Auto-fill
+                      </>
+                    )}
+                  </Button>
                 </div>
-                <div>
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1-555-0123" className="mt-1" />
-                </div>
+                <p className="text-xs text-muted-foreground mt-1">We'll try to find their info from public profiles</p>
+              </div>
+              <div>
+                <Label htmlFor="phone">Phone</Label>
+                <Input id="phone" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1-555-0123" className="mt-1" />
               </div>
             </div>
 
