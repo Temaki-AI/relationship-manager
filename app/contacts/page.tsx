@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Search, Download, UserPlus, Sparkles } from 'lucide-react';
 import type { Contact } from '@/lib/db';
-import { formatRelativeDate, calculateRelationshipHealth, parseTags, getInitials, getAvatarColor } from '@/lib/utils';
+import { formatRelativeDate, calculateRelationshipHealth, parseTags } from '@/lib/utils';
+import { Avatar } from '@/components/ui/avatar';
 
 function SkeletonGrid() {
   return (
@@ -160,9 +161,7 @@ export default function ContactsPage() {
                 <Card className="group hover:shadow-md border-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 h-full">
                   <CardContent className="pt-5 pb-4 px-4 sm:px-5">
                     <div className="flex items-start gap-3 mb-3">
-                      <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${getAvatarColor(contact.name)} flex items-center justify-center text-white text-sm font-semibold shadow-sm flex-shrink-0`}>
-                        {getInitials(contact.name)}
-                      </div>
+                      <Avatar contact={contact} size="sm" className="w-11 h-11" />
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-sm group-hover:text-primary transition-colors truncate">
                           {contact.name}

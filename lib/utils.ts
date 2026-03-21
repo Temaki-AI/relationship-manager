@@ -1,10 +1,17 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { differenceInDays, parseISO, format } from "date-fns";
+import { createHash } from "crypto";
 import type { Contact } from "./db";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+export function getGravatarUrl(email: string | null, size = 200): string | null {
+  if (!email) return null;
+  const hash = createHash('md5').update(email.toLowerCase().trim()).digest('hex');
+  return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=404`;
 }
 
 export function daysBetween(dateString: string | null, endDate: Date): number {
@@ -98,4 +105,29 @@ export function getAvatarColor(name: string): string {
   ];
   const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
   return colors[index];
+}
+
+export function getContactAvatar(contact: { name: string; email: string | null; photo_url: string | null }): {
+  type: 'image' | 'initials';
+  url?: string;
+  initials?: string;
+  color?: string;
+} {
+  // Priority 1: Manual photo_url
+  if (contact.photo_url) {
+    return { type: 'image', url: contact.photo_url };
+  }
+  
+  // Priority 2: Gravatar (if email exists)
+  const gravatarUrl = getGravatarUrl(contact.email);
+  if (gravatarUrl) {
+    return { type: 'image', url: gravatarUrl };
+  }
+  
+  // Priority 3: Generated avatar with initials
+  return {
+    type: 'initials',
+    initials: getInitials(contact.name),
+    color: getAvatarColor(contact.name),
+  };
 }

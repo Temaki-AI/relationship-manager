@@ -11,7 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Edit, Trash2, Phone, Mail, Calendar, MessageSquare, Coffee, Bell, Heart, MapPin, Gift, StickyNote, Plus } from 'lucide-react';
 import type { Contact, Interaction } from '@/lib/db';
-import { formatDate, formatRelativeDate, calculateRelationshipHealth, getHealthBadge, parseTags, parseGiftIdeas, getInitials, getAvatarColor } from '@/lib/utils';
+import { formatDate, formatRelativeDate, calculateRelationshipHealth, getHealthBadge, parseTags, parseGiftIdeas } from '@/lib/utils';
+import { Avatar } from '@/components/ui/avatar';
 
 export default function ContactDetail() {
   const params = useParams();
@@ -150,9 +151,7 @@ export default function ContactDetail() {
 
       {/* Profile Header */}
       <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5 animate-fade-in-up">
-        <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br ${getAvatarColor(contact.name)} flex items-center justify-center text-white text-2xl sm:text-3xl font-bold shadow-lg flex-shrink-0`}>
-          {getInitials(contact.name)}
-        </div>
+        <Avatar contact={contact} size="xl" />
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{contact.name}</h1>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">

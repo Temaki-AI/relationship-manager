@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Users, MessageSquare, AlertCircle, Cake, ArrowRight, Bell, Clock, Heart, Sparkles } from 'lucide-react';
 import type { Contact } from '@/lib/db';
-import { formatRelativeDate, calculateRelationshipHealth, parseTags, getInitials, getAvatarColor } from '@/lib/utils';
+import { formatRelativeDate, calculateRelationshipHealth, parseTags } from '@/lib/utils';
+import { Avatar } from '@/components/ui/avatar';
 
 type Stats = {
   totalContacts: number;
@@ -199,9 +200,7 @@ export default function Dashboard() {
                     href={`/contacts/${contact.id}`}
                     className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors group"
                   >
-                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getAvatarColor(contact.name)} flex items-center justify-center text-white text-sm font-semibold shadow-sm flex-shrink-0`}>
-                      {getInitials(contact.name)}
-                    </div>
+                    <Avatar contact={contact} size="sm" className="w-10 h-10" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-medium text-sm truncate">{contact.name}</p>
@@ -244,9 +243,7 @@ export default function Dashboard() {
                     href={`/contacts/${birthday.id}`}
                     className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors"
                   >
-                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getAvatarColor(birthday.name)} flex items-center justify-center text-white text-sm font-semibold shadow-sm flex-shrink-0`}>
-                      {getInitials(birthday.name)}
-                    </div>
+                    <Avatar contact={{ name: birthday.name }} size="sm" className="w-10 h-10" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm">{birthday.name}</p>
                       <p className="text-xs text-muted-foreground">
