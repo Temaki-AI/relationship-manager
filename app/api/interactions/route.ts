@@ -27,13 +27,13 @@ export async function POST(request: Request) {
       notes || null
     );
 
-    // Update last_contacted on contact
+    // Update last_contacted only if this interaction is more recent
     const updateContact = db.prepare(`
-      UPDATE contacts 
+      UPDATE contacts
       SET last_contacted = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+      WHERE id = ? AND (last_contacted IS NULL OR last_contacted < ?)
     `);
-    updateContact.run(date, contact_id);
+    updateContact.run(date, contact_id, date);
 
     const interaction = db.prepare(
       'SELECT * FROM interactions WHERE id = ?'

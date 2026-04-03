@@ -25,6 +25,12 @@ export async function GET(
   }
 }
 
+const ALLOWED_FIELDS = new Set([
+  'name', 'email', 'phone', 'photo_url', 'birthday',
+  'how_we_met', 'tags', 'notes', 'gift_ideas', 'custom_fields',
+  'last_contacted', 'contact_frequency',
+]);
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -37,13 +43,12 @@ export async function PATCH(
     const values: any[] = [];
 
     Object.entries(body).forEach(([key, value]) => {
-      if (key !== 'id' && key !== 'created_at') {
-        updates.push(`${key} = ?`);
-        if (key === 'tags' || key === 'gift_ideas') {
-          values.push(value ? JSON.stringify(value) : null);
-        } else {
-          values.push(value === undefined ? null : value);
-        }
+      if (!ALLOWED_FIELDS.has(key)) return;
+      updates.push(`${key} = ?`);
+      if (key === 'tags' || key === 'gift_ideas') {
+        values.push(value ? JSON.stringify(value) : null);
+      } else {
+        values.push(value === undefined ? null : value);
       }
     });
 
