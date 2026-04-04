@@ -34,6 +34,13 @@ export default function ContactDetail() {
     notes: '',
     remind_at: '',
   });
+  const [editingInteractionId, setEditingInteractionId] = useState<number | null>(null);
+  const [editInteractionForm, setEditInteractionForm] = useState({
+    type: 'call',
+    date: '',
+    summary: '',
+    notes: '',
+  });
 
   useEffect(() => {
     async function fetchContact() {
@@ -96,6 +103,48 @@ export default function ContactDetail() {
       setShowReminderForm(false);
     } catch (error) {
       console.error('Failed to set reminder:', error);
+    }
+  }
+
+  async function refreshContact() {
+    const res = await fetch(`/api/contacts/${id}`);
+    const data = await res.json();
+    setContact(data.contact);
+    setInteractions(data.interactions || []);
+  }
+
+  function startEditInteraction(interaction: Interaction) {
+    setEditingInteractionId(interaction.id);
+    setEditInteractionForm({
+      type: interaction.type,
+      date: interaction.date,
+      summary: interaction.summary || '',
+      notes: interaction.notes || '',
+    });
+  }
+
+  async function handleEditInteraction(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await fetch(`/api/interactions/${editingInteractionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editInteractionForm),
+      });
+      setEditingInteractionId(null);
+      await refreshContact();
+    } catch (error) {
+      console.error('Failed to edit interaction:', error);
+    }
+  }
+
+  async function handleDeleteInteraction(interactionId: number) {
+    if (!confirm('Delete this interaction?')) return;
+    try {
+      await fetch(`/api/interactions/${interactionId}`, { method: 'DELETE' });
+      await refreshContact();
+    } catch (error) {
+      console.error('Failed to delete interaction:', error);
     }
   }
 
@@ -404,6 +453,7 @@ export default function ContactDetail() {
               interactions.map((interaction, index) => {
                 const config = interactionTypeConfig[interaction.type] || interactionTypeConfig.call;
                 const Icon = config.icon;
+                const isEditing = editingInteractionId === interaction.id;
                 return (
                   <div key={interaction.id} className="flex gap-3 group">
                     {/* Timeline line + dot */}
@@ -417,15 +467,79 @@ export default function ContactDetail() {
                     </div>
                     {/* Content */}
                     <div className={`flex-1 pb-5 ${index < interactions.length - 1 ? '' : 'pb-0'}`}>
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-medium text-sm capitalize">{interaction.type}</span>
-                        <span className="text-xs text-muted-foreground">{formatDate(interaction.date)}</span>
-                      </div>
-                      {interaction.summary && (
-                        <p className="text-sm text-foreground mt-0.5">{interaction.summary}</p>
-                      )}
-                      {interaction.notes && (
-                        <p className="text-xs text-muted-foreground mt-1">{interaction.notes}</p>
+                      {isEditing ? (
+                        <form onSubmit={handleEditInteraction} className="animate-slide-down space-y-3 p-3 rounded-xl bg-muted/40 border border-border/50">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">Type</Label>
+                              <select
+                                className="w-full h-9 rounded-lg border border-input bg-white px-3 py-1 text-sm mt-1"
+                                value={editInteractionForm.type}
+                                onChange={(e) => setEditInteractionForm({ ...editInteractionForm, type: e.target.value })}
+                              >
+                                <option value="call">📞 Call</option>
+                                <option value="message">💬 Message</option>
+                                <option value="meetup">☕ Meetup</option>
+                                <option value="email">✉️ Email</option>
+                              </select>
+                            </div>
+                            <div>
+                              <Label className="text-xs">Date</Label>
+                              <Input
+                                type="date"
+                                value={editInteractionForm.date}
+                                onChange={(e) => setEditInteractionForm({ ...editInteractionForm, date: e.target.value })}
+                                className="mt-1 bg-white"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Summary</Label>
+                            <Input
+                              placeholder="What happened?"
+                              value={editInteractionForm.summary}
+                              onChange={(e) => setEditInteractionForm({ ...editInteractionForm, summary: e.target.value })}
+                              className="mt-1 bg-white"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Notes</Label>
+                            <Textarea
+                              placeholder="Any details to remember..."
+                              value={editInteractionForm.notes}
+                              onChange={(e) => setEditInteractionForm({ ...editInteractionForm, notes: e.target.value })}
+                              rows={2}
+                              className="mt-1 bg-white"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button type="submit" size="sm">Save</Button>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => setEditingInteractionId(null)}>Cancel</Button>
+                          </div>
+                        </form>
+                      ) : (
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2">
+                              <span className="font-medium text-sm capitalize">{interaction.type}</span>
+                              <span className="text-xs text-muted-foreground">{formatDate(interaction.date)}</span>
+                            </div>
+                            {interaction.summary && (
+                              <p className="text-sm text-foreground mt-0.5">{interaction.summary}</p>
+                            )}
+                            {interaction.notes && (
+                              <p className="text-xs text-muted-foreground mt-1">{interaction.notes}</p>
+                            )}
+                          </div>
+                          <div className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex gap-1 flex-shrink-0 pt-0.5">
+                            <button onClick={() => startEditInteraction(interaction)} className="p-1 rounded hover:bg-muted">
+                              <Edit className="w-3.5 h-3.5 text-muted-foreground" />
+                            </button>
+                            <button onClick={() => handleDeleteInteraction(interaction.id)} className="p-1 rounded hover:bg-red-50">
+                              <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>

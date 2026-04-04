@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, Home, Users, Plus } from 'lucide-react';
+import { Heart, Home, Users, FolderOpen, Bell, Plus } from 'lucide-react';
 
 export function NavHeader() {
   const pathname = usePathname();
@@ -10,6 +10,8 @@ export function NavHeader() {
   const navItems = [
     { href: '/', label: 'Dashboard', icon: Home },
     { href: '/contacts', label: 'Contacts', icon: Users },
+    { href: '/groups', label: 'Groups', icon: FolderOpen },
+    { href: '/reminders', label: 'Reminders', icon: Bell },
   ];
 
   return (

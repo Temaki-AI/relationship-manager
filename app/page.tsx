@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, MessageSquare, AlertCircle, Cake, ArrowRight, Bell, Clock, Heart, Sparkles } from 'lucide-react';
+import { Users, MessageSquare, AlertCircle, Cake, ArrowRight, Bell, Clock, Heart, Sparkles, Check } from 'lucide-react';
 import type { Contact } from '@/lib/db';
 import { formatRelativeDate, calculateRelationshipHealth, parseTags } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
@@ -295,9 +295,32 @@ export default function Dashboard() {
                           : 'hover:bg-muted/50'
                       }`}
                     >
-                      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-                        isPast ? 'bg-red-400 animate-pulse-gentle' : isToday ? 'bg-amber-400' : 'bg-blue-400'
-                      }`} />
+                      <button
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          try {
+                            await fetch(`/api/reminders/${reminder.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ completed: true }),
+                            });
+                            setReminders(prev => prev.filter(r => r.id !== reminder.id));
+                          } catch (error) {
+                            console.error('Failed to complete reminder:', error);
+                          }
+                        }}
+                        className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all hover:scale-110 ${
+                          isPast
+                            ? 'border-red-300 hover:bg-red-200 hover:border-red-400'
+                            : isToday
+                            ? 'border-amber-300 hover:bg-amber-200 hover:border-amber-400'
+                            : 'border-blue-300 hover:bg-blue-200 hover:border-blue-400'
+                        }`}
+                        title="Mark as complete"
+                      >
+                        <Check className="w-2.5 h-2.5 opacity-0 hover:opacity-100 text-muted-foreground" />
+                      </button>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm">{reminder.contact_name}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{reminder.title}</p>
