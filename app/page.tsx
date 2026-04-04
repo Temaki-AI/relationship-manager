@@ -9,6 +9,7 @@ import { Users, MessageSquare, AlertCircle, Cake, ArrowRight, Bell, Clock, Heart
 import type { Contact } from '@/lib/db';
 import { formatRelativeDate, calculateRelationshipHealth, parseTags } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
+import { useToast } from '@/components/ui/toast';
 
 type Stats = {
   totalContacts: number;
@@ -65,6 +66,7 @@ export default function Dashboard() {
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     async function fetchData() {
@@ -306,8 +308,10 @@ export default function Dashboard() {
                               body: JSON.stringify({ completed: true }),
                             });
                             setReminders(prev => prev.filter(r => r.id !== reminder.id));
+                            toast({ message: 'Reminder completed' });
                           } catch (error) {
                             console.error('Failed to complete reminder:', error);
+                            toast({ message: 'Failed to complete reminder', variant: 'error' });
                           }
                         }}
                         className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all hover:scale-110 ${
