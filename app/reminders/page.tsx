@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Bell, Check, Trash2 } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 
 type Reminder = {
   id: number;
@@ -48,6 +49,7 @@ function SkeletonReminders() {
 export default function RemindersPage() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     async function fetchReminders() {
@@ -72,8 +74,10 @@ export default function RemindersPage() {
         body: JSON.stringify({ completed: true }),
       });
       setReminders(prev => prev.filter(r => r.id !== id));
+      toast({ message: 'Reminder completed' });
     } catch (error) {
       console.error('Failed to complete reminder:', error);
+      toast({ message: 'Failed to complete reminder', variant: 'error' });
     }
   }
 
@@ -82,8 +86,10 @@ export default function RemindersPage() {
     try {
       await fetch(`/api/reminders/${id}`, { method: 'DELETE' });
       setReminders(prev => prev.filter(r => r.id !== id));
+      toast({ message: 'Reminder deleted' });
     } catch (error) {
       console.error('Failed to delete reminder:', error);
+      toast({ message: 'Failed to delete reminder', variant: 'error' });
     }
   }
 

@@ -13,11 +13,13 @@ import { ArrowLeft, Edit, Trash2, Phone, Mail, Calendar, MessageSquare, Coffee, 
 import type { Contact, Interaction } from '@/lib/db';
 import { formatDate, formatRelativeDate, calculateRelationshipHealth, getHealthBadge, parseTags, parseGiftIdeas } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
+import { useToast } from '@/components/ui/toast';
 
 export default function ContactDetail() {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
+  const { toast } = useToast();
   const [contact, setContact] = useState<Contact | null>(null);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,9 +77,11 @@ export default function ContactDetail() {
         setInteractions(data.interactions);
         setInteractionForm({ type: 'call', date: new Date().toISOString().split('T')[0], summary: '', notes: '' });
         setShowLogForm(false);
+        toast({ message: 'Interaction logged' });
       }
     } catch (error) {
       console.error('Failed to log interaction:', error);
+      toast({ message: 'Failed to log interaction', variant: 'error' });
     }
   }
 
@@ -85,9 +89,11 @@ export default function ContactDetail() {
     if (!confirm('Are you sure you want to delete this contact?')) return;
     try {
       await fetch(`/api/contacts/${id}`, { method: 'DELETE' });
+      toast({ message: 'Contact deleted' });
       router.push('/contacts');
     } catch (error) {
       console.error('Failed to delete contact:', error);
+      toast({ message: 'Failed to delete contact', variant: 'error' });
     }
   }
 
@@ -101,8 +107,10 @@ export default function ContactDetail() {
       });
       setReminderForm({ title: '', notes: '', remind_at: '' });
       setShowReminderForm(false);
+      toast({ message: 'Reminder set' });
     } catch (error) {
       console.error('Failed to set reminder:', error);
+      toast({ message: 'Failed to set reminder', variant: 'error' });
     }
   }
 
@@ -133,8 +141,10 @@ export default function ContactDetail() {
       });
       setEditingInteractionId(null);
       await refreshContact();
+      toast({ message: 'Interaction updated' });
     } catch (error) {
       console.error('Failed to edit interaction:', error);
+      toast({ message: 'Failed to update interaction', variant: 'error' });
     }
   }
 
@@ -143,8 +153,10 @@ export default function ContactDetail() {
     try {
       await fetch(`/api/interactions/${interactionId}`, { method: 'DELETE' });
       await refreshContact();
+      toast({ message: 'Interaction deleted' });
     } catch (error) {
       console.error('Failed to delete interaction:', error);
+      toast({ message: 'Failed to delete interaction', variant: 'error' });
     }
   }
 

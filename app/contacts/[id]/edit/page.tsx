@@ -10,11 +10,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Save } from 'lucide-react';
 import { parseTags, parseGiftIdeas } from '@/lib/utils';
+import { useToast } from '@/components/ui/toast';
 
 export default function EditContact() {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -66,9 +68,13 @@ export default function EditContact() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, tags: tagsArray, gift_ideas: giftIdeasArray, birthday: form.birthday || null }),
       });
-      if (res.ok) router.push(`/contacts/${id}`);
+      if (res.ok) {
+        toast({ message: 'Contact saved' });
+        router.push(`/contacts/${id}`);
+      }
     } catch (error) {
       console.error('Failed to update contact:', error);
+      toast({ message: 'Failed to save changes', variant: 'error' });
     } finally {
       setSubmitting(false);
     }

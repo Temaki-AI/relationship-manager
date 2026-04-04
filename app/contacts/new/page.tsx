@@ -9,9 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, UserPlus, Sparkles } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 
 export default function NewContact() {
   const router = useRouter();
+  const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [enriching, setEnriching] = useState(false);
   const [form, setForm] = useState({
@@ -28,7 +30,7 @@ export default function NewContact() {
 
   async function handleEnrich() {
     if (!form.email) {
-      alert('Please enter an email address first');
+      toast({ message: 'Enter an email address first', variant: 'info' });
       return;
     }
 
@@ -57,15 +59,15 @@ export default function NewContact() {
             : prev.notes,
         }));
 
-        alert(
+        toast(
           result.found
-            ? `✨ Found data! ${enriched.name ? 'Name' : ''}${enriched.phone ? ', Phone' : ''}${enriched.location ? ', Location' : ''} enriched.`
-            : 'No public profile found for this email.'
+            ? { message: `Found data! ${enriched.name ? 'Name' : ''}${enriched.phone ? ', Phone' : ''}${enriched.location ? ', Location' : ''} enriched.`, variant: 'success' }
+            : { message: 'No public profile found for this email', variant: 'info' }
         );
       }
     } catch (error) {
       console.error('Enrichment failed:', error);
-      alert('Failed to enrich contact data');
+      toast({ message: 'Failed to enrich contact data', variant: 'error' });
     } finally {
       setEnriching(false);
     }

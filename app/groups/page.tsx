@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { FolderOpen, Plus, ChevronDown, ChevronRight, Edit, Trash2, X, Save, UserPlus } from 'lucide-react';
 import type { Contact, ContactGroup } from '@/lib/db';
 import { Avatar } from '@/components/ui/avatar';
+import { useToast } from '@/components/ui/toast';
 
 const COLOR_OPTIONS = [
   { name: 'rose', bg: 'bg-rose-500' },
@@ -54,6 +55,7 @@ export default function GroupsPage() {
   const [groupMembers, setGroupMembers] = useState<Record<number, Contact[]>>({});
   const [editingGroupId, setEditingGroupId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: '', color: '' });
+  const { toast } = useToast();
 
   useEffect(() => {
     async function fetchData() {
@@ -102,8 +104,10 @@ export default function GroupsPage() {
       setNewGroup({ name: '', color: 'rose' });
       setShowCreateForm(false);
       await refreshGroups();
+      toast({ message: 'Group created' });
     } catch (error) {
       console.error('Failed to create group:', error);
+      toast({ message: 'Failed to create group', variant: 'error' });
     }
   }
 
@@ -116,8 +120,10 @@ export default function GroupsPage() {
       });
       setEditingGroupId(null);
       await refreshGroups();
+      toast({ message: 'Group updated' });
     } catch (error) {
       console.error('Failed to update group:', error);
+      toast({ message: 'Failed to update group', variant: 'error' });
     }
   }
 
@@ -127,8 +133,10 @@ export default function GroupsPage() {
       await fetch(`/api/groups/${groupId}`, { method: 'DELETE' });
       if (expandedGroupId === groupId) setExpandedGroupId(null);
       await refreshGroups();
+      toast({ message: 'Group deleted' });
     } catch (error) {
       console.error('Failed to delete group:', error);
+      toast({ message: 'Failed to delete group', variant: 'error' });
     }
   }
 
@@ -141,8 +149,10 @@ export default function GroupsPage() {
       });
       await fetchGroupMembers(groupId);
       await refreshGroups();
+      toast({ message: 'Member added' });
     } catch (error) {
       console.error('Failed to add member:', error);
+      toast({ message: 'Failed to add member', variant: 'error' });
     }
   }
 
@@ -153,8 +163,10 @@ export default function GroupsPage() {
       });
       await fetchGroupMembers(groupId);
       await refreshGroups();
+      toast({ message: 'Member removed' });
     } catch (error) {
       console.error('Failed to remove member:', error);
+      toast({ message: 'Failed to remove member', variant: 'error' });
     }
   }
 

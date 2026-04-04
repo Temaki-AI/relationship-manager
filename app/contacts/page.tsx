@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Download, UserPlus, Sparkles } from 'lucide-react';
+import { Search, Download, Upload, UserPlus, Sparkles } from 'lucide-react';
 import type { Contact } from '@/lib/db';
 import { formatRelativeDate, calculateRelationshipHealth, parseTags } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
+import { useToast } from '@/components/ui/toast';
 
 function SkeletonGrid() {
   return (
@@ -27,22 +28,22 @@ export default function ContactsPage() {
   const [search, setSearch] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
+  const { toast } = useToast();
+
+  async function fetchContacts() {
+    try {
+      const res = await fetch('/api/contacts');
+      const data = await res.json();
+      setContacts(data.contacts);
+      setFilteredContacts(data.contacts);
+    } catch (error) {
+      console.error('Failed to fetch contacts:', error);
+    }
+  }
 
   useEffect(() => {
-    async function fetchContacts() {
-      try {
-        const res = await fetch('/api/contacts');
-        const data = await res.json();
-        setContacts(data.contacts);
-        setFilteredContacts(data.contacts);
-      } catch (error) {
-        console.error('Failed to fetch contacts:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchContacts();
+    fetchContacts().finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -98,6 +99,44 @@ export default function ContactsPage() {
               Export
             </Button>
           </a>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-muted-foreground"
+            disabled={importing}
+            onClick={() => document.getElementById('csv-import')?.click()}
+          >
+            <Upload className="w-3.5 h-3.5 mr-1.5" />
+            {importing ? 'Importing...' : 'Import'}
+          </Button>
+          <input
+            id="csv-import"
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setImporting(true);
+              try {
+                const formData = new FormData();
+                formData.append('file', file);
+                const res = await fetch('/api/import/csv', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (res.ok) {
+                  toast({ message: `Imported ${data.imported} contacts${data.skipped ? `, ${data.skipped} skipped` : ''}` });
+                  await fetchContacts();
+                } else {
+                  toast({ message: data.error || 'Import failed', variant: 'error' });
+                }
+              } catch (error) {
+                toast({ message: 'Failed to import CSV', variant: 'error' });
+              } finally {
+                setImporting(false);
+                e.target.value = '';
+              }
+            }}
+          />
           <Link href="/contacts/new">
             <Button size="sm">
               <UserPlus className="w-3.5 h-3.5 mr-1.5" />
