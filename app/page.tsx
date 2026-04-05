@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Users, MessageSquare, AlertCircle, Cake, ArrowRight, Bell, Clock, Heart, Sparkles, Check } from 'lucide-react';
 import type { Contact } from '@/lib/db';
-import { formatRelativeDate, calculateRelationshipHealth, parseTags } from '@/lib/utils';
+import { calculateRelationshipHealth, formatRelativeDate, getResponseErrorMessage, parseTags } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { useToast } from '@/components/ui/toast';
 
@@ -302,11 +302,15 @@ export default function Dashboard() {
                           e.preventDefault();
                           e.stopPropagation();
                           try {
-                            await fetch(`/api/reminders/${reminder.id}`, {
+                            const res = await fetch(`/api/reminders/${reminder.id}`, {
                               method: 'PATCH',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ completed: true }),
                             });
+                            if (!res.ok) {
+                              toast({ message: await getResponseErrorMessage(res, 'Failed to complete reminder'), variant: 'error' });
+                              return;
+                            }
                             setReminders(prev => prev.filter(r => r.id !== reminder.id));
                             toast({ message: 'Reminder completed' });
                           } catch (error) {

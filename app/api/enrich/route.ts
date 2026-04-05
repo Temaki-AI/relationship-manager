@@ -1,6 +1,37 @@
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 
+type EnrichedData = {
+  bio?: string;
+  company?: string;
+  companyDomain?: string;
+  companyLogo?: string;
+  found?: boolean;
+  location?: string;
+  name?: string;
+  phone?: string;
+  social?: Record<string, string>;
+  source?: string;
+  suggestedNotes?: string;
+};
+
+type GravatarProfile = {
+  aboutMe?: string;
+  currentLocation?: string;
+  displayName?: string;
+  name?: {
+    familyName?: string;
+    formatted?: string;
+    givenName?: string;
+  };
+  phoneNumbers?: Array<{ value?: string }>;
+  urls?: Array<{ url?: string; value?: string }>;
+};
+
+type GravatarResponse = {
+  entry?: GravatarProfile[];
+};
+
 export async function POST(request: Request) {
   try {
     const { email } = await request.json();
@@ -9,7 +40,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Email required' }, { status: 400 });
     }
 
-    const enrichedData: Record<string, any> = {};
+    const enrichedData: EnrichedData = {};
 
     // 1. Try Gravatar Profile API
     const gravatarHash = createHash('md5').update(email.toLowerCase().trim()).digest('hex');
@@ -18,7 +49,7 @@ export async function POST(request: Request) {
       const gravatarRes = await fetch(`https://gravatar.com/${gravatarHash}.json`);
       
       if (gravatarRes.ok) {
-        const gravatarData = await gravatarRes.json();
+        const gravatarData = await gravatarRes.json() as GravatarResponse;
         const profile = gravatarData.entry?.[0];
 
         if (profile) {
@@ -44,7 +75,7 @@ export async function POST(request: Request) {
           // Extract social profiles
           const socialLinks: Record<string, string> = {};
           if (profile.urls && Array.isArray(profile.urls)) {
-            profile.urls.forEach((url: any) => {
+            profile.urls.forEach((url) => {
               const value = url.value || url.url;
               if (value) {
                 if (value.includes('linkedin.com')) {
@@ -73,7 +104,7 @@ export async function POST(request: Request) {
           enrichedData.source = 'gravatar';
         }
       }
-    } catch (error) {
+    } catch {
       console.log('Gravatar fetch failed (not found or network error)');
     }
 

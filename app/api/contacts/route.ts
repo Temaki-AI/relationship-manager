@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 
+function normalizeContactFrequency(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 14;
+  }
+  return Math.floor(parsed);
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -9,7 +17,7 @@ export async function GET(request: Request) {
 
     let query = 'SELECT * FROM contacts';
     const conditions: string[] = [];
-    const params: any[] = [];
+    const params: string[] = [];
 
     if (search) {
       conditions.push('(name LIKE ? OR email LIKE ? OR notes LIKE ?)');
@@ -54,6 +62,10 @@ export async function POST(request: Request) {
       contact_frequency
     } = body;
 
+    if (!name || !String(name).trim()) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+
     const stmt = db.prepare(`
       INSERT INTO contacts (
         name, email, phone, photo_url, birthday, how_we_met, 
@@ -63,7 +75,7 @@ export async function POST(request: Request) {
     `);
 
     const result = stmt.run(
-      name,
+      String(name).trim(),
       email || null,
       phone || null,
       photo_url || null,
@@ -72,7 +84,7 @@ export async function POST(request: Request) {
       tags ? JSON.stringify(tags) : null,
       notes || null,
       gift_ideas ? JSON.stringify(gift_ideas) : null,
-      contact_frequency || 14
+      normalizeContactFrequency(contact_frequency)
     );
 
     const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(result.lastInsertRowid);

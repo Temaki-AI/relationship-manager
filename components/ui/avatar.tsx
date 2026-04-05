@@ -42,6 +42,7 @@ export function Avatar({ contact, size = 'md', className = '' }: AvatarProps) {
   // Show image with fallback to initials on error
   return (
     <div className={`${sizeClasses[size]} rounded-full sm:rounded-2xl overflow-hidden shadow-lg flex-shrink-0 ${className}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={avatar.url}
         alt={contact.name}

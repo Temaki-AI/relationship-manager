@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
+import { calculateDaysUntilBirthday } from '@/lib/birthdays';
 import db from '@/lib/db';
-import { differenceInDays, parseISO, addDays, format } from 'date-fns';
+import { addDays, differenceInDays, format, parseISO } from 'date-fns';
 
 export async function GET() {
   try {
@@ -33,16 +34,11 @@ export async function GET() {
        WHERE birthday IS NOT NULL`
     ).all() as Array<{ id: number; name: string; birthday: string }>;
 
-    const nowMonth = now.getMonth() + 1;
-    const nowDay = now.getDate();
-
     const birthdays = upcomingBirthdays.filter(c => {
-      const [_, month, day] = c.birthday.split('-').map(Number);
-      const daysUntil = calculateDaysUntilBirthday(nowMonth, nowDay, month, day);
+      const daysUntil = calculateDaysUntilBirthday(now, c.birthday);
       return daysUntil >= 0 && daysUntil <= 30;
     }).map(c => {
-      const [_, month, day] = c.birthday.split('-').map(Number);
-      const daysUntil = calculateDaysUntilBirthday(nowMonth, nowDay, month, day);
+      const daysUntil = calculateDaysUntilBirthday(now, c.birthday);
       return { ...c, daysUntil };
     }).sort((a, b) => a.daysUntil - b.daysUntil);
 
@@ -75,35 +71,5 @@ export async function GET() {
       { error: 'Failed to fetch stats' },
       { status: 500 }
     );
-  }
-}
-
-function calculateDaysUntilBirthday(
-  nowMonth: number,
-  nowDay: number,
-  bdayMonth: number,
-  bdayDay: number
-): number {
-  if (bdayMonth > nowMonth || (bdayMonth === nowMonth && bdayDay >= nowDay)) {
-    // Birthday is this year
-    const daysInMonths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    let days = 0;
-    for (let m = nowMonth; m < bdayMonth; m++) {
-      days += daysInMonths[m - 1];
-    }
-    days += bdayDay - nowDay;
-    return days;
-  } else {
-    // Birthday is next year
-    const daysInMonths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    let days = daysInMonths[nowMonth - 1] - nowDay;
-    for (let m = nowMonth + 1; m <= 12; m++) {
-      days += daysInMonths[m - 1];
-    }
-    for (let m = 1; m < bdayMonth; m++) {
-      days += daysInMonths[m - 1];
-    }
-    days += bdayDay;
-    return days;
   }
 }

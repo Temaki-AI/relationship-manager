@@ -6,16 +6,32 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'http://127.0.0.1:3100',
 ];
 
+function getAllowedExtensionIds(): string[] {
+  const extra = process.env.CORS_ALLOWED_EXTENSION_IDS;
+  if (!extra) return [];
+  return extra
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 function getAllowedOrigins(): string[] {
   const extra = process.env.CORS_ALLOWED_ORIGINS;
   if (extra) {
-    return [...DEFAULT_ALLOWED_ORIGINS, ...extra.split(',').map(o => o.trim())];
+    return [
+      ...DEFAULT_ALLOWED_ORIGINS,
+      ...extra.split(',').map((origin) => origin.trim()).filter(Boolean),
+    ];
   }
   return DEFAULT_ALLOWED_ORIGINS;
 }
 
 function isOriginAllowed(origin: string | null): boolean {
   if (!origin) return true; // same-origin requests have no Origin header
+  if (origin.startsWith('chrome-extension://')) {
+    const extensionId = origin.replace('chrome-extension://', '').replace(/\/$/, '');
+    return getAllowedExtensionIds().includes(extensionId);
+  }
   return getAllowedOrigins().includes(origin);
 }
 
@@ -24,6 +40,21 @@ export function middleware(request: NextRequest) {
   const allowed = isOriginAllowed(origin);
   const corsOrigin = allowed && origin ? origin : '';
 
+  if (origin && !allowed) {
+    return new NextResponse(
+      request.method === 'OPTIONS'
+        ? null
+        : JSON.stringify({ error: 'Origin not allowed' }),
+      {
+        status: 403,
+        headers: {
+          'Content-Type': 'application/json',
+          Vary: 'Origin',
+        },
+      }
+    );
+  }
+
   if (request.method === 'OPTIONS') {
     return new NextResponse(null, {
       status: 200,
@@ -31,11 +62,13 @@ export function middleware(request: NextRequest) {
         'Access-Control-Allow-Origin': corsOrigin,
         'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        Vary: 'Origin',
       },
     });
   }
 
   const response = NextResponse.next();
+  response.headers.set('Vary', 'Origin');
 
   if (corsOrigin) {
     response.headers.set('Access-Control-Allow-Origin', corsOrigin);

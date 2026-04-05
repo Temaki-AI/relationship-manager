@@ -1,54 +1,11 @@
 import { NextResponse } from 'next/server';
+import {
+  normalizeImportedFrequency,
+  parseCSV,
+  parseImportedGiftIdeasValue,
+  parseImportedTagsValue,
+} from '@/lib/csv';
 import db from '@/lib/db';
-
-function parseCSVLine(line: string): string[] {
-  const fields: string[] = [];
-  let current = '';
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (inQuotes) {
-      if (char === '"' && line[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else if (char === '"') {
-        inQuotes = false;
-      } else {
-        current += char;
-      }
-    } else {
-      if (char === '"') {
-        inQuotes = true;
-      } else if (char === ',') {
-        fields.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-  }
-  fields.push(current.trim());
-  return fields;
-}
-
-const HEADER_MAP: Record<string, string> = {
-  'name': 'name',
-  'email': 'email',
-  'phone': 'phone',
-  'birthday': 'birthday',
-  'how we met': 'how_we_met',
-  'how_we_met': 'how_we_met',
-  'tags': 'tags',
-  'notes': 'notes',
-  'gift ideas': 'gift_ideas',
-  'gift_ideas': 'gift_ideas',
-  'last contacted': 'last_contacted',
-  'last_contacted': 'last_contacted',
-  'contact frequency': 'contact_frequency',
-  'contact frequency (days)': 'contact_frequency',
-  'contact_frequency': 'contact_frequency',
-};
 
 export async function POST(request: Request) {
   try {
@@ -60,13 +17,13 @@ export async function POST(request: Request) {
     }
 
     const text = await file.text();
-    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    const records = parseCSV(text);
 
-    if (lines.length < 2) {
+    if (records.length < 2) {
       return NextResponse.json({ error: 'CSV must have a header row and at least one data row' }, { status: 400 });
     }
 
-    const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+    const headers = records[0].map((header) => header.trim().toLowerCase());
     const columnMap: Record<number, string> = {};
 
     headers.forEach((header, idx) => {
@@ -90,35 +47,11 @@ export async function POST(request: Request) {
     const insertMany = db.transaction((rows: Record<string, string>[]) => {
       for (const row of rows) {
         try {
-          const name = row.name || '';
+          const name = row.name?.trim() || '';
           if (!name) {
             skipped++;
             continue;
           }
-
-          // Parse tags: could be JSON array or comma-separated
-          let tags: string | null = null;
-          if (row.tags) {
-            try {
-              const parsed = JSON.parse(row.tags);
-              tags = Array.isArray(parsed) ? JSON.stringify(parsed) : null;
-            } catch {
-              tags = JSON.stringify(row.tags.split(',').map((t: string) => t.trim()).filter(Boolean));
-            }
-          }
-
-          // Parse gift ideas similarly
-          let giftIdeas: string | null = null;
-          if (row.gift_ideas) {
-            try {
-              const parsed = JSON.parse(row.gift_ideas);
-              giftIdeas = Array.isArray(parsed) ? JSON.stringify(parsed) : null;
-            } catch {
-              giftIdeas = JSON.stringify(row.gift_ideas.split('\n').map((g: string) => g.trim()).filter(Boolean));
-            }
-          }
-
-          const frequency = row.contact_frequency ? parseInt(row.contact_frequency) : 14;
 
           insert.run(
             name,
@@ -126,23 +59,24 @@ export async function POST(request: Request) {
             row.phone || null,
             row.birthday || null,
             row.how_we_met || null,
-            tags,
+            parseImportedTagsValue(row.tags || ''),
             row.notes || null,
-            giftIdeas,
+            parseImportedGiftIdeasValue(row.gift_ideas || ''),
             row.last_contacted || null,
-            isNaN(frequency) ? 14 : frequency,
+            normalizeImportedFrequency(row.contact_frequency),
           );
           imported++;
-        } catch (err: any) {
+        } catch (error) {
           skipped++;
-          errors.push(`Row "${row.name || '?'}": ${err.message}`);
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          errors.push(`Row "${row.name || '?'}": ${message}`);
         }
       }
     });
 
     const rows: Record<string, string>[] = [];
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i]);
+    for (let i = 1; i < records.length; i++) {
+      const values = records[i];
       const row: Record<string, string> = {};
       Object.entries(columnMap).forEach(([idx, field]) => {
         row[field] = values[Number(idx)] || '';
@@ -162,3 +96,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to import CSV' }, { status: 500 });
   }
 }
+
+const HEADER_MAP: Record<string, string> = {
+  'name': 'name',
+  'email': 'email',
+  'phone': 'phone',
+  'birthday': 'birthday',
+  'how we met': 'how_we_met',
+  'how_we_met': 'how_we_met',
+  'tags': 'tags',
+  'notes': 'notes',
+  'gift ideas': 'gift_ideas',
+  'gift_ideas': 'gift_ideas',
+  'last contacted': 'last_contacted',
+  'last_contacted': 'last_contacted',
+  'contact frequency': 'contact_frequency',
+  'contact frequency (days)': 'contact_frequency',
+  'contact_frequency': 'contact_frequency',
+};

@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 
+function normalizeContactFrequency(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 14;
+  }
+  return Math.floor(parsed);
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -40,13 +48,15 @@ export async function PATCH(
     const body = await request.json();
 
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: unknown[] = [];
 
     Object.entries(body).forEach(([key, value]) => {
       if (!ALLOWED_FIELDS.has(key)) return;
       updates.push(`${key} = ?`);
       if (key === 'tags' || key === 'gift_ideas') {
         values.push(value ? JSON.stringify(value) : null);
+      } else if (key === 'contact_frequency') {
+        values.push(normalizeContactFrequency(value));
       } else {
         values.push(value === undefined ? null : value);
       }
@@ -61,7 +71,10 @@ export async function PATCH(
         SET ${updates.join(', ')}
         WHERE id = ?
       `);
-      stmt.run(...values);
+      const result = stmt.run(...values);
+      if (result.changes === 0) {
+        return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
+      }
     }
 
     const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
@@ -81,7 +94,11 @@ export async function DELETE(
     const { id } = await params;
     
     const stmt = db.prepare('DELETE FROM contacts WHERE id = ?');
-    stmt.run(id);
+    const result = stmt.run(id);
+
+    if (result.changes === 0) {
+      return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

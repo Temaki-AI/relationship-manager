@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Bell, Check, Trash2 } from 'lucide-react';
+import { Check, Trash2 } from 'lucide-react';
+import { getResponseErrorMessage } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 
 type Reminder = {
@@ -68,11 +68,15 @@ export default function RemindersPage() {
 
   async function handleComplete(id: number) {
     try {
-      await fetch(`/api/reminders/${id}`, {
+      const res = await fetch(`/api/reminders/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ completed: true }),
       });
+      if (!res.ok) {
+        toast({ message: await getResponseErrorMessage(res, 'Failed to complete reminder'), variant: 'error' });
+        return;
+      }
       setReminders(prev => prev.filter(r => r.id !== id));
       toast({ message: 'Reminder completed' });
     } catch (error) {
@@ -84,7 +88,11 @@ export default function RemindersPage() {
   async function handleDelete(id: number) {
     if (!confirm('Delete this reminder?')) return;
     try {
-      await fetch(`/api/reminders/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/reminders/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        toast({ message: await getResponseErrorMessage(res, 'Failed to delete reminder'), variant: 'error' });
+        return;
+      }
       setReminders(prev => prev.filter(r => r.id !== id));
       toast({ message: 'Reminder deleted' });
     } catch (error) {

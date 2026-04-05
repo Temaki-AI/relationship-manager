@@ -10,12 +10,21 @@ export async function PATCH(
     const body = await request.json();
 
     if (body.completed) {
-      db.prepare('UPDATE reminders SET completed_at = CURRENT_TIMESTAMP WHERE id = ?').run(id);
+      const result = db.prepare('UPDATE reminders SET completed_at = CURRENT_TIMESTAMP WHERE id = ?').run(id);
+      if (result.changes === 0) {
+        return NextResponse.json({ error: 'Reminder not found' }, { status: 404 });
+      }
     } else {
       const { title, notes, remind_at } = body;
-      db.prepare(
+      if (!title || !remind_at) {
+        return NextResponse.json({ error: 'title and remind_at are required' }, { status: 400 });
+      }
+      const result = db.prepare(
         'UPDATE reminders SET title = ?, notes = ?, remind_at = ? WHERE id = ?'
       ).run(title, notes || null, remind_at, id);
+      if (result.changes === 0) {
+        return NextResponse.json({ error: 'Reminder not found' }, { status: 404 });
+      }
     }
 
     const reminder = db.prepare('SELECT * FROM reminders WHERE id = ?').get(id);
@@ -32,7 +41,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    db.prepare('DELETE FROM reminders WHERE id = ?').run(id);
+    const result = db.prepare('DELETE FROM reminders WHERE id = ?').run(id);
+    if (result.changes === 0) {
+      return NextResponse.json({ error: 'Reminder not found' }, { status: 404 });
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete reminder:', error);

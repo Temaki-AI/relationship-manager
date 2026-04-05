@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Search, Download, Upload, UserPlus, Sparkles } from 'lucide-react';
 import type { Contact } from '@/lib/db';
 import { formatRelativeDate, calculateRelationshipHealth, parseTags } from '@/lib/utils';
@@ -129,7 +128,7 @@ export default function ContactsPage() {
                 } else {
                   toast({ message: data.error || 'Import failed', variant: 'error' });
                 }
-              } catch (error) {
+              } catch {
                 toast({ message: 'Failed to import CSV', variant: 'error' });
               } finally {
                 setImporting(false);

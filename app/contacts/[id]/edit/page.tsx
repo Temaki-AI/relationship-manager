@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Save } from 'lucide-react';
-import { parseTags, parseGiftIdeas } from '@/lib/utils';
+import { getResponseErrorMessage, parseGiftIdeas, parseTags } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 
 export default function EditContact() {
@@ -35,6 +35,9 @@ export default function EditContact() {
     async function fetchContact() {
       try {
         const res = await fetch(`/api/contacts/${id}`);
+        if (!res.ok) {
+          throw new Error(await getResponseErrorMessage(res, 'Failed to fetch contact'));
+        }
         const data = await res.json();
         const contact = data.contact;
         setForm({
@@ -50,12 +53,13 @@ export default function EditContact() {
         });
       } catch (error) {
         console.error('Failed to fetch contact:', error);
+        toast({ message: error instanceof Error ? error.message : 'Failed to fetch contact', variant: 'error' });
       } finally {
         setLoading(false);
       }
     }
     fetchContact();
-  }, [id]);
+  }, [id, toast]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -68,10 +72,14 @@ export default function EditContact() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, tags: tagsArray, gift_ideas: giftIdeasArray, birthday: form.birthday || null }),
       });
-      if (res.ok) {
-        toast({ message: 'Contact saved' });
-        router.push(`/contacts/${id}`);
+
+      if (!res.ok) {
+        toast({ message: await getResponseErrorMessage(res, 'Failed to save changes'), variant: 'error' });
+        return;
       }
+
+      toast({ message: 'Contact saved' });
+      router.push(`/contacts/${id}`);
     } catch (error) {
       console.error('Failed to update contact:', error);
       toast({ message: 'Failed to save changes', variant: 'error' });
@@ -136,7 +144,20 @@ export default function EditContact() {
                 <div>
                   <Label htmlFor="frequency">Check in every</Label>
                   <div className="flex items-center gap-2 mt-1">
-                    <Input id="frequency" type="number" min="1" value={form.contact_frequency} onChange={(e) => setForm({ ...form, contact_frequency: parseInt(e.target.value) })} className="w-20" />
+                    <Input
+                      id="frequency"
+                      type="number"
+                      min="1"
+                      value={form.contact_frequency}
+                      onChange={(e) => {
+                        const parsed = parseInt(e.target.value, 10);
+                        setForm({
+                          ...form,
+                          contact_frequency: Number.isNaN(parsed) ? 14 : Math.max(1, parsed),
+                        });
+                      }}
+                      className="w-20"
+                    />
                     <span className="text-sm text-muted-foreground">days</span>
                   </div>
                 </div>

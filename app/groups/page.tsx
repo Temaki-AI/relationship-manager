@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { FolderOpen, Plus, ChevronDown, ChevronRight, Edit, Trash2, X, Save, UserPlus } from 'lucide-react';
 import type { Contact, ContactGroup } from '@/lib/db';
+import { getResponseErrorMessage } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { useToast } from '@/components/ui/toast';
 
@@ -96,11 +97,15 @@ export default function GroupsPage() {
   async function handleCreateGroup(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await fetch('/api/groups', {
+      const res = await fetch('/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newGroup),
       });
+      if (!res.ok) {
+        toast({ message: await getResponseErrorMessage(res, 'Failed to create group'), variant: 'error' });
+        return;
+      }
       setNewGroup({ name: '', color: 'rose' });
       setShowCreateForm(false);
       await refreshGroups();
@@ -113,11 +118,15 @@ export default function GroupsPage() {
 
   async function handleEditGroup(groupId: number) {
     try {
-      await fetch(`/api/groups/${groupId}`, {
+      const res = await fetch(`/api/groups/${groupId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
       });
+      if (!res.ok) {
+        toast({ message: await getResponseErrorMessage(res, 'Failed to update group'), variant: 'error' });
+        return;
+      }
       setEditingGroupId(null);
       await refreshGroups();
       toast({ message: 'Group updated' });
@@ -130,7 +139,11 @@ export default function GroupsPage() {
   async function handleDeleteGroup(groupId: number) {
     if (!confirm('Delete this group? Members will not be deleted.')) return;
     try {
-      await fetch(`/api/groups/${groupId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/groups/${groupId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        toast({ message: await getResponseErrorMessage(res, 'Failed to delete group'), variant: 'error' });
+        return;
+      }
       if (expandedGroupId === groupId) setExpandedGroupId(null);
       await refreshGroups();
       toast({ message: 'Group deleted' });
@@ -142,11 +155,15 @@ export default function GroupsPage() {
 
   async function handleAddMember(groupId: number, contactId: number) {
     try {
-      await fetch(`/api/groups/${groupId}/members`, {
+      const res = await fetch(`/api/groups/${groupId}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contact_id: contactId }),
       });
+      if (!res.ok) {
+        toast({ message: await getResponseErrorMessage(res, 'Failed to add member'), variant: 'error' });
+        return;
+      }
       await fetchGroupMembers(groupId);
       await refreshGroups();
       toast({ message: 'Member added' });
@@ -158,9 +175,13 @@ export default function GroupsPage() {
 
   async function handleRemoveMember(groupId: number, contactId: number) {
     try {
-      await fetch(`/api/groups/${groupId}/members?contact_id=${contactId}`, {
+      const res = await fetch(`/api/groups/${groupId}/members?contact_id=${contactId}`, {
         method: 'DELETE',
       });
+      if (!res.ok) {
+        toast({ message: await getResponseErrorMessage(res, 'Failed to remove member'), variant: 'error' });
+        return;
+      }
       await fetchGroupMembers(groupId);
       await refreshGroups();
       toast({ message: 'Member removed' });

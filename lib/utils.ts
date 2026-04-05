@@ -226,3 +226,16 @@ export function getContactAvatar(contact: { name: string; email: string | null; 
     color: getAvatarColor(contact.name),
   };
 }
+
+export async function getResponseErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const data = await response.clone().json();
+    if (data && typeof data.error === 'string' && data.error.trim()) {
+      return data.error;
+    }
+  } catch {
+    // Ignore parse failures and fall back to status-based messaging.
+  }
+
+  return response.status ? `${fallback} (${response.status})` : fallback;
+}

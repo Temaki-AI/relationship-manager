@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 
+function isUniqueConstraintError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('UNIQUE constraint failed');
+}
+
 export async function GET() {
   try {
     const groups = db
@@ -25,9 +29,13 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, color } = body;
 
+    if (!name || !String(name).trim()) {
+      return NextResponse.json({ error: 'Group name is required' }, { status: 400 });
+    }
+
     const result = db
       .prepare('INSERT INTO contact_groups (name, color) VALUES (?, ?)')
-      .run(name, color || null);
+      .run(String(name).trim(), color || null);
 
     const group = db
       .prepare('SELECT * FROM contact_groups WHERE id = ?')
@@ -36,6 +44,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ group });
   } catch (error) {
     console.error('Failed to create group:', error);
+    if (isUniqueConstraintError(error)) {
+      return NextResponse.json({ error: 'A group with that name already exists' }, { status: 409 });
+    }
     return NextResponse.json({ error: 'Failed to create group' }, { status: 500 });
   }
 }

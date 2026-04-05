@@ -5,13 +5,12 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Edit, Trash2, Phone, Mail, Calendar, MessageSquare, Coffee, Bell, Heart, MapPin, Gift, StickyNote, Plus } from 'lucide-react';
 import type { Contact, Interaction } from '@/lib/db';
-import { formatDate, formatRelativeDate, calculateRelationshipHealth, getHealthBadge, parseTags, parseGiftIdeas } from '@/lib/utils';
+import { calculateRelationshipHealth, formatDate, formatRelativeDate, getHealthBadge, getResponseErrorMessage, parseGiftIdeas, parseTags } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { useToast } from '@/components/ui/toast';
 
@@ -48,6 +47,9 @@ export default function ContactDetail() {
     async function fetchContact() {
       try {
         const res = await fetch(`/api/contacts/${id}`);
+        if (!res.ok) {
+          throw new Error(await getResponseErrorMessage(res, 'Failed to fetch contact'));
+        }
         const data = await res.json();
         setContact(data.contact);
         setInteractions(data.interactions || []);
@@ -70,15 +72,23 @@ export default function ContactDetail() {
         body: JSON.stringify({ contact_id: id, ...interactionForm }),
       });
 
-      if (res.ok) {
-        const refreshRes = await fetch(`/api/contacts/${id}`);
-        const data = await refreshRes.json();
-        setContact(data.contact);
-        setInteractions(data.interactions);
-        setInteractionForm({ type: 'call', date: new Date().toISOString().split('T')[0], summary: '', notes: '' });
-        setShowLogForm(false);
-        toast({ message: 'Interaction logged' });
+      if (!res.ok) {
+        toast({ message: await getResponseErrorMessage(res, 'Failed to log interaction'), variant: 'error' });
+        return;
       }
+
+      const refreshRes = await fetch(`/api/contacts/${id}`);
+      if (!refreshRes.ok) {
+        toast({ message: await getResponseErrorMessage(refreshRes, 'Failed to refresh contact'), variant: 'error' });
+        return;
+      }
+
+      const data = await refreshRes.json();
+      setContact(data.contact);
+      setInteractions(data.interactions);
+      setInteractionForm({ type: 'call', date: new Date().toISOString().split('T')[0], summary: '', notes: '' });
+      setShowLogForm(false);
+      toast({ message: 'Interaction logged' });
     } catch (error) {
       console.error('Failed to log interaction:', error);
       toast({ message: 'Failed to log interaction', variant: 'error' });
@@ -88,7 +98,11 @@ export default function ContactDetail() {
   async function handleDelete() {
     if (!confirm('Are you sure you want to delete this contact?')) return;
     try {
-      await fetch(`/api/contacts/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/contacts/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        toast({ message: await getResponseErrorMessage(res, 'Failed to delete contact'), variant: 'error' });
+        return;
+      }
       toast({ message: 'Contact deleted' });
       router.push('/contacts');
     } catch (error) {
@@ -100,11 +114,15 @@ export default function ContactDetail() {
   async function handleSetReminder(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await fetch('/api/reminders', {
+      const res = await fetch('/api/reminders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contact_id: id, ...reminderForm }),
       });
+      if (!res.ok) {
+        toast({ message: await getResponseErrorMessage(res, 'Failed to set reminder'), variant: 'error' });
+        return;
+      }
       setReminderForm({ title: '', notes: '', remind_at: '' });
       setShowReminderForm(false);
       toast({ message: 'Reminder set' });
@@ -116,6 +134,9 @@ export default function ContactDetail() {
 
   async function refreshContact() {
     const res = await fetch(`/api/contacts/${id}`);
+    if (!res.ok) {
+      throw new Error(await getResponseErrorMessage(res, 'Failed to refresh contact'));
+    }
     const data = await res.json();
     setContact(data.contact);
     setInteractions(data.interactions || []);
@@ -134,11 +155,15 @@ export default function ContactDetail() {
   async function handleEditInteraction(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await fetch(`/api/interactions/${editingInteractionId}`, {
+      const res = await fetch(`/api/interactions/${editingInteractionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editInteractionForm),
       });
+      if (!res.ok) {
+        toast({ message: await getResponseErrorMessage(res, 'Failed to update interaction'), variant: 'error' });
+        return;
+      }
       setEditingInteractionId(null);
       await refreshContact();
       toast({ message: 'Interaction updated' });
@@ -151,7 +176,11 @@ export default function ContactDetail() {
   async function handleDeleteInteraction(interactionId: number) {
     if (!confirm('Delete this interaction?')) return;
     try {
-      await fetch(`/api/interactions/${interactionId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/interactions/${interactionId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        toast({ message: await getResponseErrorMessage(res, 'Failed to delete interaction'), variant: 'error' });
+        return;
+      }
       await refreshContact();
       toast({ message: 'Interaction deleted' });
     } catch (error) {

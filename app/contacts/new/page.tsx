@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, UserPlus, Sparkles } from 'lucide-react';
+import { getResponseErrorMessage } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 
 export default function NewContact() {
@@ -41,6 +42,11 @@ export default function NewContact() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.email }),
       });
+
+      if (!res.ok) {
+        toast({ message: await getResponseErrorMessage(res, 'Failed to enrich contact data'), variant: 'error' });
+        return;
+      }
 
       const result = await res.json();
 
@@ -92,12 +98,16 @@ export default function NewContact() {
         }),
       });
 
-      if (res.ok) {
-        const { contact } = await res.json();
-        router.push(`/contacts/${contact.id}`);
+      if (!res.ok) {
+        toast({ message: await getResponseErrorMessage(res, 'Failed to create contact'), variant: 'error' });
+        return;
       }
+
+      const { contact } = await res.json();
+      router.push(`/contacts/${contact.id}`);
     } catch (error) {
       console.error('Failed to create contact:', error);
+      toast({ message: 'Failed to create contact', variant: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -153,7 +163,7 @@ export default function NewContact() {
                     )}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">We'll try to find their info from public profiles</p>
+                <p className="text-xs text-muted-foreground mt-1">We&apos;ll try to find their info from public profiles</p>
               </div>
               <div>
                 <Label htmlFor="phone">Phone</Label>
@@ -174,7 +184,20 @@ export default function NewContact() {
                 <div>
                   <Label htmlFor="frequency">Check in every</Label>
                   <div className="flex items-center gap-2 mt-1">
-                    <Input id="frequency" type="number" min="1" value={form.contact_frequency} onChange={(e) => setForm({ ...form, contact_frequency: parseInt(e.target.value) })} className="w-20" />
+                    <Input
+                      id="frequency"
+                      type="number"
+                      min="1"
+                      value={form.contact_frequency}
+                      onChange={(e) => {
+                        const parsed = parseInt(e.target.value, 10);
+                        setForm({
+                          ...form,
+                          contact_frequency: Number.isNaN(parsed) ? 14 : Math.max(1, parsed),
+                        });
+                      }}
+                      className="w-20"
+                    />
                     <span className="text-sm text-muted-foreground">days</span>
                   </div>
                 </div>
