@@ -13,6 +13,11 @@ export async function POST(request: Request) {
       );
     }
 
+    const contact = db.prepare('SELECT id FROM contacts WHERE id = ?').get(contact_id);
+    if (!contact) {
+      return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
+    }
+
     // Insert interaction
     const stmt = db.prepare(`
       INSERT INTO interactions (contact_id, date, type, summary, notes)

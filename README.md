@@ -123,6 +123,42 @@ ngrok http 3100
 
 Formula: `100 - ((days since last contact / target frequency) * 100)`
 
+## Browser Extension Testing
+
+If you want to test a Chrome extension that imports LinkedIn contacts into the CRM:
+
+1. Create `.env.local` with your extension ID:
+
+```bash
+CORS_ALLOWED_EXTENSION_IDS=ogodllnlbnmkhmaccmnoepajfapennja
+```
+
+2. Restart the app with `npm run dev`
+3. Have the extension `POST` to `http://localhost:3100/api/import/linkedin`
+
+For the unpacked extension in this repo, load [browser-extension/README.md](/Users/fernandoamaral/Dev/Personal CRM/browser-extension/README.md) and use the bundled stable extension ID above.
+
+Example payload:
+
+```json
+{
+  "fullName": "Ada Lovelace",
+  "headline": "Staff Engineer at Analytical Engines",
+  "company": "Analytical Engines",
+  "location": "London",
+  "linkedinUrl": "https://www.linkedin.com/in/ada-lovelace/",
+  "photoUrl": "https://example.com/ada.jpg",
+  "tags": ["linkedin", "engineering"],
+  "notes": "Imported from LinkedIn profile"
+}
+```
+
+The endpoint will:
+- map the payload into a CRM contact
+- tag the contact with `linkedin`
+- store LinkedIn metadata in `custom_fields`
+- skip creating a duplicate if the email or LinkedIn profile URL already exists
+
 ## Database Location
 
 Data is stored in: `data/relationships.db`

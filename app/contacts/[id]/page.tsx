@@ -1,18 +1,93 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import {
+  ArrowLeft,
+  Bell,
+  Calendar,
+  Coffee,
+  Edit,
+  Gift,
+  Heart,
+  Linkedin,
+  Mail,
+  MapPin,
+  MessageSquare,
+  Phone,
+  Plus,
+  StickyNote,
+  Trash2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Edit, Trash2, Phone, Mail, Calendar, MessageSquare, Coffee, Bell, Heart, MapPin, Gift, StickyNote, Plus } from 'lucide-react';
-import type { Contact, Interaction } from '@/lib/db';
-import { calculateRelationshipHealth, formatDate, formatRelativeDate, getHealthBadge, getResponseErrorMessage, parseGiftIdeas, parseTags } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar } from '@/components/ui/avatar';
+import type { Contact, Interaction, RelationshipFact, Reminder } from '@/lib/db';
+import {
+  calculateRelationshipHealth,
+  formatDate,
+  formatRelativeDate,
+  getHealthBadge,
+  getResponseErrorMessage,
+  getSocialLinks,
+  parseCustomFields,
+  parseGiftIdeas,
+  parseTags,
+} from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+
+type RelationshipBrief = {
+  headline: string;
+  summary: string;
+  nextStep: string;
+  talkingPoints: string[];
+  suggestedOutreach: string[];
+  momentum: 'strong' | 'steady' | 'stale';
+};
+
+type TimelineItem = {
+  id: string;
+  kind: 'interaction' | 'reminder' | 'fact' | 'signal';
+  title: string;
+  summary: string;
+  date: string;
+  tone: 'warm' | 'info' | 'urgent';
+};
+
+type ContactResponse = {
+  contact: Contact;
+  interactions: Interaction[];
+  reminders: Reminder[];
+  facts: RelationshipFact[];
+  brief: RelationshipBrief;
+  timeline: TimelineItem[];
+};
+
+async function loadContactResponse(id: string): Promise<ContactResponse> {
+  const res = await fetch(`/api/contacts/${id}`, { cache: 'no-store' });
+  if (!res.ok) {
+    throw new Error(await getResponseErrorMessage(res, 'Failed to fetch contact'));
+  }
+
+  return await res.json() as ContactResponse;
+}
+
+const interactionTypeConfig: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
+  call: { icon: Phone, color: 'text-blue-600', bg: 'bg-blue-100' },
+  message: { icon: MessageSquare, color: 'text-emerald-600', bg: 'bg-emerald-100' },
+  meetup: { icon: Coffee, color: 'text-amber-600', bg: 'bg-amber-100' },
+  email: { icon: Mail, color: 'text-purple-600', bg: 'bg-purple-100' },
+};
+
+function getTimelineToneClasses(tone: TimelineItem['tone']) {
+  if (tone === 'urgent') return 'bg-rose-50 text-rose-700 border-rose-200/60';
+  if (tone === 'warm') return 'bg-amber-50 text-amber-700 border-amber-200/60';
+  return 'bg-slate-50 text-slate-700 border-slate-200/60';
+}
 
 export default function ContactDetail() {
   const params = useParams();
@@ -21,6 +96,10 @@ export default function ContactDetail() {
   const { toast } = useToast();
   const [contact, setContact] = useState<Contact | null>(null);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [facts, setFacts] = useState<RelationshipFact[]>([]);
+  const [brief, setBrief] = useState<RelationshipBrief | null>(null);
+  const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showLogForm, setShowLogForm] = useState(false);
   const [showReminderForm, setShowReminderForm] = useState(false);
@@ -44,24 +123,30 @@ export default function ContactDetail() {
   });
 
   useEffect(() => {
-    async function fetchContact() {
-      try {
-        const res = await fetch(`/api/contacts/${id}`);
-        if (!res.ok) {
-          throw new Error(await getResponseErrorMessage(res, 'Failed to fetch contact'));
-        }
-        const data = await res.json();
+    loadContactResponse(id)
+      .then((data) => {
         setContact(data.contact);
         setInteractions(data.interactions || []);
-      } catch (error) {
+        setReminders(data.reminders || []);
+        setFacts(data.facts || []);
+        setBrief(data.brief || null);
+        setTimeline(data.timeline || []);
+      })
+      .catch((error) => {
         console.error('Failed to fetch contact:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchContact();
+      })
+      .finally(() => setLoading(false));
   }, [id]);
+
+  async function refreshContact() {
+    const data = await loadContactResponse(id);
+    setContact(data.contact);
+    setInteractions(data.interactions || []);
+    setReminders(data.reminders || []);
+    setFacts(data.facts || []);
+    setBrief(data.brief || null);
+    setTimeline(data.timeline || []);
+  }
 
   async function handleLogInteraction(e: React.FormEvent) {
     e.preventDefault();
@@ -77,15 +162,7 @@ export default function ContactDetail() {
         return;
       }
 
-      const refreshRes = await fetch(`/api/contacts/${id}`);
-      if (!refreshRes.ok) {
-        toast({ message: await getResponseErrorMessage(refreshRes, 'Failed to refresh contact'), variant: 'error' });
-        return;
-      }
-
-      const data = await refreshRes.json();
-      setContact(data.contact);
-      setInteractions(data.interactions);
+      await refreshContact();
       setInteractionForm({ type: 'call', date: new Date().toISOString().split('T')[0], summary: '', notes: '' });
       setShowLogForm(false);
       toast({ message: 'Interaction logged' });
@@ -125,21 +202,12 @@ export default function ContactDetail() {
       }
       setReminderForm({ title: '', notes: '', remind_at: '' });
       setShowReminderForm(false);
+      await refreshContact();
       toast({ message: 'Reminder set' });
     } catch (error) {
       console.error('Failed to set reminder:', error);
       toast({ message: 'Failed to set reminder', variant: 'error' });
     }
-  }
-
-  async function refreshContact() {
-    const res = await fetch(`/api/contacts/${id}`);
-    if (!res.ok) {
-      throw new Error(await getResponseErrorMessage(res, 'Failed to refresh contact'));
-    }
-    const data = await res.json();
-    setContact(data.contact);
-    setInteractions(data.interactions || []);
   }
 
   function startEditInteraction(interaction: Interaction) {
@@ -189,26 +257,16 @@ export default function ContactDetail() {
     }
   }
 
-  const interactionTypeConfig: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
-    call: { icon: Phone, color: 'text-blue-600', bg: 'bg-blue-100' },
-    message: { icon: MessageSquare, color: 'text-emerald-600', bg: 'bg-emerald-100' },
-    meetup: { icon: Coffee, color: 'text-amber-600', bg: 'bg-amber-100' },
-    email: { icon: Mail, color: 'text-purple-600', bg: 'bg-purple-100' },
-  };
-
   if (loading) {
     return (
-      <div className="space-y-6 max-w-3xl mx-auto">
+      <div className="space-y-6 max-w-5xl mx-auto">
         <div className="skeleton h-10 w-20" />
-        <div className="flex items-center gap-4">
-          <div className="skeleton w-20 h-20 rounded-full" />
-          <div className="space-y-2">
-            <div className="skeleton h-8 w-48" />
-            <div className="skeleton h-4 w-32" />
-          </div>
+        <div className="skeleton h-36 rounded-xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="skeleton h-56 rounded-xl lg:col-span-2" />
+          <div className="skeleton h-56 rounded-xl" />
         </div>
-        <div className="skeleton h-32 rounded-xl" />
-        <div className="skeleton h-48 rounded-xl" />
+        <div className="skeleton h-72 rounded-xl" />
       </div>
     );
   }
@@ -228,10 +286,19 @@ export default function ContactDetail() {
   const health = calculateRelationshipHealth(contact);
   const tags = parseTags(contact.tags);
   const giftIdeas = parseGiftIdeas(contact.gift_ideas);
+  const customFields = parseCustomFields(contact.custom_fields);
+  const socialLinks = getSocialLinks(contact.custom_fields);
+  const linkedInMeta =
+    customFields.linkedin && typeof customFields.linkedin === 'object'
+      ? customFields.linkedin as Record<string, unknown>
+      : null;
+  const linkedInHeadline = linkedInMeta && typeof linkedInMeta.headline === 'string' ? linkedInMeta.headline : null;
+  const linkedInCompany = linkedInMeta && typeof linkedInMeta.company === 'string' ? linkedInMeta.company : null;
+  const linkedInLocation = linkedInMeta && typeof linkedInMeta.location === 'string' ? linkedInMeta.location : null;
+  const openReminders = reminders.filter((reminder) => !reminder.completed_at).slice(0, 3);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Back button */}
+    <div className="max-w-5xl mx-auto space-y-6">
       <div className="animate-fade-in">
         <Link href="/contacts" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" />
@@ -239,58 +306,75 @@ export default function ContactDetail() {
         </Link>
       </div>
 
-      {/* Profile Header */}
-      <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5 animate-fade-in-up">
-        <Avatar contact={contact} size="xl" />
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{contact.name}</h1>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
-            {contact.email && (
-              <a href={`mailto:${contact.email}`} className="flex items-center gap-1.5 hover:text-primary transition-colors">
-                <Mail className="w-3.5 h-3.5" />
-                {contact.email}
-              </a>
-            )}
-            {contact.phone && (
-              <a href={`tel:${contact.phone}`} className="flex items-center gap-1.5 hover:text-primary transition-colors">
-                <Phone className="w-3.5 h-3.5" />
-                {contact.phone}
-              </a>
-            )}
-            {contact.birthday && (
-              <span className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5" />
-                {formatDate(contact.birthday)}
-              </span>
-            )}
-          </div>
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-3">
-              {tags.map((tag) => (
-                <span key={tag} className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary">
-                  {tag}
-                </span>
-              ))}
+      <Card className="border-0 shadow-sm animate-fade-in-up overflow-hidden">
+        <CardContent className="pt-6 pb-6">
+          <div className="flex flex-col lg:flex-row items-start gap-5">
+            <Avatar contact={contact} size="xl" />
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{contact.name}</h1>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
+                {contact.email && (
+                  <a href={`mailto:${contact.email}`} className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                    <Mail className="w-3.5 h-3.5" />
+                    {contact.email}
+                  </a>
+                )}
+                {contact.phone && (
+                  <a href={`tel:${contact.phone}`} className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                    <Phone className="w-3.5 h-3.5" />
+                    {contact.phone}
+                  </a>
+                )}
+                {contact.birthday && (
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" />
+                    {formatDate(contact.birthday)}
+                  </span>
+                )}
+                {socialLinks.linkedin && (
+                  <a href={socialLinks.linkedin} target="_blank" rel="noreferrer noopener" className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                    <Linkedin className="w-3.5 h-3.5" />
+                    LinkedIn
+                  </a>
+                )}
+              </div>
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  {tags.map((tag) => (
+                    <span key={tag} className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {(linkedInHeadline || linkedInCompany || linkedInLocation) && (
+                <div className="mt-4 rounded-xl border border-border/60 bg-muted/30 p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Imported context</p>
+                  <div className="space-y-1 text-sm text-foreground">
+                    {linkedInHeadline && <p>{linkedInHeadline}</p>}
+                    {linkedInCompany && <p>Company: {linkedInCompany}</p>}
+                    {linkedInLocation && <p>Location: {linkedInLocation}</p>}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        {/* Actions */}
-        <div className="flex gap-2 sm:flex-shrink-0">
-          <Button variant="outline" size="sm" onClick={() => setShowReminderForm(!showReminderForm)}>
-            <Bell className="w-3.5 h-3.5" />
-          </Button>
-          <Link href={`/contacts/${id}/edit`}>
-            <Button variant="outline" size="sm">
-              <Edit className="w-3.5 h-3.5" />
-            </Button>
-          </Link>
-          <Button variant="outline" size="sm" onClick={handleDelete} className="text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30">
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      </div>
+            <div className="flex gap-2 sm:flex-shrink-0">
+              <Button variant="outline" size="sm" onClick={() => setShowReminderForm(!showReminderForm)}>
+                <Bell className="w-3.5 h-3.5" />
+              </Button>
+              <Link href={`/contacts/${id}/edit`}>
+                <Button variant="outline" size="sm">
+                  <Edit className="w-3.5 h-3.5" />
+                </Button>
+              </Link>
+              <Button variant="outline" size="sm" onClick={handleDelete} className="text-destructive hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30">
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Reminder Form */}
       {showReminderForm && (
         <Card className="animate-slide-down border-primary/20 bg-primary/5">
           <CardContent className="pt-5 pb-4">
@@ -329,96 +413,209 @@ export default function ContactDetail() {
         </Card>
       )}
 
-      {/* Health + How We Met row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 stagger-children">
-        {/* Health Card */}
-        <Card className="border-0 shadow-sm overflow-hidden relative">
-          <div className={`absolute inset-0 opacity-5 ${
-            health >= 75 ? 'bg-emerald-500' : health >= 50 ? 'bg-amber-500' : 'bg-red-500'
-          }`} />
-          <CardContent className="relative pt-5 pb-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Heart className={`w-4 h-4 ${
-                  health >= 75 ? 'text-emerald-500 fill-emerald-500' : health >= 50 ? 'text-amber-500' : 'text-red-500'
-                }`} />
-                <span className="text-sm font-medium">{getHealthBadge(health)}</span>
+      <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-4 sm:gap-6">
+        <Card className="border-0 shadow-sm animate-fade-in-up">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Relationship brief</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-sm font-semibold text-foreground">{brief?.headline || 'Relationship context is loading'}</p>
+              <p className="text-sm text-muted-foreground mt-2">{brief?.summary}</p>
+            </div>
+            <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+              <p className="text-xs font-medium text-muted-foreground">Next best step</p>
+              <p className="text-sm mt-1 text-foreground">{brief?.nextStep}</p>
+            </div>
+            {brief?.talkingPoints && brief.talkingPoints.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Talking points</p>
+                <div className="flex flex-wrap gap-2">
+                  {brief.talkingPoints.map((point) => (
+                    <span key={point} className="px-3 py-1 text-xs rounded-full bg-muted text-muted-foreground">
+                      {point}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <span className={`text-2xl font-bold ${
-                health >= 75 ? 'text-emerald-600' : health >= 50 ? 'text-amber-600' : 'text-red-500'
-              }`}>{health}%</span>
-            </div>
-            <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
-              <div
-                className={`h-full rounded-full animate-health-fill ${
-                  health >= 75 ? 'bg-gradient-to-r from-emerald-400 to-green-500'
-                    : health >= 50 ? 'bg-gradient-to-r from-amber-400 to-orange-500'
-                    : 'bg-gradient-to-r from-red-400 to-rose-500'
-                }`}
-                style={{ width: `${health}%` }}
-              />
-            </div>
-            <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-              <span>{formatRelativeDate(contact.last_contacted)}</span>
-              <span>Every {contact.contact_frequency}d</span>
-            </div>
+            )}
+            {brief?.suggestedOutreach && brief.suggestedOutreach.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Suggested outreach angles</p>
+                <div className="space-y-2">
+                  {brief.suggestedOutreach.map((entry) => (
+                    <div key={entry} className="rounded-xl border border-border/60 bg-white/80 p-3 text-sm text-foreground">
+                      {entry}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* How We Met / Notes preview */}
-        {(contact.how_we_met || contact.notes) && (
-          <Card className="border-0 shadow-sm">
-            <CardContent className="pt-5 pb-4">
-              {contact.how_we_met && (
-                <div className="mb-3">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-xs font-medium text-muted-foreground">How you met</span>
-                  </div>
-                  <p className="text-sm text-foreground">{contact.how_we_met}</p>
+        <div className="space-y-4">
+          <Card className="border-0 shadow-sm animate-fade-in-up overflow-hidden relative">
+            <div className={`absolute inset-0 opacity-5 ${
+              health >= 75 ? 'bg-emerald-500' : health >= 50 ? 'bg-amber-500' : 'bg-red-500'
+            }`} />
+            <CardContent className="relative pt-5 pb-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Heart className={`w-4 h-4 ${
+                    health >= 75 ? 'text-emerald-500 fill-emerald-500' : health >= 50 ? 'text-amber-500' : 'text-red-500'
+                  }`} />
+                  <span className="text-sm font-medium">{getHealthBadge(health)}</span>
                 </div>
-              )}
-              {contact.notes && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <StickyNote className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-xs font-medium text-muted-foreground">Notes</span>
+                <span className={`text-2xl font-bold ${
+                  health >= 75 ? 'text-emerald-600' : health >= 50 ? 'text-amber-600' : 'text-red-500'
+                }`}>
+                  {health}%
+                </span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+                <div
+                  className={`h-full rounded-full animate-health-fill ${
+                    health >= 75 ? 'bg-gradient-to-r from-emerald-400 to-green-500'
+                      : health >= 50 ? 'bg-gradient-to-r from-amber-400 to-orange-500'
+                      : 'bg-gradient-to-r from-red-400 to-rose-500'
+                  }`}
+                  style={{ width: `${health}%` }}
+                />
+              </div>
+              <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                <span>{formatRelativeDate(contact.last_contacted)}</span>
+                <span>Every {contact.contact_frequency}d</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm animate-fade-in-up">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Open reminders</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {openReminders.length > 0 ? (
+                openReminders.map((reminder) => (
+                  <div key={reminder.id} className="rounded-xl border border-border/60 bg-white/80 p-3">
+                    <p className="font-medium text-sm">{reminder.title}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(reminder.remind_at).toLocaleString()}
+                    </p>
                   </div>
-                  <p className="text-sm text-foreground line-clamp-3 whitespace-pre-wrap">{contact.notes}</p>
-                </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No open reminders for this relationship yet.</p>
               )}
             </CardContent>
           </Card>
-        )}
+        </div>
       </div>
 
-      {/* Gift Ideas */}
-      {giftIdeas.length > 0 && (
-        <Card className="animate-fade-in-up border-0 shadow-sm">
-          <CardContent className="pt-5 pb-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Gift className="w-4 h-4 text-amber-500" />
-              <span className="text-sm font-semibold">Gift ideas</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {giftIdeas.map((idea, i) => (
-                <span key={i} className="px-3 py-1 text-xs rounded-full bg-amber-50 text-amber-700 border border-amber-200/50">
-                  {idea}
-                </span>
-              ))}
-            </div>
+      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-4 sm:gap-6">
+        <Card className="border-0 shadow-sm animate-fade-in-up">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Relationship timeline</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {timeline.length > 0 ? (
+              timeline.map((item) => (
+                <div key={item.id} className="rounded-xl border border-border/60 bg-white/80 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm text-foreground">{item.title}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{item.summary}</p>
+                    </div>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getTimelineToneClasses(item.tone)}`}>
+                      {item.kind}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-3">
+                    {new Date(item.date).toLocaleString()}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-10">
+                <div className="text-3xl mb-2">🕰️</div>
+                <p className="text-sm text-muted-foreground">This timeline will fill up as you capture interactions, reminders, and context.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
 
-      {/* Interactions */}
+        <div className="space-y-4">
+          {(contact.how_we_met || contact.notes || facts.length > 0 || giftIdeas.length > 0) && (
+            <Card className="border-0 shadow-sm animate-fade-in-up">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">Relationship memory</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {contact.how_we_met && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground">How you met</span>
+                    </div>
+                    <p className="text-sm text-foreground">{contact.how_we_met}</p>
+                  </div>
+                )}
+
+                {facts.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <StickyNote className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground">Structured facts</span>
+                    </div>
+                    <div className="space-y-2">
+                      {facts.slice(0, 4).map((fact) => (
+                        <div key={fact.id} className="rounded-xl border border-border/60 bg-muted/30 p-3">
+                          <p className="text-sm font-medium">{fact.label}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{fact.value || fact.source}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {giftIdeas.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Gift className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground">Gift ideas</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {giftIdeas.map((idea) => (
+                        <span key={idea} className="px-3 py-1 text-xs rounded-full bg-amber-50 text-amber-700 border border-amber-200/50">
+                          {idea}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {contact.notes && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <StickyNote className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground">Notes</span>
+                    </div>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{contact.notes}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+
       <Card className="animate-fade-in-up border-0 shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-muted-foreground" />
               <CardTitle className="text-base font-semibold">
-                Interactions
+                Interaction log
                 {interactions.length > 0 && (
                   <span className="text-muted-foreground font-normal ml-1.5 text-sm">({interactions.length})</span>
                 )}
@@ -497,16 +694,12 @@ export default function ContactDetail() {
                 const isEditing = editingInteractionId === interaction.id;
                 return (
                   <div key={interaction.id} className="flex gap-3 group">
-                    {/* Timeline line + dot */}
                     <div className="flex flex-col items-center">
                       <div className={`w-8 h-8 rounded-full ${config.bg} flex items-center justify-center flex-shrink-0`}>
                         <Icon className={`w-3.5 h-3.5 ${config.color}`} />
                       </div>
-                      {index < interactions.length - 1 && (
-                        <div className="w-px flex-1 bg-border my-1" />
-                      )}
+                      {index < interactions.length - 1 && <div className="w-px flex-1 bg-border my-1" />}
                     </div>
-                    {/* Content */}
                     <div className={`flex-1 pb-5 ${index < interactions.length - 1 ? '' : 'pb-0'}`}>
                       {isEditing ? (
                         <form onSubmit={handleEditInteraction} className="animate-slide-down space-y-3 p-3 rounded-xl bg-muted/40 border border-border/50">
@@ -573,10 +766,10 @@ export default function ContactDetail() {
                             )}
                           </div>
                           <div className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex gap-1 flex-shrink-0 pt-0.5">
-                            <button onClick={() => startEditInteraction(interaction)} className="p-1 rounded hover:bg-muted">
+                            <button onClick={() => startEditInteraction(interaction)} className="p-1 rounded hover:bg-muted" type="button">
                               <Edit className="w-3.5 h-3.5 text-muted-foreground" />
                             </button>
-                            <button onClick={() => handleDeleteInteraction(interaction.id)} className="p-1 rounded hover:bg-red-50">
+                            <button onClick={() => handleDeleteInteraction(interaction.id)} className="p-1 rounded hover:bg-red-50" type="button">
                               <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
                             </button>
                           </div>

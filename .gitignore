@@ -8,6 +8,8 @@ node_modules
 
 # Next.js
 /.next/
+/.next.reset-dashboard-*/
+/.next.stale-dev-cache/
 /out/
 
 # Production

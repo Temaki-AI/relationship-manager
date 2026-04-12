@@ -25,6 +25,13 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { contact_id, title, notes, remind_at } = body;
 
+    if (contact_id) {
+      const contact = db.prepare('SELECT id FROM contacts WHERE id = ?').get(contact_id);
+      if (!contact) {
+        return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
+      }
+    }
+
     const result = db
       .prepare(
         'INSERT INTO reminders (contact_id, title, notes, remind_at) VALUES (?, ?, ?, ?)'

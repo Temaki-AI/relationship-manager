@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bonds LinkedIn Importer</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <main class="popup">
+      <header class="popup-header">
+        <p class="eyebrow">Bonds</p>
+        <h1>LinkedIn Import</h1>
+        <p class="subtitle">Import the open LinkedIn profile into your personal CRM.</p>
+      </header>
+
+      <section class="panel">
+        <label class="field">
+          <span>CRM URL</span>
+          <input id="apiBaseUrl" type="url" value="http://localhost:3100" />
+        </label>
+        <button id="saveSettings" class="button button-secondary" type="button">Save URL</button>
+      </section>
+
+      <section class="panel">
+        <div class="meta-row">
+          <span class="meta-label">Extension ID</span>
+          <code id="extensionId"></code>
+        </div>
+        <div id="status" class="status status-info">Open a LinkedIn profile, then click refresh.</div>
+      </section>
+
+      <section class="panel">
+        <div id="emptyState" class="empty-state">
+          <p>No LinkedIn profile detected yet.</p>
+        </div>
+
+        <div id="profileCard" class="profile-card hidden">
+          <img id="avatar" class="avatar hidden" alt="" />
+          <div class="profile-copy">
+            <h2 id="name">Unknown profile</h2>
+            <p id="headline" class="muted"></p>
+            <p id="location" class="muted"></p>
+            <a id="linkedinUrl" class="link" href="#" target="_blank" rel="noreferrer noopener"></a>
+          </div>
+        </div>
+      </section>
+
+      <footer class="actions">
+        <button id="refreshProfile" class="button button-secondary" type="button">Refresh</button>
+        <button id="importProfile" class="button" type="button" disabled>Import Contact</button>
+      </footer>
+    </main>
+
+    <script type="module" src="./popup.js"></script>
+  </body>
+</html>

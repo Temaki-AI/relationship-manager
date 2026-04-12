@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, Home, Users, FolderOpen, Bell, Plus } from 'lucide-react';
+import { Heart, Home, Users, FolderOpen, Bell, Plus, Sparkles, PlugZap } from 'lucide-react';
 
 export function NavHeader() {
   const pathname = usePathname();
@@ -10,7 +10,14 @@ export function NavHeader() {
   const navItems = [
     { href: '/', label: 'Dashboard', icon: Home },
     { href: '/contacts', label: 'Contacts', icon: Users },
+    { href: '/smart-lists', label: 'Smart Lists', icon: Sparkles },
     { href: '/groups', label: 'Groups', icon: FolderOpen },
+    { href: '/reminders', label: 'Reminders', icon: Bell },
+  ];
+  const mobileNavItems = [
+    { href: '/', label: 'Dashboard', icon: Home },
+    { href: '/contacts', label: 'Contacts', icon: Users },
+    { href: '/smart-lists', label: 'Lists', icon: Sparkles },
     { href: '/reminders', label: 'Reminders', icon: Bell },
   ];
 
@@ -48,6 +55,17 @@ export function NavHeader() {
               })}
               <div className="w-px h-6 bg-border mx-2" />
               <Link
+                href="/integrations"
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  pathname.startsWith('/integrations')
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                <PlugZap className="w-4 h-4" />
+                Integrations
+              </Link>
+              <Link
                 href="/contacts/new"
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors shadow-sm hover:shadow"
               >
@@ -62,7 +80,7 @@ export function NavHeader() {
       {/* Mobile Bottom Nav */}
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-border/50 z-50 pb-safe">
         <div className="flex items-center justify-around h-16 px-4">
-          {navItems.map((item) => {
+          {mobileNavItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
             return (
               <Link

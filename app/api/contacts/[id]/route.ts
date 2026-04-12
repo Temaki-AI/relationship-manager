@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/db';
+import db, { type Contact, type Interaction, type RelationshipFact, type Reminder } from '@/lib/db';
+import { buildRelationshipBrief, buildTimeline } from '@/lib/intelligence';
 
 function normalizeContactFrequency(value: unknown): number {
   const parsed = typeof value === 'number' ? value : Number(value);
@@ -16,7 +17,7 @@ export async function GET(
   try {
     const { id } = await params;
     
-    const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
+    const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id) as Contact | undefined;
     
     if (!contact) {
       return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
@@ -24,9 +25,24 @@ export async function GET(
 
     const interactions = db.prepare(
       'SELECT * FROM interactions WHERE contact_id = ? ORDER BY date DESC'
-    ).all(id);
+    ).all(id) as Interaction[];
 
-    return NextResponse.json({ contact, interactions });
+    const reminders = db.prepare(
+      'SELECT * FROM reminders WHERE contact_id = ? ORDER BY remind_at DESC'
+    ).all(id) as Reminder[];
+
+    const facts = db.prepare(
+      'SELECT * FROM relationship_facts WHERE contact_id = ? ORDER BY COALESCE(last_verified_at, created_at) DESC'
+    ).all(id) as RelationshipFact[];
+
+    return NextResponse.json({
+      contact,
+      interactions,
+      reminders,
+      facts,
+      brief: buildRelationshipBrief(contact, interactions, reminders, facts),
+      timeline: buildTimeline(contact, interactions, reminders, facts),
+    });
   } catch (error) {
     console.error('GET /api/contacts/[id] error:', error);
     return NextResponse.json({ error: 'Failed to fetch contact' }, { status: 500 });

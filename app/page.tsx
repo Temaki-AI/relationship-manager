@@ -2,36 +2,62 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { ArrowRight, Bell, CalendarDays, Clock, Heart, PlugZap, Sparkles, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, MessageSquare, AlertCircle, Cake, ArrowRight, Bell, Clock, Heart, Sparkles, Check } from 'lucide-react';
-import type { Contact } from '@/lib/db';
-import { calculateRelationshipHealth, formatRelativeDate, getResponseErrorMessage, parseTags } from '@/lib/utils';
-import { Avatar } from '@/components/ui/avatar';
-import { useToast } from '@/components/ui/toast';
 
-type Stats = {
+type DashboardStats = {
   totalContacts: number;
-  conversationsThisWeek: number;
-  neglectedCount: number;
-  upcomingBirthdaysCount: number;
+  overdueCount: number;
+  openReminderCount: number;
+  connectedIntegrations: number;
+  strongRelationships: number;
 };
 
-type Birthday = {
-  id: number;
-  name: string;
-  birthday: string;
-  daysUntil: number;
-};
-
-type Reminder = {
-  id: number;
-  contact_id: number;
-  contact_name: string;
+type FeedItem = {
+  id: string;
+  type: 'reminder' | 'birthday' | 'relationship' | 'integration' | 'signal';
   title: string;
-  notes: string | null;
-  remind_at: string;
+  detail: string;
+  href: string;
+  priority: 'high' | 'medium' | 'low';
+};
+
+type SmartList = {
+  id: string;
+  title: string;
+  description: string;
+  tone: 'warm' | 'focus' | 'info';
+  entries: Array<{
+    id: number;
+    name: string;
+    reason: string;
+  }>;
+};
+
+type IntegrationSnapshot = {
+  id: number;
+  provider: string;
+  label: string;
+  status: 'connected' | 'attention' | 'disconnected';
+  account_email: string | null;
+  last_synced_at: string | null;
+  latest_job: {
+    status: string;
+    summary: string | null;
+    started_at: string;
+  } | null;
+};
+
+type OverviewResponse = {
+  workspace?: {
+    name: string;
+    plan: string;
+  };
+  stats: DashboardStats;
+  smartLists: SmartList[];
+  feed: FeedItem[];
+  integrations: IntegrationSnapshot[];
 };
 
 function getGreeting(): { text: string; emoji: string } {
@@ -50,332 +76,323 @@ function SkeletonDashboard() {
         <div className="skeleton h-8 w-64" />
         <div className="skeleton h-5 w-48" />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map(i => (
-          <div key={i} className="skeleton h-28 rounded-xl" />
+      <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
+        {[1, 2, 3, 4, 5].map((index) => (
+          <div key={index} className="skeleton h-28 rounded-xl" />
         ))}
       </div>
-      <div className="skeleton h-48 rounded-xl" />
+      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
+        <div className="skeleton h-80 rounded-xl" />
+        <div className="skeleton h-80 rounded-xl" />
+      </div>
     </div>
   );
 }
 
+function getPriorityClasses(priority: FeedItem['priority']) {
+  if (priority === 'high') return 'bg-rose-50 text-rose-700 border-rose-200/60';
+  if (priority === 'medium') return 'bg-amber-50 text-amber-700 border-amber-200/60';
+  return 'bg-slate-50 text-slate-700 border-slate-200/60';
+}
+
+function getIntegrationClasses(status: IntegrationSnapshot['status']) {
+  if (status === 'connected') return 'bg-emerald-50 text-emerald-700 border-emerald-200/60';
+  if (status === 'attention') return 'bg-amber-50 text-amber-700 border-amber-200/60';
+  return 'bg-slate-50 text-slate-700 border-slate-200/60';
+}
+
 export default function Dashboard() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [actionItems, setActionItems] = useState<Contact[]>([]);
-  const [birthdays, setBirthdays] = useState<Birthday[]>([]);
-  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
-    async function fetchData() {
+    let cancelled = false;
+
+    async function fetchOverview() {
+      setLoading(true);
+      setLoadError(null);
+
       try {
-        const [statsRes, contactsRes, remindersRes] = await Promise.all([
-          fetch('/api/stats'),
-          fetch('/api/contacts'),
-          fetch('/api/reminders')
-        ]);
+        const res = await fetch('/api/intelligence/overview', { cache: 'no-store' });
+        if (!res.ok) {
+          throw new Error('Failed to load workspace intelligence');
+        }
 
-        const statsData = await statsRes.json();
-        const contactsData = await contactsRes.json();
-        const remindersData = await remindersRes.json();
-
-        setStats(statsData.stats);
-        setBirthdays(statsData.upcomingBirthdays || []);
-        setReminders(remindersData.reminders || []);
-
-        const actionContacts = contactsData.contacts.filter((c: Contact) =>
-          statsData.actionItems.includes(c.id)
-        );
-        setActionItems(actionContacts);
+        const data = await res.json() as OverviewResponse;
+        if (!cancelled) {
+          setOverview(data);
+        }
       } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
+        console.error('Failed to fetch intelligence overview:', error);
+        if (!cancelled) {
+          setLoadError(error instanceof Error ? error.message : 'Failed to load the dashboard');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
-    fetchData();
-  }, []);
+    fetchOverview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshToken]);
 
   if (loading) {
     return <SkeletonDashboard />;
   }
 
+  if (!overview) {
+    return (
+      <Card className="border-0 shadow-sm">
+        <CardContent className="py-16 text-center">
+          <div className="text-4xl mb-4">⚠️</div>
+          <h1 className="text-xl font-semibold text-foreground">Workspace intelligence unavailable</h1>
+          <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
+            {loadError || 'The dashboard could not be generated right now.'}
+          </p>
+          <Button className="mt-6" onClick={() => setRefreshToken((value) => value + 1)}>
+            Try again
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const greeting = getGreeting();
+  const spotlightLists = overview.smartLists.filter((list) => list.entries.length > 0).slice(0, 3);
+  const priorityFeed = overview.feed.slice(0, 6);
+  const integrations = overview.integrations.slice(0, 4);
 
   return (
     <div className="space-y-8">
-      {/* Greeting */}
-      <div className="animate-fade-in-up">
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-          {greeting.text} {greeting.emoji}
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Here&apos;s how your relationships are doing
-        </p>
+      <div className="animate-fade-in-up flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            {greeting.text} {greeting.emoji}
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            {overview.workspace?.name || 'Bonds'} is acting like your relationship operating system today.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/smart-lists">
+            <Button variant="outline" size="sm">
+              <Sparkles className="w-4 h-4 mr-1.5" />
+              Open smart lists
+            </Button>
+          </Link>
+          <Link href="/integrations">
+            <Button size="sm">
+              <PlugZap className="w-4 h-4 mr-1.5" />
+              Manage integrations
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 stagger-children">
-        <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow">
+      {loadError && (
+        <Card className="border-0 shadow-sm bg-amber-50/80">
+          <CardContent className="py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">Some automation surfaces could not be refreshed.</p>
+              <p className="text-sm text-muted-foreground">{loadError}</p>
+            </div>
+            <Button variant="secondary" onClick={() => setRefreshToken((value) => value + 1)}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4 stagger-children">
+        <Card className="relative overflow-hidden border-0 shadow-sm">
           <div className="absolute inset-0 bg-gradient-to-br from-rose-50 to-pink-50" />
           <CardContent className="relative pt-5 pb-4 px-4 sm:px-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center shadow-sm">
-                <Users className="w-4 h-4 text-white" />
-              </div>
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-foreground">{stats?.totalContacts || 0}</div>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">contacts</p>
+            <Users className="w-4 h-4 text-rose-600 mb-3" />
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">{overview.stats.totalContacts}</div>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">people in your network</p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50" />
+        <Card className="relative overflow-hidden border-0 shadow-sm">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-green-50" />
           <CardContent className="relative pt-5 pb-4 px-4 sm:px-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shadow-sm">
-                <MessageSquare className="w-4 h-4 text-white" />
-              </div>
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-foreground">{stats?.conversationsThisWeek || 0}</div>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">this week</p>
+            <Heart className="w-4 h-4 text-emerald-600 mb-3 fill-emerald-600" />
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">{overview.stats.strongRelationships}</div>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">strong relationships</p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="relative overflow-hidden border-0 shadow-sm">
           <div className="absolute inset-0 bg-gradient-to-br from-amber-50 to-orange-50" />
           <CardContent className="relative pt-5 pb-4 px-4 sm:px-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-sm ${
-                (stats?.neglectedCount || 0) > 0
-                  ? 'bg-gradient-to-br from-amber-400 to-orange-500'
-                  : 'bg-gradient-to-br from-emerald-400 to-green-500'
-              }`}>
-                {(stats?.neglectedCount || 0) > 0
-                  ? <AlertCircle className="w-4 h-4 text-white" />
-                  : <Heart className="w-4 h-4 text-white fill-white" />
-                }
-              </div>
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-foreground">{stats?.neglectedCount || 0}</div>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-              {(stats?.neglectedCount || 0) === 0 ? 'all caught up!' : 'need love'}
-            </p>
+            <Clock className="w-4 h-4 text-amber-600 mb-3" />
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">{overview.stats.overdueCount}</div>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">need attention</p>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-violet-50" />
+        <Card className="relative overflow-hidden border-0 shadow-sm">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50" />
           <CardContent className="relative pt-5 pb-4 px-4 sm:px-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-400 to-violet-500 flex items-center justify-center shadow-sm">
-                <Cake className="w-4 h-4 text-white" />
-              </div>
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-foreground">{stats?.upcomingBirthdaysCount || 0}</div>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">birthdays soon</p>
+            <Bell className="w-4 h-4 text-blue-600 mb-3" />
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">{overview.stats.openReminderCount}</div>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">open reminders</p>
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden border-0 shadow-sm col-span-2 xl:col-span-1">
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-50 to-fuchsia-50" />
+          <CardContent className="relative pt-5 pb-4 px-4 sm:px-5">
+            <PlugZap className="w-4 h-4 text-violet-600 mb-3" />
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">{overview.stats.connectedIntegrations}</div>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">connected systems</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Action Items */}
-      {actionItems.length > 0 && (
-        <Card className="animate-fade-in-up border-0 shadow-sm">
+      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
+        <Card className="border-0 shadow-sm animate-fade-in-up">
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
-                <Clock className="w-3.5 h-3.5 text-amber-600" />
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base font-semibold">Today&apos;s focus queue</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">What Bonds thinks deserves your attention next.</p>
               </div>
-              <CardTitle className="text-base font-semibold">Reach out to</CardTitle>
+              <Link href="/reminders" className="text-sm text-primary hover:underline">
+                Open reminders
+              </Link>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {actionItems.map((contact) => {
-                const health = calculateRelationshipHealth(contact);
-                return (
-                  <Link
-                    key={contact.id}
-                    href={`/contacts/${contact.id}`}
-                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors group"
-                  >
-                    <Avatar contact={contact} size="sm" className="w-10 h-10" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm truncate">{contact.name}</p>
-                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                          health >= 50 ? 'bg-amber-400' : 'bg-red-400'
-                        }`} />
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {formatRelativeDate(contact.last_contacted)}
-                        {parseTags(contact.tags).length > 0 && ` · ${parseTags(contact.tags)[0]}`}
-                      </p>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-                  </Link>
-                );
-              })}
-            </div>
+          <CardContent className="space-y-3">
+            {priorityFeed.length > 0 ? (
+              priorityFeed.map((item) => (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className="flex items-start gap-3 rounded-xl border border-border/60 bg-white/80 p-3 hover:bg-muted/40 transition-colors"
+                >
+                  <div className={`mt-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold border ${getPriorityClasses(item.priority)}`}>
+                    {item.priority.toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm text-foreground">{item.title}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{item.detail}</p>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                </Link>
+              ))
+            ) : (
+              <div className="text-center py-10">
+                <div className="text-3xl mb-2">✨</div>
+                <p className="text-sm text-muted-foreground">No urgent queue items right now.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
 
-      {/* Birthdays & Reminders side by side on desktop */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* Upcoming Birthdays */}
-        {birthdays.length > 0 && (
-          <Card className="animate-fade-in-up border-0 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <Cake className="w-3.5 h-3.5 text-purple-600" />
-                </div>
-                <CardTitle className="text-base font-semibold">Upcoming birthdays</CardTitle>
+        <Card className="border-0 shadow-sm animate-fade-in-up">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base font-semibold">Integration health</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">Automation surfaces and sync readiness.</p>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {birthdays.map((birthday) => (
+              <Link href="/integrations" className="text-sm text-primary hover:underline">
+                See all
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {integrations.map((integration) => (
+              <div key={integration.id} className="rounded-xl border border-border/60 bg-white/80 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-sm">{integration.label}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {integration.account_email || integration.latest_job?.summary || 'Not connected yet'}
+                    </p>
+                  </div>
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getIntegrationClasses(integration.status)}`}>
+                    {integration.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 stagger-children">
+        {spotlightLists.length > 0 ? (
+          spotlightLists.map((list) => (
+            <Card key={list.id} className="border-0 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">{list.title}</CardTitle>
+                <p className="text-sm text-muted-foreground">{list.description}</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {list.entries.slice(0, 4).map((entry) => (
                   <Link
-                    key={birthday.id}
-                    href={`/contacts/${birthday.id}`}
-                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors"
+                    key={entry.id}
+                    href={`/contacts/${entry.id}`}
+                    className="flex items-start justify-between gap-3 rounded-xl p-3 hover:bg-muted/40 transition-colors"
                   >
-                    <Avatar contact={{ name: birthday.name }} size="sm" className="w-10 h-10" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{birthday.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {birthday.daysUntil === 0
-                          ? '🎉 Today!'
-                          : birthday.daysUntil === 1
-                          ? 'Tomorrow'
-                          : `In ${birthday.daysUntil} days`}
-                      </p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm text-foreground">{entry.name}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{entry.reason}</p>
                     </div>
-                    <Badge variant="secondary" className="text-xs font-normal">
-                      {birthday.birthday.substring(5)}
-                    </Badge>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                   </Link>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Upcoming Reminders */}
-        {reminders.length > 0 && (
-          <Card className="animate-fade-in-up border-0 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <Bell className="w-3.5 h-3.5 text-blue-600" />
-                </div>
-                <CardTitle className="text-base font-semibold">Reminders</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {reminders.slice(0, 5).map((reminder) => {
-                  const remindDate = new Date(reminder.remind_at);
-                  const now = new Date();
-                  const isPast = remindDate < now;
-                  const isToday = remindDate.toDateString() === now.toDateString();
-
-                  return (
-                    <Link
-                      key={reminder.id}
-                      href={`/contacts/${reminder.contact_id}`}
-                      className={`flex items-start gap-3 p-3 rounded-xl transition-colors ${
-                        isPast
-                          ? 'bg-red-50 hover:bg-red-100/70'
-                          : isToday
-                          ? 'bg-amber-50 hover:bg-amber-100/70'
-                          : 'hover:bg-muted/50'
-                      }`}
-                    >
-                      <button
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          try {
-                            const res = await fetch(`/api/reminders/${reminder.id}`, {
-                              method: 'PATCH',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ completed: true }),
-                            });
-                            if (!res.ok) {
-                              toast({ message: await getResponseErrorMessage(res, 'Failed to complete reminder'), variant: 'error' });
-                              return;
-                            }
-                            setReminders(prev => prev.filter(r => r.id !== reminder.id));
-                            toast({ message: 'Reminder completed' });
-                          } catch (error) {
-                            console.error('Failed to complete reminder:', error);
-                            toast({ message: 'Failed to complete reminder', variant: 'error' });
-                          }
-                        }}
-                        className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all hover:scale-110 ${
-                          isPast
-                            ? 'border-red-300 hover:bg-red-200 hover:border-red-400'
-                            : isToday
-                            ? 'border-amber-300 hover:bg-amber-200 hover:border-amber-400'
-                            : 'border-blue-300 hover:bg-blue-200 hover:border-blue-400'
-                        }`}
-                        title="Mark as complete"
-                      >
-                        <Check className="w-2.5 h-2.5 opacity-0 hover:opacity-100 text-muted-foreground" />
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{reminder.contact_name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{reminder.title}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          {isPast ? 'Overdue' : isToday ? 'Today' : remindDate.toLocaleDateString()}
-                        </p>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
+                <Link href="/smart-lists" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
+                  View full smart list
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <Card className="border-0 shadow-sm lg:col-span-3">
+            <CardContent className="py-16 text-center">
+              <div className="text-5xl mb-4">🧠</div>
+              <h3 className="text-lg font-semibold">Smart lists wake up as your data gets richer</h3>
+              <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
+                Add contacts, import LinkedIn profiles, and connect more systems to unlock saved views and automated follow-up workflows.
+              </p>
             </CardContent>
           </Card>
         )}
       </div>
 
-      {/* Empty state when everything is great */}
-      {actionItems.length === 0 && birthdays.length === 0 && reminders.length === 0 && (stats?.totalContacts || 0) > 0 && (
-        <Card className="animate-scale-in border-0 shadow-sm">
-          <CardContent className="py-12 text-center">
-            <div className="text-4xl mb-3">✨</div>
-            <h3 className="text-lg font-semibold text-foreground">All caught up!</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-              You&apos;re on top of all your relationships. Nice work keeping in touch with the people who matter.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* First-time empty state */}
-      {(stats?.totalContacts || 0) === 0 && (
-        <Card className="animate-scale-in border-0 shadow-sm">
-          <CardContent className="py-16 text-center">
-            <div className="text-5xl mb-4">💝</div>
-            <h3 className="text-xl font-semibold text-foreground">Welcome to Bonds</h3>
-            <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-              Start by adding the people who matter most to you. We&apos;ll help you stay connected.
-            </p>
-            <Link href="/contacts/new">
-              <Button className="mt-6 shadow-sm">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Add your first contact
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      )}
+      <Card className="border-0 shadow-sm animate-fade-in-up">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-primary" />
+            <CardTitle className="text-base font-semibold">V2 rollout momentum</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="rounded-xl border border-border/60 bg-white/80 p-4">
+            <p className="text-sm font-medium">Foundation</p>
+            <p className="text-xs text-muted-foreground mt-1">Workspace, integrations, sync jobs, smart lists, and relationship briefs are now live in the app shell.</p>
+          </div>
+          <div className="rounded-xl border border-border/60 bg-white/80 p-4">
+            <p className="text-sm font-medium">Workflow surfaces</p>
+            <p className="text-xs text-muted-foreground mt-1">The dashboard now behaves like a daily action center instead of a passive summary page.</p>
+          </div>
+          <div className="rounded-xl border border-border/60 bg-white/80 p-4">
+            <p className="text-sm font-medium">Next leverage</p>
+            <p className="text-xs text-muted-foreground mt-1">Google/Microsoft account sync, richer organization identities, and real AI actions are the next major unlocks.</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

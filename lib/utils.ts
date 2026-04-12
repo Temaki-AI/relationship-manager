@@ -183,6 +183,31 @@ export function parseGiftIdeas(ideasString: string | null): string[] {
   }
 }
 
+export function parseCustomFields(customFieldsString: string | null): Record<string, unknown> {
+  if (!customFieldsString) return {};
+  try {
+    const parsed = JSON.parse(customFieldsString);
+    return parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
+}
+
+export function getSocialLinks(customFieldsString: string | null): Record<string, string> {
+  const customFields = parseCustomFields(customFieldsString);
+  const social = customFields.social;
+
+  if (!social || typeof social !== 'object') {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(social).filter(
+      ([, value]) => typeof value === 'string' && value.trim().length > 0
+    )
+  ) as Record<string, string>;
+}
+
 export function getInitials(name: string): string {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 }
