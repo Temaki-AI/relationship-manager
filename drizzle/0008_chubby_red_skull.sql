@@ -1,0 +1,1 @@
+CREATE INDEX `export_jobs_retention_idx` ON `contact_export_jobs` (`updated_at`);

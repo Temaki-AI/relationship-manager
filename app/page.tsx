@@ -1,27 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Bell, CalendarDays, Clock, Heart, PlugZap, Sparkles, Users } from 'lucide-react';
+import { ArrowRight, Bell, BookOpen, Clock, Heart, ShieldCheck, Sparkles, Upload, UserPlus, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import type { DailyFeedItem } from '@/lib/intelligence';
+import type { TodaySnooze } from '@/lib/today-snooze';
+import { TodayFocus } from '@/components/today-focus';
+import { FirstCircleJourney } from '@/components/first-circle-journey';
+import type { FirstStepsSnapshot } from '@/lib/first-steps';
 
 type DashboardStats = {
   totalContacts: number;
   overdueCount: number;
+  checkInsDueCount: number;
   openReminderCount: number;
-  connectedIntegrations: number;
   strongRelationships: number;
 };
 
-type FeedItem = {
-  id: string;
-  type: 'reminder' | 'birthday' | 'relationship' | 'integration' | 'signal';
-  title: string;
-  detail: string;
-  href: string;
-  priority: 'high' | 'medium' | 'low';
-};
+type FeedItem = DailyFeedItem;
 
 type SmartList = {
   id: string;
@@ -35,20 +33,6 @@ type SmartList = {
   }>;
 };
 
-type IntegrationSnapshot = {
-  id: number;
-  provider: string;
-  label: string;
-  status: 'connected' | 'attention' | 'disconnected';
-  account_email: string | null;
-  last_synced_at: string | null;
-  latest_job: {
-    status: string;
-    summary: string | null;
-    started_at: string;
-  } | null;
-};
-
 type OverviewResponse = {
   workspace?: {
     name: string;
@@ -57,16 +41,15 @@ type OverviewResponse = {
   stats: DashboardStats;
   smartLists: SmartList[];
   feed: FeedItem[];
-  integrations: IntegrationSnapshot[];
+  snoozes: TodaySnooze[];
+  firstSteps?: FirstStepsSnapshot;
 };
 
-function getGreeting(): { text: string; emoji: string } {
+function getGreeting(): string {
   const hour = new Date().getHours();
-  if (hour < 6) return { text: 'Burning the midnight oil', emoji: '🌙' };
-  if (hour < 12) return { text: 'Good morning', emoji: '☀️' };
-  if (hour < 17) return { text: 'Good afternoon', emoji: '👋' };
-  if (hour < 21) return { text: 'Good evening', emoji: '🌅' };
-  return { text: 'Good evening', emoji: '🌙' };
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
 function SkeletonDashboard() {
@@ -76,8 +59,8 @@ function SkeletonDashboard() {
         <div className="skeleton h-8 w-64" />
         <div className="skeleton h-5 w-48" />
       </div>
-      <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
-        {[1, 2, 3, 4, 5].map((index) => (
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((index) => (
           <div key={index} className="skeleton h-28 rounded-xl" />
         ))}
       </div>
@@ -89,16 +72,80 @@ function SkeletonDashboard() {
   );
 }
 
-function getPriorityClasses(priority: FeedItem['priority']) {
-  if (priority === 'high') return 'bg-rose-50 text-rose-700 border-rose-200/60';
-  if (priority === 'medium') return 'bg-amber-50 text-amber-700 border-amber-200/60';
-  return 'bg-slate-50 text-slate-700 border-slate-200/60';
-}
+function FirstRunDashboard({ workspaceName }: { workspaceName: string }) {
+  return (
+    <div className="space-y-6">
+      <Card className="relative overflow-hidden border-0 shadow-sm animate-fade-in-up">
+        <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_45%),linear-gradient(135deg,#fff7ed_0%,#fff_48%,#f0fdf4_100%)]" />
+        <CardContent className="relative z-10 grid gap-8 px-6 py-10 sm:px-10 sm:py-14 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-white/80 px-3 py-1 text-xs font-semibold text-primary shadow-sm">
+              <Heart className="h-3.5 w-3.5 fill-primary" />
+              Welcome to {workspaceName}
+            </div>
+            <h1 className="mt-5 max-w-2xl text-3xl font-bold tracking-tight text-foreground sm:text-5xl">
+              Start with a few people. Make the next moment count.
+            </h1>
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+              A name is enough to begin. Choose a small circle, keep one detail worth remembering, and take a real next step. You can import only the people you want later.
+            </p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/contacts/new"
+                className={buttonVariants({ size: 'lg', className: 'w-full shadow-md shadow-primary/15 sm:w-auto' })}
+              >
+                <UserPlus className="h-4 w-4" />
+                Add your first person
+              </Link>
+              <Link
+                href="/contacts"
+                className={buttonVariants({ size: 'lg', variant: 'outline', className: 'w-full bg-white/70 sm:w-auto' })}
+              >
+                <Upload className="h-4 w-4" />
+                Preview a contact import
+              </Link>
+            </div>
+          </div>
 
-function getIntegrationClasses(status: IntegrationSnapshot['status']) {
-  if (status === 'connected') return 'bg-emerald-50 text-emerald-700 border-emerald-200/60';
-  if (status === 'attention') return 'bg-amber-50 text-amber-700 border-amber-200/60';
-  return 'bg-slate-50 text-slate-700 border-slate-200/60';
+          <div className="rounded-2xl border border-white/80 bg-white/75 p-5 shadow-lg shadow-rose-100/50 backdrop-blur-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Private by default</p>
+            <div className="mt-4 space-y-4">
+              <div className="flex gap-3">
+                <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-600" />
+                <div>
+                  <p className="text-sm font-semibold">Your data stays yours</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Contact files are processed by your Everclose deployment, not a third-party enrichment service. Cloud imports include a preview and a saved report.</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <BookOpen className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+                <div>
+                  <p className="text-sm font-semibold">Start with what you know</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">A name is enough. Add context naturally after each conversation.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-3 sm:grid-cols-3 stagger-children">
+        {[
+          { step: '01', title: 'Choose a few people', detail: 'Start with one to five names. Your full address book can wait.' },
+          { step: '02', title: 'Keep one detail', detail: 'A birthday or check-in preference helps you remember what matters.' },
+          { step: '03', title: 'Take one real step', detail: 'Log a conversation you had or plan a reminder. Opening a message app never counts as contact.' },
+        ].map((item) => (
+          <Card key={item.step} className="border-0 shadow-sm">
+            <CardContent className="p-5">
+              <span className="font-mono text-xs font-semibold text-primary">{item.step}</span>
+              <h2 className="mt-3 font-semibold">{item.title}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.detail}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function Dashboard() {
@@ -106,16 +153,42 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
+  const hasOverview = useRef(false);
+  const lastLoadedAt = useRef(0);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const scheduleNextDay = () => {
+      const nextDay = new Date();
+      nextDay.setHours(24, 0, 1, 0);
+      timer = setTimeout(() => {
+        setRefreshToken((value) => value + 1);
+        scheduleNextDay();
+      }, Math.max(1_000, nextDay.getTime() - Date.now()));
+    };
+    const refreshOnReturn = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastLoadedAt.current > 5 * 60_000) {
+        setRefreshToken((value) => value + 1);
+      }
+    };
+    scheduleNextDay();
+    document.addEventListener('visibilitychange', refreshOnReturn);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', refreshOnReturn);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
 
     async function fetchOverview() {
-      setLoading(true);
+      if (!hasOverview.current) setLoading(true);
       setLoadError(null);
 
       try {
-        const res = await fetch('/api/intelligence/overview', { cache: 'no-store' });
+        const query = new URLSearchParams({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+        const res = await fetch(`/api/intelligence/overview?${query}`, { cache: 'no-store' });
         if (!res.ok) {
           throw new Error('Failed to load workspace intelligence');
         }
@@ -123,6 +196,8 @@ export default function Dashboard() {
         const data = await res.json() as OverviewResponse;
         if (!cancelled) {
           setOverview(data);
+          hasOverview.current = true;
+          lastLoadedAt.current = Date.now();
         }
       } catch (error) {
         console.error('Failed to fetch intelligence overview:', error);
@@ -164,35 +239,25 @@ export default function Dashboard() {
     );
   }
 
+  if (overview.stats.totalContacts === 0) {
+    return <FirstRunDashboard workspaceName={overview.workspace?.name || 'Everclose CRM'} />;
+  }
+
   const greeting = getGreeting();
   const spotlightLists = overview.smartLists.filter((list) => list.entries.length > 0).slice(0, 3);
-  const priorityFeed = overview.feed.slice(0, 6);
-  const integrations = overview.integrations.slice(0, 4);
+  const priorityFeed = overview.feed;
 
   return (
     <div className="space-y-8">
-      <div className="animate-fade-in-up flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+      <div className="animate-fade-in-up flex flex-col gap-4 border-b border-border/70 pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-            {greeting.text} {greeting.emoji}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {overview.workspace?.name || 'Bonds'} is acting like your relationship operating system today.
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Today</h1>
+          <p className="mt-2 text-sm text-muted-foreground sm:text-base">{greeting}. A little context for the people who matter.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/smart-lists">
-            <Button variant="outline" size="sm">
-              <Sparkles className="w-4 h-4 mr-1.5" />
-              Open smart lists
-            </Button>
-          </Link>
-          <Link href="/integrations">
-            <Button size="sm">
-              <PlugZap className="w-4 h-4 mr-1.5" />
-              Manage integrations
-            </Button>
-          </Link>
+          <Link href="/contacts" className={buttonVariants({ variant: 'outline', size: 'sm' })}><Users className="h-4 w-4" />People</Link>
+          <Link href="/contacts/new" className={buttonVariants({ size: 'sm' })}><UserPlus className="h-4 w-4" />Add person</Link>
         </div>
       </div>
 
@@ -200,7 +265,7 @@ export default function Dashboard() {
         <Card className="border-0 shadow-sm bg-amber-50/80">
           <CardContent className="py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-medium text-foreground">Some automation surfaces could not be refreshed.</p>
+              <p className="text-sm font-medium text-foreground">Some relationship insights could not be refreshed.</p>
               <p className="text-sm text-muted-foreground">{loadError}</p>
             </div>
             <Button variant="secondary" onClick={() => setRefreshToken((value) => value + 1)}>
@@ -210,7 +275,13 @@ export default function Dashboard() {
         </Card>
       )}
 
-      <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4 stagger-children">
+      {overview.firstSteps && !overview.firstSteps.hasLoggedMoment && (
+        <FirstCircleJourney snapshot={overview.firstSteps} onChanged={() => setRefreshToken((value) => value + 1)} />
+      )}
+
+      <TodayFocus items={priorityFeed} snoozes={overview.snoozes || []} onChanged={() => setRefreshToken((value) => value + 1)} />
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 stagger-children">
         <Card className="relative overflow-hidden border-0 shadow-sm">
           <div className="absolute inset-0 bg-gradient-to-br from-rose-50 to-pink-50" />
           <CardContent className="relative pt-5 pb-4 px-4 sm:px-5">
@@ -221,20 +292,11 @@ export default function Dashboard() {
         </Card>
 
         <Card className="relative overflow-hidden border-0 shadow-sm">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-green-50" />
-          <CardContent className="relative pt-5 pb-4 px-4 sm:px-5">
-            <Heart className="w-4 h-4 text-emerald-600 mb-3 fill-emerald-600" />
-            <div className="text-2xl sm:text-3xl font-bold text-foreground">{overview.stats.strongRelationships}</div>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">strong relationships</p>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden border-0 shadow-sm">
           <div className="absolute inset-0 bg-gradient-to-br from-amber-50 to-orange-50" />
           <CardContent className="relative pt-5 pb-4 px-4 sm:px-5">
             <Clock className="w-4 h-4 text-amber-600 mb-3" />
-            <div className="text-2xl sm:text-3xl font-bold text-foreground">{overview.stats.overdueCount}</div>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">need attention</p>
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">{overview.stats.checkInsDueCount}</div>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">check-ins due</p>
           </CardContent>
         </Card>
 
@@ -247,86 +309,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-sm col-span-2 xl:col-span-1">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-50 to-fuchsia-50" />
-          <CardContent className="relative pt-5 pb-4 px-4 sm:px-5">
-            <PlugZap className="w-4 h-4 text-violet-600 mb-3" />
-            <div className="text-2xl sm:text-3xl font-bold text-foreground">{overview.stats.connectedIntegrations}</div>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">connected systems</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
-        <Card className="border-0 shadow-sm animate-fade-in-up">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardTitle className="text-base font-semibold">Today&apos;s focus queue</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">What Bonds thinks deserves your attention next.</p>
-              </div>
-              <Link href="/reminders" className="text-sm text-primary hover:underline">
-                Open reminders
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {priorityFeed.length > 0 ? (
-              priorityFeed.map((item) => (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  className="flex items-start gap-3 rounded-xl border border-border/60 bg-white/80 p-3 hover:bg-muted/40 transition-colors"
-                >
-                  <div className={`mt-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold border ${getPriorityClasses(item.priority)}`}>
-                    {item.priority.toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-foreground">{item.title}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{item.detail}</p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                </Link>
-              ))
-            ) : (
-              <div className="text-center py-10">
-                <div className="text-3xl mb-2">✨</div>
-                <p className="text-sm text-muted-foreground">No urgent queue items right now.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm animate-fade-in-up">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardTitle className="text-base font-semibold">Integration health</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">Automation surfaces and sync readiness.</p>
-              </div>
-              <Link href="/integrations" className="text-sm text-primary hover:underline">
-                See all
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {integrations.map((integration) => (
-              <div key={integration.id} className="rounded-xl border border-border/60 bg-white/80 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-sm">{integration.label}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {integration.account_email || integration.latest_job?.summary || 'Not connected yet'}
-                    </p>
-                  </div>
-                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getIntegrationClasses(integration.status)}`}>
-                    {integration.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 stagger-children">
@@ -360,39 +342,20 @@ export default function Dashboard() {
           ))
         ) : (
           <Card className="border-0 shadow-sm lg:col-span-3">
-            <CardContent className="py-16 text-center">
-              <div className="text-5xl mb-4">🧠</div>
-              <h3 className="text-lg font-semibold">Smart lists wake up as your data gets richer</h3>
-              <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-                Add contacts, import LinkedIn profiles, and connect more systems to unlock saved views and automated follow-up workflows.
-              </p>
+            <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <span className="rounded-xl bg-rose-50 p-2.5 text-primary"><Sparkles className="h-5 w-5" /></span>
+                <div>
+                  <h3 className="font-semibold">Your relationship patterns are taking shape</h3>
+                  <p className="mt-1 max-w-xl text-sm text-muted-foreground">As you add people and log moments, smart lists will surface connections worth revisiting.</p>
+                </div>
+              </div>
+              <Link href="/smart-lists" className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary hover:underline">Explore smart lists <ArrowRight className="h-4 w-4" /></Link>
             </CardContent>
           </Card>
         )}
       </div>
 
-      <Card className="border-0 shadow-sm animate-fade-in-up">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-primary" />
-            <CardTitle className="text-base font-semibold">V2 rollout momentum</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="rounded-xl border border-border/60 bg-white/80 p-4">
-            <p className="text-sm font-medium">Foundation</p>
-            <p className="text-xs text-muted-foreground mt-1">Workspace, integrations, sync jobs, smart lists, and relationship briefs are now live in the app shell.</p>
-          </div>
-          <div className="rounded-xl border border-border/60 bg-white/80 p-4">
-            <p className="text-sm font-medium">Workflow surfaces</p>
-            <p className="text-xs text-muted-foreground mt-1">The dashboard now behaves like a daily action center instead of a passive summary page.</p>
-          </div>
-          <div className="rounded-xl border border-border/60 bg-white/80 p-4">
-            <p className="text-sm font-medium">Next leverage</p>
-            <p className="text-xs text-muted-foreground mt-1">Google/Microsoft account sync, richer organization identities, and real AI actions are the next major unlocks.</p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

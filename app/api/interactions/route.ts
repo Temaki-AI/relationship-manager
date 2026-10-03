@@ -1,52 +1,80 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/db';
+import db, { backupDirectory } from '@/lib/db';
+import { createInteractionRecord } from '@/lib/relationship-mutations';
+import {
+  parseDateOnly,
+  parseOptionalText,
+  parsePositiveInteger,
+  parseRelationshipActivityType,
+} from '@/lib/relationship-validation';
+import { readJsonBody, RequestBodyError } from '@/lib/request-body';
+import { logRouteError } from '@/lib/observability';
+import {
+  DatabaseMaintenanceBusyError,
+  withDatabaseMutationLock,
+} from '@/lib/database-maintenance-lock';
+import {
+  fingerprintIdempotencyInput,
+  IdempotencyError,
+  requireIdempotencyKey,
+  runIdempotentCreate,
+} from '@/lib/idempotency';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { contact_id, date, type, summary, notes } = body;
+    const body = await readJsonBody<Record<string, unknown>>(request);
+    const contactId = parsePositiveInteger(body.contact_id);
+    const date = parseDateOnly(body.date);
+    const type = parseRelationshipActivityType(body.type);
+    const summary = parseOptionalText(body.summary, 500);
+    const notes = parseOptionalText(body.notes, 10_000);
 
-    if (!contact_id || !date || !type) {
+    if (!contactId || !date || !type) {
       return NextResponse.json(
-        { error: 'contact_id, date, and type are required' },
+        { error: 'Valid contact_id, date, and type are required' },
         { status: 400 }
       );
     }
+    if (summary === undefined || notes === undefined) {
+      return NextResponse.json({ error: 'Interaction text is invalid or too long' }, { status: 400 });
+    }
+    const idempotencyKey = requireIdempotencyKey(request.headers);
+    const input = { contactId, date, type, summary, notes };
 
-    const contact = db.prepare('SELECT id FROM contacts WHERE id = ?').get(contact_id);
-    if (!contact) {
+    const result = withDatabaseMutationLock(backupDirectory, () => {
+      return runIdempotentCreate(db, {
+        scope: 'interactions-create',
+        idempotencyKey,
+        fingerprint: fingerprintIdempotencyInput(input),
+        create: () => {
+          const contact = db.prepare('SELECT id FROM contacts WHERE id = ?').get(contactId);
+          if (!contact) return null;
+          return createInteractionRecord(db, input);
+        },
+        load: (resourceId) => db.prepare('SELECT * FROM interactions WHERE id = ?')
+          .get(resourceId) as ReturnType<typeof createInteractionRecord> | undefined,
+      });
+    });
+
+    if (!result.resource) {
       return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
     }
 
-    // Insert interaction
-    const stmt = db.prepare(`
-      INSERT INTO interactions (contact_id, date, type, summary, notes)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-
-    const result = stmt.run(
-      contact_id,
-      date,
-      type,
-      summary || null,
-      notes || null
+    return NextResponse.json(
+      { interaction: result.resource },
+      { status: 201, headers: { 'Idempotency-Replayed': String(result.replayed) } }
     );
-
-    // Update last_contacted only if this interaction is more recent
-    const updateContact = db.prepare(`
-      UPDATE contacts
-      SET last_contacted = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND (last_contacted IS NULL OR last_contacted < ?)
-    `);
-    updateContact.run(date, contact_id, date);
-
-    const interaction = db.prepare(
-      'SELECT * FROM interactions WHERE id = ?'
-    ).get(result.lastInsertRowid);
-
-    return NextResponse.json({ interaction }, { status: 201 });
   } catch (error) {
-    console.error('POST /api/interactions error:', error);
+    if (error instanceof RequestBodyError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof DatabaseMaintenanceBusyError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    if (error instanceof IdempotencyError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    logRouteError('interactions.create_failed', error, request, '/api/interactions');
     return NextResponse.json(
       { error: 'Failed to create interaction' },
       { status: 500 }

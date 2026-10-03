@@ -5,6 +5,8 @@ node_modules
 
 # Testing
 /coverage
+/playwright-report/
+/test-results/
 
 # Next.js
 /.next/
@@ -14,6 +16,9 @@ node_modules
 
 # Production
 /build
+/.open-next/
+/.wrangler/
+.dev.vars
 
 # Misc
 .DS_Store
@@ -24,8 +29,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Local env files
-.env*.local
+# Local env files and deployment secrets
+.env
+.env.*
+!.env.example
+!.env.container.example
 
 # Vercel
 .vercel
@@ -39,6 +47,8 @@ data/*.db
 data/*.db-journal
 data/*.db-shm
 data/*.db-wal
+data/backups/
+data/restore-staging/
 
 # Keep data directory but ignore contents
 !data/.gitkeep

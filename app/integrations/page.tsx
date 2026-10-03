@@ -1,151 +1,201 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Clock3, PlugZap, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
+import {
+  ArrowRight,
+  CloudOff,
+  ContactRound,
+  DatabaseBackup,
+  FileSpreadsheet,
+  HardDrive,
+  Linkedin,
+  PlugZap,
+  ShieldCheck,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-
-type IntegrationSnapshot = {
-  id: number;
-  provider: string;
-  label: string;
-  status: 'connected' | 'attention' | 'disconnected';
-  account_email: string | null;
-  last_synced_at: string | null;
-  sync_frequency_minutes: number;
-  latest_job: {
-    status: string;
-    summary: string | null;
-    started_at: string;
-    finished_at: string | null;
-  } | null;
-};
+import { Button, buttonVariants } from '@/components/ui/button';
+import type { DataCapability } from '@/lib/data-capabilities';
+import { getResponseErrorMessage } from '@/lib/utils';
 
 type IntegrationResponse = {
   workspace?: {
     name: string;
-    plan: string;
+    mode: 'local';
   };
-  integrations: IntegrationSnapshot[];
+  capabilities: DataCapability[];
+  automaticAccountSync: {
+    enabled: false;
+    message: string;
+  };
 };
 
-function getStatusClasses(status: IntegrationSnapshot['status']) {
-  if (status === 'connected') return 'bg-emerald-50 text-emerald-700 border-emerald-200/60';
-  if (status === 'attention') return 'bg-amber-50 text-amber-700 border-amber-200/60';
-  return 'bg-slate-50 text-slate-700 border-slate-200/60';
+const CAPABILITY_ICONS: Record<DataCapability['id'], React.ElementType> = {
+  vcard: ContactRound,
+  csv: FileSpreadsheet,
+  'encrypted-backup': DatabaseBackup,
+  'linkedin-extension': Linkedin,
+};
+
+function SkeletonConnections() {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <div className="skeleton h-9 w-56" />
+        <div className="skeleton h-5 w-full max-w-xl" />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {[1, 2, 3, 4].map((index) => (
+          <div key={index} className="skeleton h-56 rounded-xl" />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function IntegrationsPage() {
   const [data, setData] = useState<IntegrationResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
-    async function fetchIntegrations() {
+    let cancelled = false;
+
+    async function fetchCapabilities() {
+      setLoading(true);
+      setLoadError(null);
+
       try {
-        const res = await fetch('/api/integrations', { cache: 'no-store' });
-        const next = await res.json() as IntegrationResponse;
-        setData(next);
+        const response = await fetch('/api/integrations', { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error(await getResponseErrorMessage(response, 'Failed to load data connections'));
+        }
+        const next = await response.json() as IntegrationResponse;
+        if (!cancelled) setData(next);
       } catch (error) {
-        console.error('Failed to fetch integrations:', error);
+        if (!cancelled) {
+          setLoadError(error instanceof Error ? error.message : 'Failed to load data connections');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
-    fetchIntegrations();
-  }, []);
+    fetchCapabilities();
+    return () => { cancelled = true; };
+  }, [refreshToken]);
 
-  if (loading) {
+  if (loading) return <SkeletonConnections />;
+
+  if (!data) {
     return (
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <div className="skeleton h-9 w-52" />
-          <div className="skeleton h-5 w-80" />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map((index) => (
-            <div key={index} className="skeleton h-48 rounded-xl" />
-          ))}
-        </div>
-      </div>
+      <Card className="mx-auto max-w-xl border-0 shadow-sm">
+        <CardContent className="py-14 text-center">
+          <CloudOff className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
+          <h1 className="mt-4 text-xl font-semibold">Data connections are unavailable</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{loadError}</p>
+          <Button className="mt-6" onClick={() => setRefreshToken((value) => value + 1)}>
+            Try again
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
-  const integrations = data?.integrations || [];
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="animate-fade-in">
         <div className="flex items-center gap-2">
-          <PlugZap className="w-5 h-5 text-primary" />
-          <h1 className="text-2xl sm:text-3xl font-bold">Integrations</h1>
+          <PlugZap className="h-5 w-5 text-primary" aria-hidden="true" />
+          <h1 className="text-2xl font-bold sm:text-3xl">Data connections</h1>
         </div>
-        <p className="text-sm text-muted-foreground mt-1">
-          Automation status, sync readiness, and the systems that will eventually keep Bonds updated for you.
+        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          Every way data enters or leaves Everclose CRM is explicit. Nothing below represents a silently connected cloud account.
         </p>
       </div>
 
-      <Card className="border-0 shadow-sm animate-fade-in-up">
-        <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <Card className="overflow-hidden border-0 shadow-sm animate-fade-in-up">
+        <div className="h-1 bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-400" />
+        <CardContent className="grid gap-4 pt-6 md:grid-cols-3">
           <div className="rounded-xl border border-border/60 bg-white/80 p-4">
-            <p className="text-sm font-medium">Workspace</p>
-            <p className="text-xs text-muted-foreground mt-1">{data?.workspace?.name || 'Bonds HQ'}</p>
+            <HardDrive className="h-5 w-5 text-emerald-600" aria-hidden="true" />
+            <p className="mt-3 text-sm font-semibold">Local workspace</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {data.workspace?.name || 'My Everclose CRM'} stores its CRM data in this deployment.
+            </p>
           </div>
           <div className="rounded-xl border border-border/60 bg-white/80 p-4">
-            <p className="text-sm font-medium">Plan</p>
-            <p className="text-xs text-muted-foreground mt-1 capitalize">{data?.workspace?.plan || 'premium'}</p>
+            <ShieldCheck className="h-5 w-5 text-amber-600" aria-hidden="true" />
+            <p className="mt-3 text-sm font-semibold">Explicit transfers</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Imports, exports, and restores happen only when you start them.
+            </p>
           </div>
           <div className="rounded-xl border border-border/60 bg-white/80 p-4">
-            <p className="text-sm font-medium">Trust posture</p>
-            <p className="text-xs text-muted-foreground mt-1">Single-user, migration-era local workspace with V2 sync scaffolding.</p>
+            <CloudOff className="h-5 w-5 text-rose-600" aria-hidden="true" />
+            <p className="mt-3 text-sm font-semibold">Automatic account sync is off</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              No email, calendar, Google, or Microsoft account is connected behind the scenes.
+            </p>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 stagger-children">
-        {integrations.map((integration) => (
-          <Card key={integration.id} className="border-0 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <CardTitle className="text-base font-semibold">{integration.label}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {integration.account_email || integration.latest_job?.summary || 'No account linked yet'}
-                  </p>
-                </div>
-                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getStatusClasses(integration.status)}`}>
-                  {integration.status}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock3 className="w-4 h-4" />
-                  Sync cadence: every {integration.sync_frequency_minutes} minutes
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <ShieldCheck className="w-4 h-4" />
-                  Last sync: {integration.last_synced_at ? new Date(integration.last_synced_at).toLocaleString() : 'Not synced yet'}
-                </div>
-              </div>
+      <section aria-labelledby="available-connections-heading">
+        <div className="mb-4">
+          <h2 id="available-connections-heading" className="text-lg font-semibold">Available today</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Working paths included in this release, not roadmap promises.</p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2 stagger-children">
+          {data.capabilities.map((capability) => {
+            const Icon = CAPABILITY_ICONS[capability.id];
+            return (
+              <Card key={capability.id} className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-xl bg-primary/10 p-2.5 text-primary">
+                        <Icon className="h-5 w-5" aria-hidden="true" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">{capability.label}</CardTitle>
+                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{capability.description}</p>
+                      </div>
+                    </div>
+                    <span className={`flex-shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                      capability.status === 'available'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        : 'border-amber-200 bg-amber-50 text-amber-700'
+                    }`}>
+                      {capability.status === 'available' ? 'Available' : 'Optional'}
+                    </span>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="rounded-xl border border-border/60 bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
+                    {capability.privacy}
+                  </div>
+                  <Link href={capability.href} className={buttonVariants({ variant: 'outline', size: 'sm', className: 'w-full' })}>
+                    {capability.actionLabel}
+                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Link>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </section>
 
-              {integration.latest_job && (
-                <div className="rounded-xl border border-border/60 bg-muted/30 p-3">
-                  <p className="text-sm font-medium">Latest job</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {integration.latest_job.summary || integration.latest_job.status}
-                  </p>
-                </div>
-              )}
-
-              <Button variant={integration.status === 'connected' ? 'secondary' : 'outline'} size="sm" className="w-full" disabled>
-                {integration.status === 'connected' ? 'Connected in this foundation slice' : 'Connection flow coming next'}
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card className="border border-amber-200/70 bg-amber-50/40 shadow-sm">
+        <CardContent className="flex gap-3 py-5">
+          <CloudOff className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-700" aria-hidden="true" />
+          <div>
+            <p className="text-sm font-semibold">No hidden cloud connection</p>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{data.automaticAccountSync.message}</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

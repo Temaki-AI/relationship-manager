@@ -31,7 +31,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const toast = useCallback(({ message, variant = 'success' }: { message: string; variant?: ToastVariant }) => {
     const id = ++nextId;
-    setToasts(prev => [...prev, { id, message, variant }]);
+    setToasts([{ id, message, variant }]);
 
     setTimeout(() => {
       setToasts(prev => prev.map(t => t.id === id ? { ...t, leaving: true } : t));
@@ -52,13 +52,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ toast }}>
       {children}
       {/* Toast Container */}
-      <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-[100] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+      <div className="fixed bottom-20 left-4 right-4 sm:bottom-6 sm:left-auto sm:right-6 z-[100] flex flex-col gap-2 sm:w-full sm:max-w-sm pointer-events-none">
         {toasts.map((t) => {
           const style = variantStyles[t.variant];
           const Icon = style.icon;
           return (
             <div
               key={t.id}
+              role={t.variant === 'error' ? 'alert' : 'status'}
+              aria-live={t.variant === 'error' ? 'assertive' : 'polite'}
               className={`pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-lg text-sm font-medium transition-all duration-300 ${style.bg} ${
                 t.leaving ? 'opacity-0 translate-y-2' : 'animate-fade-in-up'
               }`}
@@ -66,8 +68,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <Icon className={`w-4 h-4 flex-shrink-0 ${style.iconColor}`} />
               <span className="flex-1">{t.message}</span>
               <button
+                type="button"
                 onClick={() => dismiss(t.id)}
                 className="p-0.5 rounded hover:bg-black/5 flex-shrink-0"
+                aria-label="Dismiss notification"
               >
                 <X className="w-3.5 h-3.5 opacity-50" />
               </button>

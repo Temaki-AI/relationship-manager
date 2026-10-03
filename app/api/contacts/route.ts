@@ -1,97 +1,122 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/db';
+import db, { backupDirectory } from '@/lib/db';
+import { ContactInputError, normalizeContactCreateInput } from '@/lib/contact-input';
+import { readJsonBody, RequestBodyError } from '@/lib/request-body';
+import { logRouteError } from '@/lib/observability';
+import {
+  listContactPage,
+  listMentionOptions,
+  listTagSummaries,
+} from '@/lib/contact-directory';
+import {
+  DatabaseMaintenanceBusyError,
+  withDatabaseMutationLock,
+} from '@/lib/database-maintenance-lock';
+import {
+  fingerprintIdempotencyInput,
+  IdempotencyError,
+  requireIdempotencyKey,
+  runIdempotentCreate,
+} from '@/lib/idempotency';
 
-function normalizeContactFrequency(value: unknown): number {
-  const parsed = typeof value === 'number' ? value : Number(value);
-  if (!Number.isFinite(parsed) || parsed < 1) {
-    return 14;
-  }
-  return Math.floor(parsed);
-}
+type ContactRow = { id: number } & Record<string, unknown>;
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get('search');
-    const tag = searchParams.get('tag');
-
-    let query = 'SELECT * FROM contacts';
-    const conditions: string[] = [];
-    const params: string[] = [];
-
-    if (search) {
-      conditions.push('(name LIKE ? OR email LIKE ? OR notes LIKE ?)');
-      const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm, searchTerm);
+    const view = searchParams.get('view') || 'page';
+    if (view === 'mentions') {
+      return NextResponse.json({
+        contacts: listMentionOptions(db, {
+          search: searchParams.get('search'),
+          limit: searchParams.get('limit'),
+        }),
+      });
+    }
+    if (view === 'tags') {
+      return NextResponse.json(listTagSummaries(db, {
+        page: searchParams.get('page'),
+        pageSize: searchParams.get('pageSize'),
+      }));
+    }
+    if (view !== 'page') {
+      return NextResponse.json({ error: 'Unsupported contacts view.' }, { status: 400 });
     }
 
-    if (tag) {
-      conditions.push('tags LIKE ?');
-      params.push(`%"${tag}"%`);
-    }
-
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
-
-    query += ' ORDER BY last_contacted DESC';
-
-    const stmt = db.prepare(query);
-    const contacts = stmt.all(...params);
-
-    return NextResponse.json({ contacts });
+    const result = listContactPage(db, {
+      page: searchParams.get('page'),
+      pageSize: searchParams.get('pageSize'),
+      search: searchParams.get('search'),
+      tag: searchParams.get('tag'),
+    });
+    const overallTotal = Number(db.prepare('SELECT COUNT(*) AS count FROM contacts').pluck().get());
+    return NextResponse.json({ ...result, overallTotal });
   } catch (error) {
-    console.error('GET /api/contacts error:', error);
+    logRouteError('contacts.load_failed', error, request, '/api/contacts');
     return NextResponse.json({ error: 'Failed to fetch contacts' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const {
-      name,
-      email,
-      phone,
-      photo_url,
-      birthday,
-      how_we_met,
-      tags,
-      notes,
-      gift_ideas,
-      contact_frequency
-    } = body;
-
-    if (!name || !String(name).trim()) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
-    }
+    const contactInput = normalizeContactCreateInput(await readJsonBody(request));
+    const idempotencyKey = requireIdempotencyKey(request.headers);
 
     const stmt = db.prepare(`
       INSERT INTO contacts (
-        name, email, phone, photo_url, birthday, how_we_met, 
-        tags, notes, gift_ideas, contact_frequency
+        name, nickname, email, phone, photo_url, birthday, birthday_reminder_days, how_we_met,
+        tags, notes, gift_ideas, custom_fields, contact_frequency
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const result = stmt.run(
-      String(name).trim(),
-      email || null,
-      phone || null,
-      photo_url || null,
-      birthday || null,
-      how_we_met || null,
-      tags ? JSON.stringify(tags) : null,
-      notes || null,
-      gift_ideas ? JSON.stringify(gift_ideas) : null,
-      normalizeContactFrequency(contact_frequency)
+    const result = withDatabaseMutationLock(backupDirectory, () => {
+      return runIdempotentCreate(db, {
+        scope: 'contacts-create',
+        idempotencyKey,
+        fingerprint: fingerprintIdempotencyInput(contactInput),
+        create: () => {
+          const insert = stmt.run(
+            contactInput.name,
+            contactInput.nickname,
+            contactInput.email,
+            contactInput.phone,
+            contactInput.photo_url,
+            contactInput.birthday,
+            contactInput.birthday_reminder_days,
+            contactInput.how_we_met,
+            contactInput.tags,
+            contactInput.notes,
+            contactInput.gift_ideas,
+            contactInput.custom_fields,
+            contactInput.contact_frequency
+          );
+          return db.prepare('SELECT * FROM contacts WHERE id = ?')
+            .get(insert.lastInsertRowid) as ContactRow;
+        },
+        load: (resourceId) => db.prepare('SELECT * FROM contacts WHERE id = ?')
+          .get(resourceId) as ContactRow | undefined,
+      });
+    });
+
+    return NextResponse.json(
+      { contact: result.resource },
+      { status: 201, headers: { 'Idempotency-Replayed': String(result.replayed) } }
     );
-
-    const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(result.lastInsertRowid);
-
-    return NextResponse.json({ contact }, { status: 201 });
   } catch (error) {
-    console.error('POST /api/contacts error:', error);
+    if (error instanceof RequestBodyError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof DatabaseMaintenanceBusyError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    if (error instanceof IdempotencyError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof ContactInputError || error instanceof SyntaxError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    logRouteError('contacts.create_failed', error, request, '/api/contacts');
     return NextResponse.json({ error: 'Failed to create contact' }, { status: 500 });
   }
 }

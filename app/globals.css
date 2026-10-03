@@ -8,19 +8,19 @@
     --foreground: 20 14.3% 14.1%;
     --card: 0 0% 100%;
     --card-foreground: 20 14.3% 14.1%;
-    --primary: 350 89% 60%;
+    --primary: 347 77% 45%;
     --primary-foreground: 0 0% 100%;
     --secondary: 30 50% 95%;
     --secondary-foreground: 20 14.3% 14.1%;
     --muted: 30 30% 94%;
-    --muted-foreground: 20 10% 45%;
+    --muted-foreground: 20 10% 40%;
     --accent: 38 92% 50%;
     --accent-foreground: 20 14.3% 14.1%;
-    --destructive: 0 72% 51%;
+    --destructive: 0 72% 43%;
     --destructive-foreground: 0 0% 100%;
     --border: 20 25% 90%;
     --input: 20 25% 90%;
-    --ring: 350 89% 60%;
+    --ring: 347 77% 45%;
     --radius: 0.75rem;
   }
 }
@@ -31,6 +31,10 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+  }
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
   }
 }
 
@@ -117,4 +121,20 @@
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: var(--radius);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .stagger-children > * {
+    opacity: 1;
+  }
 }

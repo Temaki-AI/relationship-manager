@@ -1,0 +1,78 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "everclose-crm",
+  "main": "custom-worker.ts",
+  "compatibility_date": "2026-07-12",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  },
+  "workers_dev": true,
+  "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "everclosecrm.com",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.everclosecrm.com",
+      "custom_domain": true
+    }
+  ],
+  "vars": {
+    "AUTH_MODE": "google",
+    "NEXT_PUBLIC_AUTH_MODE": "google",
+    "CRM_LOG_LEVEL": "info",
+    "CLOUD_AUTOMATIC_BACKUP_ENABLED": "false",
+    "CLOUD_LARGE_RECOVERY_ENABLED": "false",
+    "EMAIL_DELIVERY_ENABLED": "false",
+    "EMAIL_FROM": "alerts@everclosecrm.com",
+    "BETTER_AUTH_URL": "https://everclosecrm.com"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "bonds-crm",
+      "database_id": "d635e396-ff00-45db-a893-7f95e364a44d",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "bonds-crm-opennext-cache"
+    },
+    {
+      "binding": "PRIVATE_ASSETS",
+      "bucket_name": "bonds-crm-private-assets"
+    }
+  ],
+  "queues": {
+    "producers": [
+      { "binding": "LARGE_RECOVERY_QUEUE", "queue": "everclose-large-recovery" }
+    ],
+    "consumers": [
+      {
+        "queue": "everclose-large-recovery",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_retries": 9,
+        "max_concurrency": 4,
+        "dead_letter_queue": "everclose-large-recovery-failed"
+      }
+    ]
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "everclose-crm"
+    }
+  ]
+}

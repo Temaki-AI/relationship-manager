@@ -19,7 +19,12 @@
           <span>CRM URL</span>
           <input id="apiBaseUrl" type="url" value="http://localhost:3100" />
         </label>
-        <button id="saveSettings" class="button button-secondary" type="button">Save URL</button>
+        <label class="field">
+          <span>API token <small>(required when CRM authentication is enabled)</small></span>
+          <input id="apiToken" type="password" autocomplete="off" placeholder="Paste CRM_API_TOKEN" />
+        </label>
+        <p class="hint">The CRM URL and token stay on this Chrome installation and are never synced.</p>
+        <button id="saveSettings" class="button button-secondary" type="button">Save settings</button>
       </section>
 
       <section class="panel">

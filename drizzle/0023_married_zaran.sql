@@ -1,0 +1,2 @@
+ALTER TABLE `cloud_snapshot_restore_jobs` ADD `background_state` text DEFAULT 'idle' NOT NULL;--> statement-breakpoint
+ALTER TABLE `cloud_snapshot_restore_jobs` ADD `background_version` integer DEFAULT 0 NOT NULL;

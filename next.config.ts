@@ -1,10 +1,13 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+
+initOpenNextCloudflareForDev();
 
 const nextConfig: NextConfig = {
-  webpack: (config) => {
-    // Fix for better-sqlite3
-    config.externals = [...(config.externals || []), 'better-sqlite3'];
-    return config;
+  output: "standalone",
+  serverExternalPackages: ["better-sqlite3"],
+  outputFileTracingExcludes: {
+    "/*": ["./data/**/*"],
   },
 };
 

@@ -68,6 +68,15 @@ h1 {
   color: var(--muted);
 }
 
+.field + .field {
+  margin-top: 10px;
+}
+
+.field small {
+  font-size: 10px;
+  font-weight: 400;
+}
+
 .field input {
   width: 100%;
   border: 1px solid var(--line);
@@ -76,6 +85,12 @@ h1 {
   font-size: 14px;
   background: white;
   color: var(--text);
+}
+
+.hint {
+  margin: 6px 0 10px;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .meta-row {

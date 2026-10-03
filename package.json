@@ -3,34 +3,62 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "packageManager": "npm@10.9.4",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "next dev -p 3100",
-    "build": "next build",
+    "build": "node scripts/build.mjs",
+    "build:cloud": "AUTH_MODE=google NEXT_PUBLIC_AUTH_MODE=google opennextjs-cloudflare build",
+    "preview:cloud": "npm run build:cloud && opennextjs-cloudflare preview",
+    "deploy:cloud": "npm run build:cloud && opennextjs-cloudflare deploy",
+    "cf-typegen": "wrangler types cloudflare-env.d.ts --env-interface CloudflareEnv --include-runtime false --strict-vars false",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply bonds-crm --local",
+    "db:migrate:remote": "wrangler d1 migrations apply bonds-crm --remote",
     "start": "next start -p 3100",
     "lint": "eslint . --max-warnings=0",
-    "test": "node --test tests/*.test.ts"
+    "test": "node --test tests/*.test.ts",
+    "test:cloud": "CLOUD_TEST_RUNTIME=workerd node --test tests/cloud-*.test.ts",
+    "test:mobile": "npm --prefix apps/mobile run validate",
+    "test:production": "node --test tests/production-smoke.mjs",
+    "test:e2e": "npm run build && playwright test"
   },
   "dependencies": {
-    "next": "^15.2.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "better-sqlite3": "^11.8.0",
+    "@better-auth/drizzle-adapter": "^1.6.23",
+    "@opennextjs/cloudflare": "1.20.7",
+    "better-auth": "^1.6.23",
+    "better-sqlite3": "^12.11.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^2.5.0",
+    "date-fns": "^4.1.0",
+    "drizzle-orm": "^0.45.2",
     "lucide-react": "^0.469.0",
-    "date-fns": "^4.1.0"
+    "next": "15.5.27",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^2.5.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@cloudflare/workers-types": "^5.20260711.1",
+    "@playwright/test": "1.61.0",
+    "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.6",
     "@types/react-dom": "^19.0.3",
-    "@types/better-sqlite3": "^7.6.12",
-    "typescript": "^5.7.2",
-    "tailwindcss": "^3.4.17",
-    "postcss": "^8.4.49",
     "autoprefixer": "^10.4.20",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9.17.0",
-    "eslint-config-next": "^15.2.0"
+    "eslint-config-next": "15.5.27",
+    "miniflare": "5.20261001.0-alpha",
+    "postcss": "8.5.28",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "wrangler": "4.147.0"
+  },
+  "overrides": {
+    "postcss": "$postcss"
   }
 }

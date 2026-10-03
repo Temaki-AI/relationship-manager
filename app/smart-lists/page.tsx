@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { ArrowRight, Search, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { LoadError } from '@/components/ui/load-error';
+import { getResponseErrorMessage } from '@/lib/utils';
 
 type SmartList = {
   id: string;
@@ -22,23 +24,35 @@ type SmartList = {
 export default function SmartListsPage() {
   const [smartLists, setSmartLists] = useState<SmartList[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
+    const controller = new AbortController();
     async function fetchSmartLists() {
+      setLoading(true);
       try {
-        const res = await fetch('/api/smart-lists', { cache: 'no-store' });
+        const query = new URLSearchParams({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+        const res = await fetch(`/api/smart-lists?${query}`, { cache: 'no-store', signal: controller.signal });
+        if (!res.ok) {
+          throw new Error(await getResponseErrorMessage(res, 'Failed to load smart lists'));
+        }
         const data = await res.json();
         setSmartLists(Array.isArray(data.smartLists) ? data.smartLists : []);
+        setLoadError(null);
       } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
         console.error('Failed to fetch smart lists:', error);
+        setLoadError(error instanceof Error ? error.message : 'Failed to load smart lists');
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
 
     fetchSmartLists();
-  }, []);
+    return () => controller.abort();
+  }, [reloadToken]);
 
   const filteredLists = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -55,7 +69,7 @@ export default function SmartListsPage() {
     );
   }, [search, smartLists]);
 
-  if (loading) {
+  if (loading && !loadError) {
     return (
       <div className="space-y-6">
         <div className="space-y-2">
@@ -68,6 +82,28 @@ export default function SmartListsPage() {
             <div key={index} className="skeleton h-72 rounded-xl" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-fade-in">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            <h1 className="text-2xl font-bold sm:text-3xl">Smart Lists</h1>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Saved relationship views generated from your interaction history, reminders, and enrichment context.
+          </p>
+        </div>
+        <LoadError
+          title="We couldn't load your smart lists"
+          message={`${loadError}. No relationship view is being shown as empty.`}
+          retrying={loading}
+          onRetry={() => setReloadToken((value) => value + 1)}
+        />
       </div>
     );
   }

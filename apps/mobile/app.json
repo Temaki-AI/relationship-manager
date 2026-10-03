@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "Bonds",
+    "slug": "bonds-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "bonds",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "com.fernandoamaral.bonds",
+      "buildNumber": "1",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.fernandoamaral.bonds",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF8F4",
+        "foregroundImage": "./assets/images/icon.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFF8F4",
+          "image": "./assets/images/icon.png",
+          "imageWidth": 148
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Bonds lets you choose a person to add to your private relationship journal."
+        }
+      ],
+      "expo-notifications",
+      "expo-sqlite",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "Allow Bonds to unlock your private relationship journal."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Bonds to unlock your private relationship journal."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

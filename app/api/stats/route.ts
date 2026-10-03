@@ -1,72 +1,27 @@
 import { NextResponse } from 'next/server';
-import { calculateDaysUntilBirthday } from '@/lib/birthdays';
 import db from '@/lib/db';
-import { addDays, differenceInDays, format, parseISO } from 'date-fns';
+import { logRouteError } from '@/lib/observability';
+import { birthdayStatsSQL, checkInStatsSQL, statsResponse, statsToday } from '@/lib/stats-directory';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    // Total contacts
+    const today = statsToday(request);
     const { total } = db.prepare(
       'SELECT COUNT(*) as total FROM contacts'
     ).get() as { total: number };
 
-    // Conversations this week
-    const weekAgo = format(addDays(new Date(), -7), 'yyyy-MM-dd');
     const { thisWeek } = db.prepare(
-      'SELECT COUNT(*) as thisWeek FROM interactions WHERE date >= ?'
-    ).get(weekAgo) as { thisWeek: number };
+      "SELECT COUNT(*) as thisWeek FROM interactions WHERE date >= date(?, '-7 days') AND date <= ?"
+    ).get(today, today) as { thisWeek: number };
+    const rhythms = db.prepare(checkInStatsSQL(false, false)).get(today) as { ready: number; neglected: number };
+    const actionItems = db.prepare(checkInStatsSQL(false, true)).all(today) as Array<{ id: number }>;
+    const birthdays = db.prepare(birthdayStatsSQL(false)).all(today) as Array<{
+      id: number; name: string; birthday: string; daysUntil: number; total: number;
+    }>;
 
-    // Neglected contacts (>30 days since last contact)
-    const allContacts = db.prepare(
-      'SELECT id, last_contacted, contact_frequency FROM contacts'
-    ).all() as Array<{ id: number; last_contacted: string | null; contact_frequency: number }>;
-
-    const now = new Date();
-    const neglected = allContacts.filter(c => {
-      if (!c.last_contacted) return false;
-      const daysSince = differenceInDays(now, parseISO(c.last_contacted));
-      return daysSince > (c.contact_frequency || 14) * 2;
-    });
-
-    // Upcoming birthdays (next 30 days)
-    const upcomingBirthdays = db.prepare(
-      `SELECT id, name, birthday FROM contacts 
-       WHERE birthday IS NOT NULL`
-    ).all() as Array<{ id: number; name: string; birthday: string }>;
-
-    const birthdays = upcomingBirthdays.filter(c => {
-      const daysUntil = calculateDaysUntilBirthday(now, c.birthday);
-      return daysUntil >= 0 && daysUntil <= 30;
-    }).map(c => {
-      const daysUntil = calculateDaysUntilBirthday(now, c.birthday);
-      return { ...c, daysUntil };
-    }).sort((a, b) => a.daysUntil - b.daysUntil);
-
-    // Action items: contacts to reach out to
-    const actionItems = allContacts
-      .filter(c => c.last_contacted)
-      .map(c => {
-        const daysSince = differenceInDays(now, parseISO(c.last_contacted!));
-        const targetDays = c.contact_frequency || 14;
-        const overdue = daysSince - targetDays;
-        return { id: c.id, daysSince, overdue };
-      })
-      .filter(c => c.overdue > 0)
-      .sort((a, b) => b.overdue - a.overdue)
-      .slice(0, 5);
-
-    return NextResponse.json({
-      stats: {
-        totalContacts: total,
-        conversationsThisWeek: thisWeek,
-        neglectedCount: neglected.length,
-        upcomingBirthdaysCount: birthdays.length,
-      },
-      actionItems: actionItems.map(a => a.id),
-      upcomingBirthdays: birthdays,
-    });
+    return NextResponse.json(statsResponse(total, thisWeek, rhythms, actionItems, birthdays));
   } catch (error) {
-    console.error('GET /api/stats error:', error);
+    logRouteError('stats.load_failed', error, request, '/api/stats');
     return NextResponse.json(
       { error: 'Failed to fetch stats' },
       { status: 500 }

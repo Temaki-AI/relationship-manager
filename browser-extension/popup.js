@@ -1,7 +1,8 @@
-const DEFAULT_API_BASE_URL = 'http://localhost:3100';
+import { DEFAULT_API_BASE_URL, normalizeApiBaseUrl } from './settings.js';
 
 const elements = {
   apiBaseUrl: document.querySelector('#apiBaseUrl'),
+  apiToken: document.querySelector('#apiToken'),
   avatar: document.querySelector('#avatar'),
   emptyState: document.querySelector('#emptyState'),
   extensionId: document.querySelector('#extensionId'),
@@ -23,11 +24,26 @@ init().catch((error) => {
 });
 
 async function init() {
-  const { apiBaseUrl = DEFAULT_API_BASE_URL } = await chrome.storage.sync.get({
-    apiBaseUrl: DEFAULT_API_BASE_URL,
-  });
+  const localSettings = await chrome.storage.local.get({ apiToken: '' });
+  let apiBaseUrl = localSettings.apiBaseUrl;
+  if (typeof apiBaseUrl !== 'string' || !apiBaseUrl.trim()) {
+    try {
+      const legacySettings = await chrome.storage.sync.get({ apiBaseUrl: DEFAULT_API_BASE_URL });
+      apiBaseUrl = legacySettings.apiBaseUrl;
+    } catch {
+      apiBaseUrl = DEFAULT_API_BASE_URL;
+    }
+    await chrome.storage.local.set({ apiBaseUrl });
+  }
+  try {
+    await chrome.storage.sync.remove('apiBaseUrl');
+  } catch {
+    // Local settings still work when Chrome Sync is unavailable or disabled.
+  }
+  const apiToken = localSettings.apiToken;
 
   elements.apiBaseUrl.value = apiBaseUrl;
+  elements.apiToken.value = apiToken;
   elements.extensionId.textContent = chrome.runtime.id;
 
   elements.saveSettings.addEventListener('click', saveSettings);
@@ -38,10 +54,16 @@ async function init() {
 }
 
 async function saveSettings() {
-  const apiBaseUrl = normalizeApiBaseUrl(elements.apiBaseUrl.value);
-  elements.apiBaseUrl.value = apiBaseUrl;
-  await chrome.storage.sync.set({ apiBaseUrl });
-  setStatus('CRM URL saved.', 'success');
+  try {
+    const apiBaseUrl = normalizeApiBaseUrl(elements.apiBaseUrl.value);
+    const apiToken = elements.apiToken.value.trim();
+    await ensureApiAccess(apiBaseUrl);
+    elements.apiBaseUrl.value = apiBaseUrl;
+    await chrome.storage.local.set({ apiBaseUrl, apiToken });
+    setStatus('CRM settings saved.', 'success');
+  } catch (error) {
+    setStatus(error.message || 'Could not save CRM settings.', 'error');
+  }
 }
 
 async function loadProfile() {
@@ -107,14 +129,19 @@ async function importProfile() {
   }
 
   const apiBaseUrl = normalizeApiBaseUrl(elements.apiBaseUrl.value);
+  const apiToken = elements.apiToken.value.trim();
   elements.apiBaseUrl.value = apiBaseUrl;
   elements.importProfile.disabled = true;
   setStatus('Importing contact into Bonds...', 'info');
 
   try {
+    await ensureApiAccess(apiBaseUrl);
     const response = await fetch(`${apiBaseUrl}/api/import/linkedin`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(apiToken ? { Authorization: `Bearer ${apiToken}` } : {}),
+      },
       body: JSON.stringify(currentProfile),
     });
 
@@ -125,6 +152,11 @@ async function importProfile() {
         `CRM blocked this extension origin. Add CORS_ALLOWED_EXTENSION_IDS=${chrome.runtime.id} to .env.local and restart the app.`,
         'error'
       );
+      return;
+    }
+
+    if (response.status === 401) {
+      setStatus('CRM authentication failed. Save the correct API token and try again.', 'error');
       return;
     }
 
@@ -151,7 +183,13 @@ function setStatus(message, variant) {
   elements.status.className = `status status-${variant}`;
 }
 
-function normalizeApiBaseUrl(value) {
-  const trimmed = value.trim() || DEFAULT_API_BASE_URL;
-  return trimmed.replace(/\/+$/, '');
+async function ensureApiAccess(apiBaseUrl) {
+  const originPattern = `${new URL(apiBaseUrl).origin}/*`;
+  const hasAccess = await chrome.permissions.contains({ origins: [originPattern] });
+  if (hasAccess) return;
+
+  const granted = await chrome.permissions.request({ origins: [originPattern] });
+  if (!granted) {
+    throw new Error('Chrome needs permission to connect to this CRM URL.');
+  }
 }

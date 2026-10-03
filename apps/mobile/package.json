@@ -1,0 +1,59 @@
+{
+  "name": "@bonds/mobile",
+  "main": "expo-router/entry",
+  "version": "1.0.0",
+  "type": "module",
+  "packageManager": "npm@10.9.4",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "dependencies": {
+    "expo": "~57.0.4",
+    "expo-constants": "~57.0.3",
+    "expo-contacts": "~57.0.0",
+    "expo-crypto": "~57.0.0",
+    "expo-font": "~57.0.0",
+    "expo-linking": "~57.0.2",
+    "expo-local-authentication": "~57.0.0",
+    "expo-notifications": "~57.0.3",
+    "expo-router": "~57.0.4",
+    "expo-secure-store": "~57.0.0",
+    "expo-splash-screen": "~57.0.2",
+    "expo-sqlite": "~57.0.0",
+    "expo-status-bar": "~57.0.0",
+    "expo-symbols": "~57.0.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.0",
+    "react-native-gesture-handler": "~2.32.0",
+    "react-native-reanimated": "4.5.0",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "4.25.2",
+    "react-native-web": "~0.21.0",
+    "react-native-worklets": "0.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "~19.2.2",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "~57.0.0",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "lint": "expo lint --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.ts",
+    "export:ios": "expo export --platform ios --output-dir dist",
+    "validate": "npm run typecheck && npm test && npm run lint && npm run export:ios"
+  },
+  "overrides": {
+    "xcode": {
+      "uuid": "^11.1.1"
+    }
+  },
+  "private": true
+}

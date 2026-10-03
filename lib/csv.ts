@@ -1,3 +1,12 @@
+export const MAX_CSV_IMPORT_ROWS = 25_000;
+
+export class CSVValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CSVValidationError';
+  }
+}
+
 export function parseCSV(text: string): string[][] {
   const records: string[][] = [];
   let currentRow: string[] = [];
@@ -33,6 +42,10 @@ export function parseCSV(text: string): string[][] {
     }
   }
 
+  if (inQuotes) {
+    throw new CSVValidationError('CSV contains an unterminated quoted field.');
+  }
+
   currentRow.push(currentField);
   if (currentRow.some((field) => field.trim() !== '')) {
     records.push(currentRow);
@@ -41,9 +54,26 @@ export function parseCSV(text: string): string[][] {
   return records;
 }
 
+export function escapeCSVField(value: string): string {
+  const firstVisibleCharacter = value.trimStart()[0];
+  const spreadsheetSafeValue = firstVisibleCharacter && '=+-@'.includes(firstVisibleCharacter)
+    ? `'${value}`
+    : value;
+
+  if (
+    spreadsheetSafeValue.includes(',')
+    || spreadsheetSafeValue.includes('"')
+    || spreadsheetSafeValue.includes('\n')
+    || spreadsheetSafeValue.includes('\r')
+  ) {
+    return `"${spreadsheetSafeValue.replace(/"/g, '""')}"`;
+  }
+  return spreadsheetSafeValue;
+}
+
 export function normalizeImportedFrequency(value: string | undefined): number {
   const parsed = value ? parseInt(value, 10) : 14;
-  if (Number.isNaN(parsed) || parsed < 1) {
+  if (Number.isNaN(parsed) || parsed < 1 || parsed > 3_650) {
     return 14;
   }
   return parsed;
@@ -55,7 +85,7 @@ export function parseImportedTagsValue(value: string): string | null {
   try {
     const parsed = JSON.parse(value);
     if (Array.isArray(parsed)) {
-      return JSON.stringify(parsed);
+      return JSON.stringify(parsed.filter((item): item is string => typeof item === 'string'));
     }
   } catch {
     return JSON.stringify(
@@ -75,7 +105,7 @@ export function parseImportedGiftIdeasValue(value: string): string | null {
   try {
     const parsed = JSON.parse(value);
     if (Array.isArray(parsed)) {
-      return JSON.stringify(parsed);
+      return JSON.stringify(parsed.filter((item): item is string => typeof item === 'string'));
     }
   } catch {
     return JSON.stringify(

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bonds LinkedIn Importer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Import LinkedIn profiles into the Bonds personal CRM.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAkiPwAKO+7+U8MakZsnGnM3uNFCaQyY/mcfl31viYVR58ggcrDn3OCwQcaIBPHsqKk+zpJuGOQ+pZascMq/qMuqOStUaMYqifDGCwyFxx6ANjjYmj67b1TDKcEYK4fjF0FK5uIxRi9GZ0YQszPBFqXhCj1OC7RpR4n4ETZVxhQFx7uw4/lX3il2Fg25h9+ZBXPyqZ6BJC4c930pfneJ6Rlh0AfLRrqVUpNn4hg7GeA0JF4UBBc48tdCODtcA24UszNm0oB2U7WleT7fh9h5o5ulIxXTibN8OOb5VgYlzRejcbVKI45JfeKBo6VbwUCP8oDTbnBtJxdcbYmrzbOmj2uQIDAQAB",
   "action": {
@@ -16,6 +16,9 @@
     "https://www.linkedin.com/*",
     "http://localhost:3100/*",
     "http://127.0.0.1:3100/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
   ],
   "content_scripts": [
     {

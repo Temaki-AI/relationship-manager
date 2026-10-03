@@ -2,386 +2,553 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { FolderOpen, Plus, ChevronDown, ChevronRight, Edit, Trash2, X, Save, UserPlus } from 'lucide-react';
-import type { Contact, ContactGroup } from '@/lib/db';
-import { getResponseErrorMessage } from '@/lib/utils';
+import {
+  AlertTriangle,
+  CheckSquare,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  RefreshCw,
+  Square,
+  Tag,
+  UserPlus,
+  X,
+} from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { LoadError } from '@/components/ui/load-error';
 import { useToast } from '@/components/ui/toast';
+import { getResponseErrorMessage } from '@/lib/utils';
 
-const COLOR_OPTIONS = [
-  { name: 'rose', bg: 'bg-rose-500' },
-  { name: 'blue', bg: 'bg-blue-500' },
-  { name: 'emerald', bg: 'bg-emerald-500' },
-  { name: 'amber', bg: 'bg-amber-500' },
-  { name: 'purple', bg: 'bg-purple-500' },
-  { name: 'indigo', bg: 'bg-indigo-500' },
-  { name: 'cyan', bg: 'bg-cyan-500' },
-  { name: 'pink', bg: 'bg-pink-500' },
+type Pagination = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+type TagSummary = {
+  tag: string;
+  contactCount: number;
+};
+
+type DirectoryContact = {
+  id: number;
+  name: string;
+  email: string | null;
+};
+
+type DirectoryPage = {
+  contacts: DirectoryContact[];
+  pagination: Pagination;
+};
+
+const EMPTY_PAGE: DirectoryPage = {
+  contacts: [],
+  pagination: { page: 1, pageSize: 30, total: 0, totalPages: 1 },
+};
+
+const TAG_COLORS = [
+  'bg-rose-500',
+  'bg-blue-500',
+  'bg-emerald-500',
+  'bg-amber-500',
+  'bg-orange-500',
+  'bg-indigo-500',
+  'bg-cyan-500',
+  'bg-pink-500',
+  'bg-teal-500',
 ];
 
-function getColorClass(color: string | null): string {
-  const found = COLOR_OPTIONS.find(c => c.name === color);
-  return found ? found.bg : 'bg-muted-foreground';
+function getTagColor(tag: string): string {
+  const index = tag.split('').reduce((total, character) => total + character.charCodeAt(0), 0)
+    % TAG_COLORS.length;
+  return TAG_COLORS[index];
 }
-
-type GroupWithCount = ContactGroup & { member_count: number };
 
 function SkeletonGroups() {
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="skeleton h-9 w-40" />
-        <div className="skeleton h-9 w-36" />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="skeleton h-24 rounded-xl" />
+      <div className="skeleton h-9 w-40" />
+      <div className="space-y-3">
+        {[1, 2, 3, 4].map((item) => (
+          <div key={item} className="skeleton h-16 rounded-xl" />
         ))}
       </div>
     </div>
   );
 }
 
+function DirectoryLoadError({
+  message,
+  retrying,
+  onRetry,
+}: {
+  message: string;
+  retrying: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">This contact list could not be loaded</p>
+          <p className="mt-1 text-xs leading-relaxed text-amber-900">{message}</p>
+          <Button type="button" variant="outline" size="sm" className="mt-3" disabled={retrying} onClick={onRetry}>
+            <RefreshCw className={`h-3.5 w-3.5 ${retrying ? 'animate-spin' : ''}`} aria-hidden="true" />
+            {retrying ? 'Trying again...' : 'Try again'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Pager({
+  pagination,
+  onPageChange,
+}: {
+  pagination: Pagination;
+  onPageChange: (page: number) => void;
+}) {
+  if (pagination.totalPages <= 1) return null;
+  return (
+    <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/50 pt-3">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="min-h-11 sm:min-h-8"
+        disabled={pagination.page <= 1}
+        onClick={() => onPageChange(pagination.page - 1)}
+      >
+        <ChevronLeft className="h-4 w-4" />
+        Previous
+      </Button>
+      <span className="text-xs text-muted-foreground">
+        Page {pagination.page} of {pagination.totalPages}
+      </span>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="min-h-11 sm:min-h-8"
+        disabled={pagination.page >= pagination.totalPages}
+        onClick={() => onPageChange(pagination.page + 1)}
+      >
+        Next
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
 export default function GroupsPage() {
-  const [groups, setGroups] = useState<GroupWithCount[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [groups, setGroups] = useState<TagSummary[]>([]);
+  const [groupsPagination, setGroupsPagination] = useState<Pagination>({
+    page: 1,
+    pageSize: 100,
+    total: 0,
+    totalPages: 1,
+  });
+  const [groupPage, setGroupPage] = useState(1);
+  const [expandedTag, setExpandedTag] = useState<string | null>(null);
+  const [members, setMembers] = useState<DirectoryPage>(EMPTY_PAGE);
+  const [memberPage, setMemberPage] = useState(1);
+  const [membersError, setMembersError] = useState<string | null>(null);
+  const [memberReloadToken, setMemberReloadToken] = useState(0);
+  const [addingTag, setAddingTag] = useState<string | null>(null);
+  const [available, setAvailable] = useState<DirectoryPage>(EMPTY_PAGE);
+  const [availablePage, setAvailablePage] = useState(1);
+  const [availableError, setAvailableError] = useState<string | null>(null);
+  const [availableReloadToken, setAvailableReloadToken] = useState(0);
+  const [availableSearch, setAvailableSearch] = useState('');
+  const [availableSearchQuery, setAvailableSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newGroup, setNewGroup] = useState({ name: '', color: 'rose' });
-  const [expandedGroupId, setExpandedGroupId] = useState<number | null>(null);
-  const [groupMembers, setGroupMembers] = useState<Record<number, Contact[]>>({});
-  const [editingGroupId, setEditingGroupId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', color: '' });
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [availableLoading, setAvailableLoading] = useState(false);
+  const [adding, setAdding] = useState(false);
   const { toast } = useToast();
 
+  async function fetchGroups(targetPage: number, signal?: AbortSignal) {
+    const response = await fetch(`/api/groups/tags?page=${targetPage}&pageSize=100`, {
+      cache: 'no-store',
+      signal,
+    });
+    if (!response.ok) {
+      throw new Error(await getResponseErrorMessage(response, 'Failed to fetch groups'));
+    }
+    const data = await response.json();
+    setGroups(Array.isArray(data.tags) ? data.tags : []);
+    if (data.pagination) {
+      setGroupsPagination(data.pagination);
+      if (data.pagination.page !== targetPage) setGroupPage(data.pagination.page);
+    }
+  }
+
+  async function fetchDirectory(
+    tag: string,
+    membership: 'members' | 'available',
+    targetPage: number,
+    search = '',
+    signal?: AbortSignal
+  ): Promise<DirectoryPage> {
+    const params = new URLSearchParams({
+      tag,
+      membership,
+      page: String(targetPage),
+      pageSize: '30',
+    });
+    if (search.trim()) params.set('search', search.trim());
+    const response = await fetch(`/api/groups/tags/contacts?${params}`, {
+      cache: 'no-store',
+      signal,
+    });
+    if (!response.ok) {
+      throw new Error(await getResponseErrorMessage(response, 'Failed to fetch group contacts'));
+    }
+    return response.json() as Promise<DirectoryPage>;
+  }
+
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [groupsRes, contactsRes] = await Promise.all([
-          fetch('/api/groups'),
-          fetch('/api/contacts'),
-        ]);
-        const groupsData = await groupsRes.json();
-        const contactsData = await contactsRes.json();
-        setGroups(groupsData.groups);
-        setContacts(contactsData.contacts);
-      } catch (error) {
-        console.error('Failed to fetch groups:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
-  }, []);
+    const timeout = window.setTimeout(() => setAvailableSearchQuery(availableSearch), 200);
+    return () => window.clearTimeout(timeout);
+  }, [availableSearch]);
 
-  async function fetchGroupMembers(groupId: number) {
-    try {
-      const res = await fetch(`/api/groups/${groupId}`);
-      const data = await res.json();
-      setGroupMembers(prev => ({ ...prev, [groupId]: data.members }));
-    } catch (error) {
-      console.error('Failed to fetch group members:', error);
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    fetchGroups(groupPage, controller.signal)
+      .then(() => setLoadError(null))
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        setLoadError(error instanceof Error ? error.message : 'Failed to fetch groups');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [groupPage, reloadToken]);
+
+  useEffect(() => {
+    if (!expandedTag) {
+      setMembers(EMPTY_PAGE);
+      setMembersError(null);
+      return;
     }
+    const controller = new AbortController();
+    setMembersLoading(true);
+    fetchDirectory(expandedTag, 'members', memberPage, '', controller.signal)
+      .then((data) => {
+        setMembers(data);
+        setMembersError(null);
+        if (data.pagination.page !== memberPage) setMemberPage(data.pagination.page);
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        setMembersError(error instanceof Error ? error.message : 'Failed to fetch group contacts');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setMembersLoading(false);
+      });
+    return () => controller.abort();
+  }, [expandedTag, memberPage, memberReloadToken]);
+
+  useEffect(() => {
+    if (!addingTag) {
+      setAvailable(EMPTY_PAGE);
+      setAvailableError(null);
+      return;
+    }
+    const controller = new AbortController();
+    setAvailableLoading(true);
+    fetchDirectory(
+      addingTag,
+      'available',
+      availablePage,
+      availableSearchQuery,
+      controller.signal
+    )
+      .then((data) => {
+        setAvailable(data);
+        setAvailableError(null);
+        if (data.pagination.page !== availablePage) setAvailablePage(data.pagination.page);
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        setAvailableError(error instanceof Error ? error.message : 'Failed to fetch available contacts');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setAvailableLoading(false);
+      });
+    return () => controller.abort();
+  }, [addingTag, availablePage, availableReloadToken, availableSearchQuery]);
+
+  function toggleSelection(contactId: number) {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(contactId)) next.delete(contactId);
+      else next.add(contactId);
+      return next;
+    });
   }
 
-  async function refreshGroups() {
-    const res = await fetch('/api/groups');
-    const data = await res.json();
-    setGroups(data.groups);
-  }
-
-  async function handleCreateGroup(e: React.FormEvent) {
-    e.preventDefault();
+  async function addSelectedContacts() {
+    if (!addingTag || selectedIds.size === 0) return;
+    const targetTag = addingTag;
+    setAdding(true);
     try {
-      const res = await fetch('/api/groups', {
+      const response = await fetch('/api/groups/tags/contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newGroup),
+        body: JSON.stringify({ tag: addingTag, contactIds: Array.from(selectedIds) }),
       });
-      if (!res.ok) {
-        toast({ message: await getResponseErrorMessage(res, 'Failed to create group'), variant: 'error' });
-        return;
+      if (!response.ok) {
+        throw new Error(await getResponseErrorMessage(response, 'Failed to add contacts'));
       }
-      setNewGroup({ name: '', color: 'rose' });
-      setShowCreateForm(false);
-      await refreshGroups();
-      toast({ message: 'Group created' });
+      const data = await response.json() as { affected?: number };
+      const affected = Number(data.affected) || 0;
+      setSelectedIds(new Set());
+      setAddingTag(null);
+      setMemberPage(1);
+      setMembersError(null);
+      setMemberReloadToken((value) => value + 1);
+      setGroups((previous) => previous.map((group) =>
+        group.tag.toLowerCase() === targetTag.toLowerCase()
+          ? { ...group, contactCount: group.contactCount + affected }
+          : group
+      ));
+      toast({ message: `Added ${affected} contact${affected === 1 ? '' : 's'} to “${targetTag}”` });
     } catch (error) {
-      console.error('Failed to create group:', error);
-      toast({ message: 'Failed to create group', variant: 'error' });
+      toast({ message: error instanceof Error ? error.message : 'Failed to add contacts', variant: 'error' });
+    } finally {
+      setAdding(false);
     }
   }
 
-  async function handleEditGroup(groupId: number) {
-    try {
-      const res = await fetch(`/api/groups/${groupId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editForm),
-      });
-      if (!res.ok) {
-        toast({ message: await getResponseErrorMessage(res, 'Failed to update group'), variant: 'error' });
-        return;
-      }
-      setEditingGroupId(null);
-      await refreshGroups();
-      toast({ message: 'Group updated' });
-    } catch (error) {
-      console.error('Failed to update group:', error);
-      toast({ message: 'Failed to update group', variant: 'error' });
-    }
-  }
+  if (loading && !loadError) return <SkeletonGroups />;
 
-  async function handleDeleteGroup(groupId: number) {
-    if (!confirm('Delete this group? Members will not be deleted.')) return;
-    try {
-      const res = await fetch(`/api/groups/${groupId}`, { method: 'DELETE' });
-      if (!res.ok) {
-        toast({ message: await getResponseErrorMessage(res, 'Failed to delete group'), variant: 'error' });
-        return;
-      }
-      if (expandedGroupId === groupId) setExpandedGroupId(null);
-      await refreshGroups();
-      toast({ message: 'Group deleted' });
-    } catch (error) {
-      console.error('Failed to delete group:', error);
-      toast({ message: 'Failed to delete group', variant: 'error' });
-    }
+  if (loadError) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-fade-in">
+          <h1 className="text-2xl font-bold sm:text-3xl">Groups</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">Organize your people using contact tags.</p>
+        </div>
+        <LoadError
+          title="We couldn't load your groups"
+          message={`${loadError}. No empty group directory is being shown.`}
+          retrying={loading}
+          onRetry={() => setReloadToken((value) => value + 1)}
+          backHref="/contacts"
+          backLabel="Back to contacts"
+        />
+      </div>
+    );
   }
-
-  async function handleAddMember(groupId: number, contactId: number) {
-    try {
-      const res = await fetch(`/api/groups/${groupId}/members`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contact_id: contactId }),
-      });
-      if (!res.ok) {
-        toast({ message: await getResponseErrorMessage(res, 'Failed to add member'), variant: 'error' });
-        return;
-      }
-      await fetchGroupMembers(groupId);
-      await refreshGroups();
-      toast({ message: 'Member added' });
-    } catch (error) {
-      console.error('Failed to add member:', error);
-      toast({ message: 'Failed to add member', variant: 'error' });
-    }
-  }
-
-  async function handleRemoveMember(groupId: number, contactId: number) {
-    try {
-      const res = await fetch(`/api/groups/${groupId}/members?contact_id=${contactId}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) {
-        toast({ message: await getResponseErrorMessage(res, 'Failed to remove member'), variant: 'error' });
-        return;
-      }
-      await fetchGroupMembers(groupId);
-      await refreshGroups();
-      toast({ message: 'Member removed' });
-    } catch (error) {
-      console.error('Failed to remove member:', error);
-      toast({ message: 'Failed to remove member', variant: 'error' });
-    }
-  }
-
-  function toggleExpand(groupId: number) {
-    if (expandedGroupId === groupId) {
-      setExpandedGroupId(null);
-    } else {
-      setExpandedGroupId(groupId);
-      if (!groupMembers[groupId]) {
-        fetchGroupMembers(groupId);
-      }
-    }
-  }
-
-  function startEdit(group: GroupWithCount) {
-    setEditingGroupId(group.id);
-    setEditForm({ name: group.name, color: group.color || 'rose' });
-  }
-
-  if (loading) return <SkeletonGroups />;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Groups</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {groups.length} {groups.length === 1 ? 'group' : 'groups'}
-          </p>
-        </div>
-        <Button size="sm" onClick={() => setShowCreateForm(!showCreateForm)}>
-          <Plus className="w-3.5 h-3.5 mr-1.5" />
-          Create group
-        </Button>
+      <div className="animate-fade-in">
+        <h1 className="text-2xl font-bold sm:text-3xl">Groups</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          {groupsPagination.total} {groupsPagination.total === 1 ? 'group' : 'groups'} from your contact tags
+        </p>
       </div>
 
-      {/* Create Form */}
-      {showCreateForm && (
-        <Card className="animate-slide-down border-primary/20 bg-primary/5">
-          <CardContent className="pt-5 pb-4">
-            <form onSubmit={handleCreateGroup} className="space-y-3">
-              <div className="flex items-center gap-2 mb-1">
-                <FolderOpen className="w-4 h-4 text-primary" />
-                <span className="font-medium text-sm">New group</span>
-              </div>
-              <Input
-                required
-                placeholder="Group name..."
-                value={newGroup.name}
-                onChange={(e) => setNewGroup({ ...newGroup, name: e.target.value })}
-                className="bg-white"
-              />
-              <div>
-                <span className="text-xs text-muted-foreground">Color</span>
-                <div className="flex gap-2 mt-1.5">
-                  {COLOR_OPTIONS.map((color) => (
-                    <button
-                      key={color.name}
-                      type="button"
-                      onClick={() => setNewGroup({ ...newGroup, color: color.name })}
-                      className={`w-7 h-7 rounded-full ${color.bg} transition-all ${
-                        newGroup.color === color.name
-                          ? 'ring-2 ring-offset-2 ring-primary scale-110'
-                          : 'hover:scale-105'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button type="submit" size="sm">Create</Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setShowCreateForm(false)}>Cancel</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Groups Grid */}
       {groups.length > 0 ? (
         <div className="space-y-3 stagger-children">
-          {groups.map((group) => {
-            const isExpanded = expandedGroupId === group.id;
-            const isEditing = editingGroupId === group.id;
-            const members = groupMembers[group.id] || [];
-            const availableContacts = contacts.filter(
-              c => !members.some(m => m.id === c.id)
-            );
+          {groups.map((group, groupIndex) => {
+            const isExpanded = expandedTag?.toLowerCase() === group.tag.toLowerCase();
+            const isAdding = addingTag?.toLowerCase() === group.tag.toLowerCase();
+            const panelId = `tag-group-panel-${groupIndex}`;
+            const visibleAvailableIds = available.contacts.map((contact) => contact.id);
+            const pageSelected = visibleAvailableIds.length > 0
+              && visibleAvailableIds.every((id) => selectedIds.has(id));
 
             return (
-              <Card key={group.id} className="border-0 shadow-sm">
-                <CardContent className="pt-4 pb-4">
-                  {/* Group Header */}
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => toggleExpand(group.id)}
-                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
-                    >
-                      <div className={`w-4 h-4 rounded-full flex-shrink-0 ${getColorClass(group.color)}`} />
-                      {isEditing ? (
-                        <div className="flex-1 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                          <Input
-                            value={editForm.name}
-                            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                            className="h-8 text-sm"
-                          />
-                          <div className="flex gap-1">
-                            {COLOR_OPTIONS.map((color) => (
-                              <button
-                                key={color.name}
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); setEditForm({ ...editForm, color: color.name }); }}
-                                className={`w-5 h-5 rounded-full ${color.bg} transition-all ${
-                                  editForm.color === color.name ? 'ring-2 ring-offset-1 ring-primary' : ''
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <Button size="sm" variant="ghost" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); handleEditGroup(group.id); }}>
-                            <Save className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); setEditingGroupId(null); }}>
-                            <X className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <span className="font-semibold text-sm truncate">{group.name}</span>
-                          <Badge variant="secondary" className="text-xs font-normal flex-shrink-0">
-                            {group.member_count} {group.member_count === 1 ? 'member' : 'members'}
-                          </Badge>
-                        </>
-                      )}
-                    </button>
-                    {!isEditing && (
-                      <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={() => startEdit(group)} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
-                          <Edit className="w-3.5 h-3.5 text-muted-foreground" />
-                        </button>
-                        <button onClick={() => handleDeleteGroup(group.id)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors">
-                          <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
-                        </button>
-                        {isExpanded
-                          ? <ChevronDown className="w-4 h-4 text-muted-foreground mt-1" />
-                          : <ChevronRight className="w-4 h-4 text-muted-foreground mt-1" />
-                        }
-                      </div>
-                    )}
-                  </div>
+              <Card key={group.tag.toLowerCase()} className="border-0 shadow-sm">
+                <CardContent className="pb-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExpandedTag(isExpanded ? null : group.tag);
+                      setMemberPage(1);
+                      setMembersError(null);
+                      setAddingTag(null);
+                      setSelectedIds(new Set());
+                    }}
+                    className="flex min-h-11 w-full items-center gap-3 text-left"
+                    aria-expanded={isExpanded}
+                    aria-controls={panelId}
+                  >
+                    <div className={`h-4 w-4 flex-shrink-0 rounded-full ${getTagColor(group.tag)}`} />
+                    <span className="flex-1 truncate text-sm font-semibold">{group.tag}</span>
+                    <Badge variant="secondary" className="flex-shrink-0 text-xs font-normal">
+                      {group.contactCount} {group.contactCount === 1 ? 'contact' : 'contacts'}
+                    </Badge>
+                    {isExpanded
+                      ? <ChevronDown className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      : <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />}
+                  </button>
 
-                  {/* Expanded Members */}
                   {isExpanded && (
-                    <div className="mt-4 pt-4 border-t border-border/50 animate-slide-down">
-                      {/* Add Member */}
-                      {availableContacts.length > 0 && (
-                        <div className="flex items-center gap-2 mb-3">
-                          <UserPlus className="w-3.5 h-3.5 text-muted-foreground" />
-                          <select
-                            className="flex-1 h-8 rounded-lg border border-input bg-white px-2 text-sm"
-                            value=""
-                            onChange={(e) => {
-                              if (e.target.value) handleAddMember(group.id, Number(e.target.value));
-                            }}
-                          >
-                            <option value="">Add a contact...</option>
-                            {availableContacts.map(c => (
-                              <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                          </select>
+                    <div id={panelId} className="mt-4 border-t border-border/50 pt-4 animate-slide-down">
+                      {membersError ? (
+                        <DirectoryLoadError
+                          message={`${membersError}. No empty membership claim is being shown.`}
+                          retrying={membersLoading}
+                          onRetry={() => setMemberReloadToken((value) => value + 1)}
+                        />
+                      ) : membersLoading ? (
+                        <div className="space-y-2">
+                          {[1, 2, 3].map((item) => <div key={item} className="skeleton h-12 rounded-xl" />)}
                         </div>
-                      )}
-
-                      {/* Member List */}
-                      {members.length > 0 ? (
+                      ) : members.contacts.length > 0 ? (
                         <div className="space-y-1">
-                          {members.map((member) => (
-                            <div key={member.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors group/member">
-                              <Avatar contact={member} size="sm" className="w-8 h-8" />
-                              <Link href={`/contacts/${member.id}`} className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate hover:text-primary transition-colors">{member.name}</p>
-                                {member.email && <p className="text-xs text-muted-foreground truncate">{member.email}</p>}
-                              </Link>
-                              <button
-                                onClick={() => handleRemoveMember(group.id, member.id)}
-                                className="p-1 rounded hover:bg-red-50 opacity-0 group-hover/member:opacity-100 sm:opacity-0 sm:group-hover/member:opacity-100 transition-opacity"
-                              >
-                                <X className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
-                              </button>
-                            </div>
+                          {members.contacts.map((contact) => (
+                            <Link
+                              key={contact.id}
+                              href={`/contacts/${contact.id}`}
+                              className="flex min-h-11 items-center gap-3 rounded-xl p-2 transition-colors hover:bg-muted/50"
+                            >
+                              <Avatar contact={contact} size="sm" className="h-8 w-8" />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium transition-colors hover:text-primary">{contact.name}</p>
+                                {contact.email && <p className="truncate text-xs text-muted-foreground">{contact.email}</p>}
+                              </div>
+                            </Link>
                           ))}
+                          <Pager pagination={members.pagination} onPageChange={setMemberPage} />
                         </div>
                       ) : (
-                        <p className="text-xs text-muted-foreground text-center py-4">No members yet</p>
+                        <p className="py-3 text-sm text-muted-foreground">No contacts in this group.</p>
+                      )}
+
+                      {!isAdding ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAddingTag(group.tag);
+                            setAvailablePage(1);
+                            setAvailableError(null);
+                            setAvailableSearch('');
+                            setSelectedIds(new Set());
+                          }}
+                          className="mt-3 flex min-h-11 w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-primary"
+                        >
+                          <UserPlus className="h-4 w-4" />
+                          Add contacts to this group
+                        </button>
+                      ) : (
+                        <div className="mt-3 space-y-3 border-t border-border/50 pt-3 animate-slide-down">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs font-medium text-muted-foreground">
+                              Add contacts to “{group.tag}”
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddingTag(null);
+                                setAvailableError(null);
+                                setSelectedIds(new Set());
+                              }}
+                              className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-muted sm:h-8 sm:w-8"
+                              aria-label={`Close add contacts panel for ${group.tag}`}
+                            >
+                              <X className="h-4 w-4 text-muted-foreground" />
+                            </button>
+                          </div>
+
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              aria-label={`Search contacts to add to ${group.tag}`}
+                              value={availableSearch}
+                              onChange={(event) => {
+                                setAvailableSearch(event.target.value);
+                                setAvailablePage(1);
+                                setSelectedIds(new Set());
+                              }}
+                              placeholder="Search available contacts..."
+                              className="h-11 pl-9"
+                            />
+                          </div>
+
+                          {availableError ? (
+                            <DirectoryLoadError
+                              message={`${availableError}. No availability claim is being shown.`}
+                              retrying={availableLoading}
+                              onRetry={() => setAvailableReloadToken((value) => value + 1)}
+                            />
+                          ) : availableLoading ? (
+                            <div className="space-y-2">
+                              {[1, 2, 3].map((item) => <div key={item} className="skeleton h-11 rounded-xl" />)}
+                            </div>
+                          ) : available.contacts.length > 0 ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedIds((previous) => {
+                                  const next = new Set(previous);
+                                  for (const id of visibleAvailableIds) {
+                                    if (pageSelected) next.delete(id);
+                                    else next.add(id);
+                                  }
+                                  return next;
+                                })}
+                                className="inline-flex min-h-11 items-center gap-2 text-xs font-medium text-primary sm:min-h-8"
+                              >
+                                {pageSelected ? <Square className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
+                                {pageSelected ? 'Clear page' : `Select page (${available.contacts.length})`}
+                              </button>
+                              <div className="max-h-72 space-y-0.5 overflow-y-auto">
+                                {available.contacts.map((contact) => (
+                                  <label
+                                    key={contact.id}
+                                    className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl p-2 transition-colors hover:bg-muted/50"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedIds.has(contact.id)}
+                                      onChange={() => toggleSelection(contact.id)}
+                                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20"
+                                    />
+                                    <Avatar contact={contact} size="sm" className="h-7 w-7" />
+                                    <span className="truncate text-sm">{contact.name}</span>
+                                  </label>
+                                ))}
+                              </div>
+                              <Pager
+                                pagination={available.pagination}
+                                onPageChange={(nextPage) => {
+                                  setAvailablePage(nextPage);
+                                  setSelectedIds(new Set());
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                className="min-h-11"
+                                disabled={selectedIds.size === 0 || adding}
+                                onClick={addSelectedContacts}
+                              >
+                                {adding ? 'Adding...' : `Add ${selectedIds.size} selected`}
+                              </Button>
+                            </>
+                          ) : (
+                            <p className="py-4 text-center text-xs text-muted-foreground">
+                              {availableSearch ? 'No available contacts match that search.' : 'All contacts already belong to this group.'}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
@@ -389,19 +556,20 @@ export default function GroupsPage() {
               </Card>
             );
           })}
+
+          <Pager pagination={groupsPagination} onPageChange={setGroupPage} />
         </div>
       ) : (
-        <Card className="animate-scale-in border-0 shadow-sm">
+        <Card className="border-0 shadow-sm animate-scale-in">
           <CardContent className="py-16 text-center">
-            <div className="text-5xl mb-4">📁</div>
-            <h3 className="text-lg font-semibold">No groups yet</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-              Create a group to organize your contacts — Family, Work, Tennis Club, whatever makes sense.
+            <Tag className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h2 className="mt-4 text-lg font-semibold">No groups yet</h2>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+              Add tags such as friend, work, or tennis to a contact and they will appear here as groups.
             </p>
-            <Button className="mt-4" onClick={() => setShowCreateForm(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create your first group
-            </Button>
+            <Link href="/contacts" className={buttonVariants({ className: 'mt-4' })}>
+              Go to contacts
+            </Link>
           </CardContent>
         </Card>
       )}

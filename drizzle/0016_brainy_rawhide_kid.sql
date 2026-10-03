@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `cloud_snapshot_capture_one_active` ON `cloud_snapshot_capture_jobs` (`workspace_id`) WHERE "cloud_snapshot_capture_jobs"."state" IN ('capturing', 'awaiting_verification');

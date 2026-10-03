@@ -1,5 +1,14 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/db';
+import db, { backupDirectory } from '@/lib/db';
+import { parseGroupColor, parseGroupName } from '@/lib/group-input';
+import { parsePositiveInteger } from '@/lib/relationship-validation';
+import { readJsonBody, RequestBodyError } from '@/lib/request-body';
+import { logRouteError } from '@/lib/observability';
+import { listNumericGroupMemberPage } from '@/lib/numeric-group-directory';
+import {
+  DatabaseMaintenanceBusyError,
+  withDatabaseMutationLock,
+} from '@/lib/database-maintenance-lock';
 
 function isUniqueConstraintError(error: unknown): boolean {
   return error instanceof Error && error.message.includes('UNIQUE constraint failed');
@@ -11,26 +20,24 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const groupId = parsePositiveInteger(id);
+    if (!groupId) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
     
-    const group = db.prepare('SELECT * FROM contact_groups WHERE id = ?').get(id);
+    const group = db.prepare('SELECT * FROM contact_groups WHERE id = ?').get(groupId);
 
     if (!group) {
       return NextResponse.json({ error: 'Group not found' }, { status: 404 });
     }
     
-    const members = db
-      .prepare(`
-        SELECT c.*
-        FROM contacts c
-        JOIN contact_group_members cgm ON c.id = cgm.contact_id
-        WHERE cgm.group_id = ?
-        ORDER BY c.name
-      `)
-      .all(id);
+    const { searchParams } = new URL(request.url);
+    const { members, pagination } = listNumericGroupMemberPage(db, groupId, {
+      page: searchParams.get('page'),
+      pageSize: searchParams.get('pageSize'),
+    });
 
-    return NextResponse.json({ group, members });
+    return NextResponse.json({ group, members, pagination });
   } catch (error) {
-    console.error('Failed to fetch group:', error);
+    logRouteError('groups.detail_failed', error, request, '/api/groups/[id]');
     return NextResponse.json({ error: 'Failed to fetch group' }, { status: 500 });
   }
 }
@@ -41,27 +48,39 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const body = await request.json();
-    const { name, color } = body;
+    const groupId = parsePositiveInteger(id);
+    if (!groupId) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+    const body = await readJsonBody<Record<string, unknown>>(request);
+    const name = parseGroupName(body.name);
+    const color = parseGroupColor(body.color);
 
-    if (!name || !String(name).trim()) {
-      return NextResponse.json({ error: 'Group name is required' }, { status: 400 });
+    if (!name) {
+      return NextResponse.json({ error: 'Group name must be 1-100 characters' }, { status: 400 });
+    }
+    if (color === undefined) {
+      return NextResponse.json({ error: 'Group color must be a six-digit hex color' }, { status: 400 });
     }
 
-    const result = db.prepare('UPDATE contact_groups SET name = ?, color = ? WHERE id = ?').run(
-      String(name).trim(),
-      color || null,
-      id
-    );
-
-    if (result.changes === 0) {
+    const group = withDatabaseMutationLock(backupDirectory, () => {
+      const result = db.prepare(
+        'UPDATE contact_groups SET name = ?, color = ? WHERE id = ?'
+      ).run(name, color, groupId);
+      return result.changes === 0
+        ? null
+        : db.prepare('SELECT * FROM contact_groups WHERE id = ?').get(groupId);
+    });
+    if (!group) {
       return NextResponse.json({ error: 'Group not found' }, { status: 404 });
     }
-
-    const group = db.prepare('SELECT * FROM contact_groups WHERE id = ?').get(id);
     return NextResponse.json({ group });
   } catch (error) {
-    console.error('Failed to update group:', error);
+    if (error instanceof RequestBodyError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof DatabaseMaintenanceBusyError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    logRouteError('groups.update_failed', error, request, '/api/groups/[id]');
     if (isUniqueConstraintError(error)) {
       return NextResponse.json({ error: 'A group with that name already exists' }, { status: 409 });
     }
@@ -75,7 +94,12 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const result = db.prepare('DELETE FROM contact_groups WHERE id = ?').run(id);
+    const groupId = parsePositiveInteger(id);
+    if (!groupId) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+    const result = withDatabaseMutationLock(
+      backupDirectory,
+      () => db.prepare('DELETE FROM contact_groups WHERE id = ?').run(groupId)
+    );
 
     if (result.changes === 0) {
       return NextResponse.json({ error: 'Group not found' }, { status: 404 });
@@ -83,7 +107,10 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete group:', error);
+    if (error instanceof DatabaseMaintenanceBusyError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    logRouteError('groups.delete_failed', error, request, '/api/groups/[id]');
     return NextResponse.json({ error: 'Failed to delete group' }, { status: 500 });
   }
 }
