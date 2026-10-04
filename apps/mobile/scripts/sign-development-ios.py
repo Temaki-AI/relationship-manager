@@ -7,8 +7,10 @@ devices already registered in the supplied development provisioning profile.
 import argparse
 import datetime
 import fnmatch
+import hashlib
 import pathlib
 import plistlib
+import re
 import shutil
 import subprocess
 import tempfile
@@ -22,7 +24,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("app", type=pathlib.Path)
     parser.add_argument("--profile", required=True, type=pathlib.Path)
-    parser.add_argument("--identity", required=True)
+    parser.add_argument("--identity", required=True, help="SHA-1 fingerprint from security find-identity -v -p codesigning")
     parser.add_argument("--output", required=True, type=pathlib.Path)
     args = parser.parse_args()
     info = plistlib.loads((args.app / "Info.plist").read_bytes())
@@ -32,6 +34,13 @@ def main():
         parser.error("The output already exists. Choose a new filename.")
     decoded = subprocess.run(["security", "cms", "-D", "-i", str(args.profile)], check=True, capture_output=True)
     profile = plistlib.loads(decoded.stdout)
+    fingerprint = args.identity.upper()
+    allowed_certificates = {hashlib.sha1(cert).hexdigest().upper() for cert in profile.get("DeveloperCertificates", [])}
+    if not re.fullmatch(r"[0-9A-F]{40}", fingerprint) or fingerprint not in allowed_certificates:
+        parser.error("The signing identity fingerprint must match a certificate in this profile.")
+    identities = subprocess.run(["security", "find-identity", "-v", "-p", "codesigning"], check=True, capture_output=True, text=True)
+    if fingerprint not in identities.stdout:
+        parser.error("The profile's signing identity is not available in the local Keychain.")
     if not profile.get("ProvisionedDevices") or not profile.get("Entitlements", {}).get("get-task-allow"):
         parser.error("An existing development provisioning profile is required.")
     if profile["ExpirationDate"] <= datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None):

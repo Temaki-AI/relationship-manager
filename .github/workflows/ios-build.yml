@@ -97,6 +97,7 @@ jobs:
           retention-days: 14
       - name: Verify simulator startup and real SQLite migration
         if: matrix.target == 'simulator'
+        timeout-minutes: 5
         run: |
           simulator_id=$(xcrun simctl create Everclose-smoke com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro com.apple.CoreSimulator.SimRuntime.iOS-26-4)
           xcrun simctl boot "$simulator_id"

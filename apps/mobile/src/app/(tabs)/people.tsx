@@ -23,11 +23,13 @@ import { getRelationshipState, type ContactRecord } from '@/domain/contact';
 import { formatRelativeDate } from '@/lib/format';
 import { fonts, palette } from '@/theme';
 import { useNativeSync } from '@/native/sync';
+import { useNativeAccount } from '@/native/account';
 
 export default function PeopleScreen() {
   const db = useSQLiteContext();
   const focused = useIsFocused();
-  const { revision } = useNativeSync();
+  const { revision, syncing, error: syncError } = useNativeSync();
+  const { account } = useNativeAccount();
   const router = useRouter();
   const [contacts, setContacts] = useState<ContactRecord[]>([]);
   const [search, setSearch] = useState('');
@@ -119,8 +121,17 @@ export default function PeopleScreen() {
             <DeviceContactAccess disabled={importing} />
           </View>
         )}
-        ListEmptyComponent={loading ? (
-          <View style={styles.empty}><ActivityIndicator color={palette.primary} /></View>
+        ListEmptyComponent={loading || account && syncing ? (
+          <View style={styles.empty}><ActivityIndicator color={palette.primary} />
+            {account && <Text style={styles.emptyText}>Downloading your workspace…</Text>}
+          </View>
+        ) : account && syncError ? (
+          <View style={styles.empty}>
+            <Text accessibilityRole="alert" style={styles.emptyText}>{syncError}</Text>
+            <Pressable accessibilityRole="button" onPress={() => router.push('/account')} style={styles.importButton}>
+              <Text style={styles.importTitle}>Open account & sync</Text>
+            </Pressable>
+          </View>
         ) : (
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>{search ? 'No one matches yet' : 'Start with one person'}</Text>
