@@ -2,6 +2,12 @@ name: iOS binary
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Native binary to build
+        type: choice
+        default: both
+        options: [both, simulator, device]
   pull_request:
     paths:
       - 'apps/mobile/**'
@@ -23,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [simulator, device]
+        target: ${{ fromJSON(inputs.target == 'simulator' && '["simulator"]' || inputs.target == 'device' && '["device"]' || '["simulator","device"]') }}
     env:
       CI: '1'
       EXPO_PUBLIC_EVERCLOSE_API_URL: https://everclosecrm.com
@@ -82,18 +88,26 @@ jobs:
           (cd build/artifact && shasum -a 256 "Everclose-$BUILD_TARGET.zip" > SHA256.txt)
           git rev-parse HEAD > build/artifact/COMMIT.txt
           xcodebuild -version > build/artifact/XCODE.txt
+      - name: Upload compiled app
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: Everclose-${{ matrix.target }}
+          path: apps/mobile/build/artifact/
+          if-no-files-found: error
+          retention-days: 14
       - name: Verify simulator startup and real SQLite migration
         if: matrix.target == 'simulator'
         run: |
           simulator_id=$(xcrun simctl create Everclose-smoke com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro com.apple.CoreSimulator.SimRuntime.iOS-26-4)
           xcrun simctl boot "$simulator_id"
-          xcrun simctl bootstatus "$simulator_id" -b
+          python3 -c 'import subprocess, sys; subprocess.run(["xcrun", "simctl", "bootstatus", sys.argv[1], "-b"], check=True, timeout=180)' "$simulator_id"
           xcrun simctl install "$simulator_id" build/DerivedData/Build/Products/Release-iphonesimulator/Everclose.app
           xcrun simctl launch "$simulator_id" com.fernandoamaral.bonds
           app_data=$(xcrun simctl get_app_container "$simulator_id" com.fernandoamaral.bonds data)
           database="$app_data/Documents/SQLite/bonds-mobile.db"
           for attempt in {1..30}; do
-            if [ -f "$database" ] && [ "$(sqlite3 "$database" 'PRAGMA user_version')" = 14 ]; then
+            if [ -f "$database" ] && [ "$(sqlite3 "$database" 'PRAGMA user_version')" = 14 ] && \
+              [ "$(sqlite3 "$database" "SELECT COUNT(*) FROM app_metadata WHERE key = 'device-source-installation'")" = 1 ]; then
               test "$(sqlite3 "$database" 'PRAGMA integrity_check')" = ok
               test "$(sqlite3 "$database" 'SELECT COUNT(*) FROM contacts')" = 0
               xcrun simctl io "$simulator_id" screenshot build/artifact/first-launch.png
@@ -103,11 +117,12 @@ jobs:
           done
           echo 'App startup did not initialize its real database.' >&2
           exit 1
-      - name: Upload compiled app
+      - name: Upload verified first-launch screenshot
+        if: matrix.target == 'simulator'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: Everclose-${{ matrix.target }}
-          path: apps/mobile/build/artifact/
+          name: Everclose-simulator-startup
+          path: apps/mobile/build/artifact/first-launch.png
           if-no-files-found: error
           retention-days: 14
       - name: Upload native build diagnostics
