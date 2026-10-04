@@ -54,5 +54,5 @@ export const DATA_CAPABILITIES: readonly DataCapability[] = [
 
 export const AUTOMATIC_ACCOUNT_SYNC = {
   enabled: false,
-  message: 'Google, Microsoft, email, and calendar data are not read automatically in this release. Google Contacts authorization is managed separately; selected imports are still being developed.',
+  message: 'Google, Microsoft, email, and calendar data are not read automatically when you sign in. Source connections, imports and recurring reads each require separate choices.',
 } as const;

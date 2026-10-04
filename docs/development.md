@@ -106,7 +106,7 @@ Production remains configured in `wrangler.jsonc`. `npm run deploy:cloud` and
 Do not run either as part of local setup.
 
 The [4 October personal web release](personal-web-release.md) is deployed as Worker
-version `deb442e1-bc9d-4eb2-aa3b-ac06bd3b1036`, with migration 44 and verified real
+version `4222b1a6-c7ba-47e1-b8cb-3f78adeaff17`, with migration 44 and verified real
 Google identity sign-in. Local OAuth credentials remain a separate setup step.
 
 On October 3, 2026, Cloudflare reported the then-active production version as

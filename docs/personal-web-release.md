@@ -4,7 +4,7 @@ The working web release is deployed at **https://everclosecrm.com**. It uses the
 
 ## Release evidence
 
-- Cloudflare Worker version: `deb442e1-bc9d-4eb2-aa3b-ac06bd3b1036`.
+- Cloudflare Worker version: `4222b1a6-c7ba-47e1-b8cb-3f78adeaff17`.
 - D1 migrations applied through `0044_calendar_plan_publications.sql`.
 - Production readiness: HTTP 200, `ready: true`, Google authentication and current schema.
 - Unauthenticated contact access: HTTP 401.
@@ -33,3 +33,5 @@ The native iOS source and JavaScript bundle have passed their checks, but an ins
 The standard remote migration command applied migrations 24–31, then failed while parsing migration 32 as a multi-statement query. The remaining 13 original SQL migrations and their journal entries were successfully applied through Cloudflare's atomic SQL-file import. The post-upgrade foreign-key check is clean and all original CRM values match the backup. The original migration files were not changed.
 
 Cloudflare documents both [migration management](https://developers.cloudflare.com/d1/reference/migrations/) and [SQL import](https://developers.cloudflare.com/d1/best-practices/import-export-data/). A future release should first rehearse its pending SQL against a private copy using `scripts/check-release-upgrade.mjs`; do not blindly retry a partially completed remote migration run.
+
+The final version also corrects the old integration message that described reviewed imports as still in development. The existing capability check and lint pass, and the rebuilt Worker is deployed as the version above. The initial working deployment was `deb442e1-bc9d-4eb2-aa3b-ac06bd3b1036`.
