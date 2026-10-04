@@ -64,7 +64,8 @@ jobs:
               -configuration Release -sdk iphonesimulator \
               -destination 'generic/platform=iOS Simulator' \
               -derivedDataPath build/DerivedData \
-              ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO \
+              ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=YES \
+              CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=628QH4492F \
               build 2>&1 | tee build/xcodebuild.log | xcbeautify
             native_app=build/DerivedData/Build/Products/Release-iphonesimulator/Everclose.app
           else
@@ -78,9 +79,30 @@ jobs:
           test -f "$native_app/main.jsbundle"
           mkdir -p build/artifact
           ditto -c -k --sequesterRsrc --keepParent "$native_app" "build/artifact/Everclose-$BUILD_TARGET.zip"
-          shasum -a 256 "build/artifact/Everclose-$BUILD_TARGET.zip" > build/artifact/SHA256.txt
+          (cd build/artifact && shasum -a 256 "Everclose-$BUILD_TARGET.zip" > SHA256.txt)
           git rev-parse HEAD > build/artifact/COMMIT.txt
           xcodebuild -version > build/artifact/XCODE.txt
+      - name: Verify simulator startup and real SQLite migration
+        if: matrix.target == 'simulator'
+        run: |
+          simulator_id=$(xcrun simctl create Everclose-smoke com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro com.apple.CoreSimulator.SimRuntime.iOS-26-4)
+          xcrun simctl boot "$simulator_id"
+          xcrun simctl bootstatus "$simulator_id" -b
+          xcrun simctl install "$simulator_id" build/DerivedData/Build/Products/Release-iphonesimulator/Everclose.app
+          xcrun simctl launch "$simulator_id" com.fernandoamaral.bonds
+          app_data=$(xcrun simctl get_app_container "$simulator_id" com.fernandoamaral.bonds data)
+          database="$app_data/Documents/SQLite/bonds-mobile.db"
+          for attempt in {1..30}; do
+            if [ -f "$database" ] && [ "$(sqlite3 "$database" 'PRAGMA user_version')" = 14 ]; then
+              test "$(sqlite3 "$database" 'PRAGMA integrity_check')" = ok
+              test "$(sqlite3 "$database" 'SELECT COUNT(*) FROM contacts')" = 0
+              xcrun simctl io "$simulator_id" screenshot build/artifact/first-launch.png
+              exit 0
+            fi
+            sleep 1
+          done
+          echo 'App startup did not initialize its real database.' >&2
+          exit 1
       - name: Upload compiled app
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
