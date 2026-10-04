@@ -21,13 +21,14 @@ closed-app notifications reliably; Expo Go alone is insufficient.
 
 Set `EXPO_PUBLIC_EVERCLOSE_API_URL` to the HTTPS origin of a prepared server, or enter
 it in Account & sync. This public variable contains no credential. The default is
-`https://everclosecrm.com`, but the new device/sync endpoints are **not deployed** there
-by this local change. Prepare staging and apply migrations 0024–0041 first. Use the matching version-4 cloud service for saved Calendar context.
+`https://everclosecrm.com`. The matching device/sync endpoints and migrations through
+0044 are deployed there as of 4 October 2026. Use the matching version-4 cloud service
+for saved Calendar context. Sign in and approve this phone to download your existing workspace.
 The native client uses version 4 for contacts, interaction history, reminders,
 plans, family entries, relationships and read-only saved Calendar events. Schema 12
 adds the event cache and requires a complete staged bootstrap before incremental sync.
 Frozen version-1/version-2/version-3 requests retain their original body, endpoint and order.
-The web service needs real Google sign-in configuration. Debug builds accept HTTP
+The hosted web service has real Google sign-in. Debug builds accept HTTP
 loopback origins for simulator development; localhost on a physical phone refers
 to that phone, so use a properly configured HTTPS server for physical-device testing.
 
@@ -164,8 +165,9 @@ retain their earlier Bonds names for compatibility, while the display name is Ev
 
 Root tests exercise the actual native data code against SQLite and disposable cloud
 handlers, including response loss/restart, paginated downloads, overlap, account
-switches, restore, erasure and reviewed copying. Real Google OAuth, staging, physical
-phones, TestFlight, accessibility and provider connections remain release gates.
+switches, restore, erasure and reviewed copying. Native sign-in, physical phones,
+TestFlight, accessibility and provider connections remain release gates until
+exercised on the compiled app.
 See [architecture](docs/architecture.md), [sync protocol](../../docs/contact-sync.md)
 and the [complete development plan](../../docs/product-development-plan.md).
 

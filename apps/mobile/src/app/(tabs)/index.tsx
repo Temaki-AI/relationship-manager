@@ -17,6 +17,7 @@ import { getNextReminder, type ReminderRecord } from '@/data/reminders';
 import { formatDateTime, getGreeting } from '@/lib/format';
 import { fonts, palette } from '@/theme';
 import { useNativeSync } from '@/native/sync';
+import { useNativeAccount } from '@/native/account';
 
 type HomeState = {
   snapshot: DashboardSnapshot;
@@ -27,6 +28,7 @@ export default function TodayScreen() {
   const db = useSQLiteContext();
   const focused = useIsFocused();
   const { revision } = useNativeSync();
+  const { account } = useNativeAccount();
   const router = useRouter();
   const [state, setState] = useState<HomeState | null>(null);
 
@@ -45,7 +47,7 @@ export default function TodayScreen() {
         <View style={styles.topBar}>
           <BrandLockup />
           <Pressable accessibilityRole="button" accessibilityLabel="Account and sync" onPress={() => router.push('/account')}>
-            <StatusPill tone="moss" label="Account & sync" />
+            <StatusPill tone={account ? 'moss' : 'amber'} label={account ? 'Account & sync' : 'Sign in'} />
           </Pressable>
         </View>
 
@@ -114,11 +116,12 @@ export default function TodayScreen() {
             </View>
 
             <Surface style={styles.privacyCard}>
-              <View style={styles.privacyMark}><Text style={styles.privacyMarkText}>B</Text></View>
+              <View style={styles.privacyMark}><Text style={styles.privacyMarkText}>E</Text></View>
               <View style={styles.privacyCopy}>
                 <Text style={styles.privacyTitle}>Private by default</Text>
                 <Text style={styles.privacyText}>
-                  This first mobile build keeps relationship data on this device. No analytics or ad SDKs.
+                  {account ? 'Your private workspace syncs with Everclose. An offline copy stays on this iPhone.'
+                    : 'Your relationship data stays on this iPhone. Sign in to connect your existing workspace.'}
                 </Text>
               </View>
             </Surface>
