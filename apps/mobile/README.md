@@ -19,6 +19,19 @@ See the [versioned SDK requirements](https://docs.expo.dev/versions/v57.0.0/).
 A native build is required to test the registered callback, Keychain behavior and
 closed-app notifications reliably; Expo Go alone is insufficient.
 
+The [iOS binary workflow](../../.github/workflows/ios-build.yml) builds native arm64
+simulator and device release apps on GitHub using Xcode 26.4.1. The device artifact
+can be signed with an existing local Apple identity/profile using
+`scripts/sign-development-ios.py`; signing keys stay on the Mac. See the
+[personal iOS release record](../../docs/personal-ios-release.md) for artifacts,
+installation evidence and remaining physical-device checks.
+
+For committed JS-only corrections, `scripts/refresh-ios-bundle.mjs APP_DIRECTORY
+NATIVE_BUILD_COMMIT` can refresh an extracted app under `build/`. It checks that
+native dependencies/configuration/modules/assets still match the original binary,
+embeds the release Hermes bundle and records its source commits/checksum. Sign
+device apps again with the local signer. Native changes require a new Xcode build.
+
 Set `EXPO_PUBLIC_EVERCLOSE_API_URL` to the HTTPS origin of a prepared server, or enter
 it in Account & sync. This public variable contains no credential. The default is
 `https://everclosecrm.com`. The matching device/sync endpoints and migrations through

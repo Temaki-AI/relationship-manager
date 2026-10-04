@@ -17,11 +17,15 @@ if (plist('CFBundleIdentifier') !== 'com.fernandoamaral.bonds') throw new Error(
 const platform = plist('DTPlatformName');
 if (!['iphoneos', 'iphonesimulator'].includes(platform)) throw new Error('Choose an iOS device or simulator app.');
 const nativePaths = ['apps/mobile/package.json', 'apps/mobile/package-lock.json', 'apps/mobile/app.json',
-  'apps/mobile/modules', 'apps/mobile/assets', 'apps/mobile/metro.config.js', 'apps/mobile/babel.config.js'];
-execFileSync('git', ['diff', '--exit-code', nativeCommit, '--', ...nativePaths], { cwd: repository, stdio: 'pipe' });
+  'apps/mobile/modules', 'apps/mobile/assets', ...['js', 'cjs', 'mjs', 'ts'].flatMap((extension) =>
+    ['app', 'metro', 'babel'].map((name) => `apps/mobile/${name}.config.${extension}`))];
+const checkedPaths = [...nativePaths, 'apps/mobile/src', 'packages/domain'];
+if (execFileSync('git', ['ls-files', '--others', '--exclude-standard', '--', ...checkedPaths],
+  { cwd: repository, encoding: 'utf8' }).trim()) throw new Error('Commit app sources/config before refreshing a release bundle.');
+execFileSync('git', ['diff', '--quiet', nativeCommit, '--', ...nativePaths], { cwd: repository, stdio: 'pipe' });
 const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repository, encoding: 'utf8' }).trim();
 // A commit in the receipt must describe the actual JavaScript being packaged.
-execFileSync('git', ['diff', '--exit-code', 'HEAD', '--', 'apps/mobile/src', 'packages/domain'], { cwd: repository, stdio: 'pipe' });
+execFileSync('git', ['diff', '--quiet', 'HEAD', '--', 'apps/mobile/src', 'packages/domain'], { cwd: repository, stdio: 'pipe' });
 const staging = fs.mkdtempSync(path.join(mobile, 'build', 'everclose-bundle-'));
 try {
   const bundle = path.join(staging, 'main.jsbundle');

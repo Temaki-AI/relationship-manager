@@ -26,7 +26,10 @@ Google identity sign-in is configured. The separate Contacts, Calendar-reading a
 
 Local Google credentials are still missing. The exact localhost client is prepared in Google Cloud; creating it and saving its persistent credential requires the owner's pending confirmation. Local storage is isolated, so local sign-in alone will not copy production contacts.
 
-The native iOS source and JavaScript bundle have passed their checks, but an installed iPhone binary has not been built or tested. Xcode 26.2 on this computer is below the Expo 57 toolchain requirement. Native distribution, actual provider consent and the full integration pilot remain separate milestones in the [product plan](product-development-plan.md).
+The [personal iOS release](personal-ios-release.md) has now been compiled with Xcode
+26.4.1 on GitHub and installed on the owner's paired iPhone. Native sign-in and the
+phone/web journey await unlocking that phone. TestFlight, actual provider consent
+and the full integration pilot remain separate milestones in the [product plan](product-development-plan.md).
 
 ## Migration execution note
 

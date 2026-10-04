@@ -1,6 +1,6 @@
 # Development handoff — 4 October 2026
 
-The owner resumed work to obtain a working version. The [personal web release](personal-web-release.md) is now deployed at everclosecrm.com, with real Google sign-in and the existing contact database preserved. The full integrated beta and installed native iOS app remain unfinished.
+The owner resumed work to obtain a working version. The [personal web release](personal-web-release.md) is deployed at everclosecrm.com with real Google sign-in and the existing database preserved. The [personal iOS release](personal-ios-release.md) has been compiled and installed on the paired iPhone TIE Fighter. Native sign-in awaits unlocking that phone; TestFlight and the full integrated beta remain unfinished.
 
 ## Implemented locally
 
@@ -15,7 +15,15 @@ LinkedIn support uses URLs and export files. It does not continuously synchroniz
 
 The last complete regression run passed **756/756 root tests**. Root and native TypeScript/lint checks passed, as did native unit tests and the iOS JavaScript export. Google Calendar publishing/setup passed **18 desktop/mobile browser journeys** using fixtures. Disposable Worker/D1 checks covered publishing and Apple date transport.
 
-Those earlier checks establish local behavior. The subsequent web release also verified real production Google sign-in, readiness, authenticated page loads and preservation of 33 original data tables. Separate Google data-connection consent and an installed native iPhone binary remain unverified. Swift and podspec syntax checks passed; the custom Apple module has not been compiled and exercised on a device.
+The subsequent web release verified real production Google sign-in, readiness,
+authenticated page loads and preservation of 33 original data tables. Native simulator
+and device release binaries now compile with Xcode 26.4.1, including the custom Apple
+module. The signed iPhone build passes signature verification and is installed.
+The native app also launches locally with working Keychain storage and a clean
+schema-14 SQLite database; its real Google sign-in welcome screen renders. The
+hosted simulator runtime check timed out in Apple's cold-boot data migration.
+Separate Google data-connection consent and physical native sign-in/editor journeys
+remain unverified. See the iOS release record for the actual installation evidence.
 
 Closeout removed the unfinished Gmail scope changes and dependency manifest changes, restoring the previous verified provider configuration. Gmail integration remains unimplemented.
 
@@ -23,7 +31,10 @@ Closeout removed the unfinished Gmail scope changes and dependency manifest chan
 
 1. Configure development Google OAuth credentials and verify real sign-in. The current development check reports missing `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` and refuses a demo/anonymous fallback.
 2. Complete actual provider-consent journeys. The web release already provisioned the required queues, applied migrations through 44 after rehearsing the real database copy, and deployed the tested Worker. Separate data-connection clients are still unconfigured.
-3. Build and install the native app with a supported toolchain. This computer has Xcode 26.2; the Expo 57 toolchain requires 26.4 or later. Verify permissions, editors, offline synchronization, calendar identity changes, timezones and accessibility on a physical iPhone.
+3. Unlock TIE Fighter and complete native Google sign-in, first download and a real
+   phone/web edit. Verify permissions, editors, offline synchronization, calendar
+   identity changes, timezones and accessibility on the physical iPhone. Native
+   compilation/installation are available through the iOS workflow and local signer.
 4. Resolve Google/EventKit identity coordination and simultaneous publication across web/phone. Current local guards cannot guarantee global duplicate prevention from an offline phone.
 5. Implement Gmail context, then complete the personal daily-use pilot and the remaining public release requirements.
 
