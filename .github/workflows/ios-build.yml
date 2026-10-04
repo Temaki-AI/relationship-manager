@@ -1,0 +1,97 @@
+name: iOS binary
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/domain/**'
+      - '.github/workflows/ios-build.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: iOS ${{ matrix.target }}
+    runs-on: macos-26
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [simulator, device]
+    env:
+      CI: '1'
+      EXPO_PUBLIC_EVERCLOSE_API_URL: https://everclosecrm.com
+      DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - name: Check native toolchain
+        run: |
+          xcodebuild -version
+          test "$(uname -m)" = arm64
+          pod --version
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run lint
+      - name: Generate native project
+        run: npx expo prebuild --platform ios --no-install
+      - name: Install native dependencies
+        run: pod install --project-directory=ios
+      - name: Compile release binary
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+        run: |
+          set -o pipefail
+          mkdir -p build
+          if [ "$BUILD_TARGET" = simulator ]; then
+            xcodebuild -workspace ios/Everclose.xcworkspace -scheme Everclose \
+              -configuration Release -sdk iphonesimulator \
+              -destination 'generic/platform=iOS Simulator' \
+              -derivedDataPath build/DerivedData \
+              ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO \
+              build 2>&1 | tee build/xcodebuild.log | xcbeautify
+            native_app=build/DerivedData/Build/Products/Release-iphonesimulator/Everclose.app
+          else
+            xcodebuild -workspace ios/Everclose.xcworkspace -scheme Everclose \
+              -configuration Release -sdk iphoneos \
+              -destination 'generic/platform=iOS' \
+              -archivePath build/Everclose.xcarchive \
+              CODE_SIGNING_ALLOWED=NO archive 2>&1 | tee build/xcodebuild.log | xcbeautify
+            native_app=build/Everclose.xcarchive/Products/Applications/Everclose.app
+          fi
+          test -f "$native_app/main.jsbundle"
+          mkdir -p build/artifact
+          ditto -c -k --sequesterRsrc --keepParent "$native_app" "build/artifact/Everclose-$BUILD_TARGET.zip"
+          shasum -a 256 "build/artifact/Everclose-$BUILD_TARGET.zip" > build/artifact/SHA256.txt
+          git rev-parse HEAD > build/artifact/COMMIT.txt
+          xcodebuild -version > build/artifact/XCODE.txt
+      - name: Upload compiled app
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: Everclose-${{ matrix.target }}
+          path: apps/mobile/build/artifact/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload native build diagnostics
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: ios-${{ matrix.target }}-diagnostics
+          path: apps/mobile/build/xcodebuild.log
+          retention-days: 7
