@@ -134,9 +134,10 @@ async function interactions(request: Request, workspaceId: string, id?: number) 
     const current = await db.prepare('SELECT * FROM interactions WHERE workspace_id = ? AND id = ?').bind(workspaceId, id).first<Interaction>();
     if (!current) return json({ error: 'Interaction not found' }, 404);
     if (getInteractionEditRevision(current) !== expected) return json({ error: 'This interaction changed after you opened it.', current_edit_revision: getInteractionEditRevision(current) }, 409);
-    const interaction = await db.prepare(`UPDATE interactions SET date = ?, type = ?, summary = ?, notes = ?
-      WHERE workspace_id = ? AND id = ? AND contact_id IS ? AND date IS ? AND type IS ? AND summary IS ? AND notes IS ? RETURNING *`)
-      .bind(date, type, summary, notes, workspaceId, id, current.contact_id, current.date, current.type, current.summary, current.notes).first<Interaction>();
+    const interaction = await db.prepare(`UPDATE interactions SET occurred_at = CASE WHEN date IS ? THEN occurred_at ELSE NULL END,
+      date = ?, type = ?, summary = ?, notes = ?
+      WHERE workspace_id = ? AND id = ? AND contact_id IS ? AND date IS ? AND type IS ? AND summary IS ? AND notes IS ? AND occurred_at IS ? RETURNING *`)
+      .bind(date, date, type, summary, notes, workspaceId, id, current.contact_id, current.date, current.type, current.summary, current.notes, current.occurred_at ?? null).first<Interaction>();
     if (interaction) return json({ interaction: withInteractionEditRevision(interaction) });
     const latest = await db.prepare('SELECT * FROM interactions WHERE workspace_id = ? AND id = ?').bind(workspaceId, id).first<Interaction>();
     return latest ? json({ error: 'This interaction changed after you opened it.', current_edit_revision: getInteractionEditRevision(latest) }, 409)
@@ -268,14 +269,14 @@ async function integrations(workspaceId: string) {
   });
 }
 
-export async function handleCloudCore(request: Request, workspaceId: string, path: string[]) {
+export async function handleCloudCore(request: Request, workspaceId: string, path: string[], userId?: string) {
   try {
     const id = parsePositiveInteger(path[1]) || undefined;
     if (path[0] === 'reminders') return await reminders(request, workspaceId, id);
     if (path[0] === 'interactions') return await interactions(request, workspaceId, id);
     if (path[0] === 'plans') return await plans(request, workspaceId, id);
     if (path[0] === 'groups') return await groups(request, workspaceId, id);
-    if (path[0] === 'calendar' && request.method === 'GET') return json(await cloudCalendarEvents(request, workspaceId));
+    if (path[0] === 'calendar' && request.method === 'GET') return json(await cloudCalendarEvents(request, workspaceId, userId));
     if (path[0] === 'stats' && request.method === 'GET') return await stats(request, workspaceId);
     if (path[0] === 'integrations' && request.method === 'GET') return await integrations(workspaceId);
     if (path.join('/') === 'intelligence/overview' && request.method === 'GET') return json(await cloudIntelligenceOverview(workspaceId, request));

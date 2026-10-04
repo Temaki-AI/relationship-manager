@@ -1,6 +1,6 @@
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useIsFocused, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -16,6 +16,7 @@ import { getDashboardSnapshot, type DashboardSnapshot } from '@/data/contacts';
 import { getNextReminder, type ReminderRecord } from '@/data/reminders';
 import { formatDateTime, getGreeting } from '@/lib/format';
 import { fonts, palette } from '@/theme';
+import { useNativeSync } from '@/native/sync';
 
 type HomeState = {
   snapshot: DashboardSnapshot;
@@ -24,23 +25,28 @@ type HomeState = {
 
 export default function TodayScreen() {
   const db = useSQLiteContext();
+  const focused = useIsFocused();
+  const { revision } = useNativeSync();
   const router = useRouter();
   const [state, setState] = useState<HomeState | null>(null);
 
-  useFocusEffect(useCallback(() => {
+  useEffect(() => {
+    if (!focused) return;
     let active = true;
     void Promise.all([getDashboardSnapshot(db), getNextReminder(db)]).then(([snapshot, nextReminder]) => {
       if (active) setState({ snapshot, nextReminder });
     });
     return () => { active = false; };
-  }, [db]));
+  }, [focused, db, revision]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.topBar}>
           <BrandLockup />
-          <StatusPill tone="moss" label="On this iPhone" />
+          <Pressable accessibilityRole="button" accessibilityLabel="Account and sync" onPress={() => router.push('/account')}>
+            <StatusPill tone="moss" label="Account & sync" />
+          </Pressable>
         </View>
 
         <View style={styles.heroCopy}>

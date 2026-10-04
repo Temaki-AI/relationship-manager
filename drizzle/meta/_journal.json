@@ -169,6 +169,153 @@
       "when": 1790981140552,
       "tag": "0023_married_zaran",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1791033037235,
+      "tag": "0024_contact_sync_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1791035149762,
+      "tag": "0025_device_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1791042617435,
+      "tag": "0026_history_reminder_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "6",
+      "when": 1791046783302,
+      "tag": "0027_plan_family_relationship_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "6",
+      "when": 1791052437342,
+      "tag": "0028_contact_merge_aliases",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1791055609010,
+      "tag": "0029_contact_methods",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1791060757942,
+      "tag": "0030_contact_source_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1791061051504,
+      "tag": "0031_source_revision",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1791063717959,
+      "tag": "0032_provider_connections",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1791067286154,
+      "tag": "0033_google_contact_downloads",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1791069883446,
+      "tag": "0034_google_contact_imports",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "6",
+      "when": 1791074732032,
+      "tag": "0035_google_contact_reconciliation",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1791079564247,
+      "tag": "0036_contact_device_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "6",
+      "when": 1791086865512,
+      "tag": "0037_linkedin_export_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "6",
+      "when": 1791088252400,
+      "tag": "0038_google_calendar_resources",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "6",
+      "when": 1791091022271,
+      "tag": "0039_google_calendar_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "6",
+      "when": 1791093329231,
+      "tag": "0040_calendar_event_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "6",
+      "when": 1791098149388,
+      "tag": "0041_calendar_event_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "6",
+      "when": 1791112017142,
+      "tag": "0042_calendar_event_schedules",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "6",
+      "when": 1791115225060,
+      "tag": "0043_owned_calendar_setup",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "6",
+      "when": 1791119243553,
+      "tag": "0044_calendar_plan_publications",
+      "breakpoints": true
     }
   ]
 }

@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { beforeEach } from 'node:test';
 import { createCloudHarness } from './helpers/cloud-harness.ts';
 
 const now = new Date('2026-10-02T12:00:00.000Z');
+
+// Route handlers also read the current time. Keep them on the scheduler's clock
+// so these checks do not expire 24 hours after the fixed fixture date.
+beforeEach((context) => context.mock.timers.enable({ apis: ['Date'], now }));
 
 test('scheduled cloud backups are leased once, visible per workspace, and become due after deletion', async () => {
   const h = await createCloudHarness();
@@ -143,9 +147,9 @@ test('restore reopens the backup schedule and erasure removes it', async () => {
 test('oversized workspaces are explicitly uncovered instead of appearing current', async () => {
   const h = await createCloudHarness();
   try {
-    for (let index = 0; index < 17; index++) {
+    for (let index = 0; index < 34; index++) {
       await h.db.prepare("INSERT INTO contacts (workspace_id, name, notes) VALUES ('test', ?, ?)")
-        .bind(`Large ${index}`, 'x'.repeat(1_000_000)).run();
+        .bind(`Large ${index}`, 'x'.repeat(500_000)).run();
     }
     const result = await h.runAutomaticBackups(now);
     assert.equal(result.oversized, 1);

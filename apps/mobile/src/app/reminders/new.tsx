@@ -25,11 +25,14 @@ import {
 } from '@/domain/reminder';
 import { cancelReminderNotification, scheduleReminderNotification } from '@/native/notifications';
 import { fonts, palette } from '@/theme';
+import { useNativeAccount } from '@/native/account';
+import { accountScope } from '../../../../../packages/domain/src/devices';
 
 const TITLE_SUGGESTIONS = ['Send a check-in', 'Make time to catch up', 'Follow up on our last chat'];
 
 export default function NewReminderScreen() {
   const db = useSQLiteContext();
+  const { account } = useNativeAccount();
   const router = useRouter();
   const params = useLocalSearchParams<{ contactId?: string }>();
   const initialContactId = Array.isArray(params.contactId) ? params.contactId[0] : params.contactId;
@@ -63,6 +66,7 @@ export default function NewReminderScreen() {
     let notificationId: string | null = null;
     try {
       const notification = await scheduleReminderNotification({
+        accountScope: accountScope(account),
         reminderTitle: title.trim() || 'Reach out',
         contactId: contact.id,
         contactName: contact.name,
@@ -79,7 +83,7 @@ export default function NewReminderScreen() {
       if (notification.permission === 'denied') {
         Alert.alert(
           'Reminder saved without an alert',
-          'You can enable Bonds notifications later in iPhone Settings.'
+          'You can enable Everclose notifications later in iPhone Settings.'
         );
       }
       router.replace('/reminders');
@@ -108,7 +112,7 @@ export default function NewReminderScreen() {
         <View style={styles.intro}>
           <Eyebrow>Future you will remember</Eyebrow>
           <Text style={styles.title}>Create one gentle nudge.</Text>
-          <Text style={styles.subtitle}>Bonds stores it here and asks iOS to deliver it even when the app is closed.</Text>
+          <Text style={styles.subtitle}>Everclose stores it here and asks iOS to deliver it even when the app is closed.</Text>
         </View>
 
         <View style={styles.fieldGroup}>

@@ -17,15 +17,31 @@ const MAX_NORMALIZED_BYTES = 24_000_000;
 const MAX_REPORTS = 20;
 const MAX_SOURCE_STORAGE = 50 * 1024 * 1024;
 const rowColumns = ['row_number', 'name', 'email', 'phone', 'birthday', 'payload', 'state', 'message'];
-const contactColumns = ['name', 'nickname', 'email', 'phone', 'photo_url', 'birthday', 'birthday_reminder_days', 'how_we_met', 'tags', 'notes', 'gift_ideas', 'custom_fields', 'last_contacted', 'contact_frequency'];
+const contactColumns = ['name', 'nickname', 'email', 'phone', 'photo_url', 'birthday', 'birthday_reminder_days', 'how_we_met', 'tags', 'notes', 'gift_ideas', 'custom_fields', 'last_contacted', 'contact_frequency', 'contact_methods'];
 
+function methods(alias: string) {
+  const stored = alias === 'c' ? `${alias}.contact_methods` : `json_extract(${alias}.payload, '$.contact_methods')`;
+  const custom = alias === 'c' ? `${alias}.custom_fields` : `json_extract(${alias}.payload, '$.custom_fields')`;
+  // Modern collections retain country context. Older CSV/vCard previews still
+  // contribute primary and secondary values until their rows are imported.
+  return `SELECT json_extract(value, '$.kind') kind, json_extract(value, '$.value') value, json_extract(value, '$.country') country
+    FROM json_each(COALESCE(${stored}, '[]'))
+    UNION ALL SELECT 'email', ${alias}.email, NULL WHERE ${stored} IS NULL OR ${stored} = '[]'
+    UNION ALL SELECT 'phone', ${alias}.phone, NULL WHERE ${stored} IS NULL OR ${stored} = '[]'
+    UNION ALL SELECT 'email', value, NULL FROM json_each(CASE WHEN json_valid(${custom}) THEN json_extract(${custom}, '$.vcard.additional_emails') ELSE '[]' END)
+      WHERE type = 'text' AND (${stored} IS NULL OR ${stored} = '[]')
+    UNION ALL SELECT 'phone', value, NULL FROM json_each(CASE WHEN json_valid(${custom}) THEN json_extract(${custom}, '$.vcard.additional_phones') ELSE '[]' END)
+      WHERE type = 'text' AND (${stored} IS NULL OR ${stored} = '[]')`;
+}
 function phone(column: string) {
-  return `replace(replace(replace(replace(replace(replace(COALESCE(${column}, ''), ' ', ''), '+', ''), '-', ''), '(', ''), ')', ''), '.', '')`;
+  return `replace(replace(replace(replace(replace(trim(COALESCE(${column}, '')), ' ', ''), '-', ''), '(', ''), ')', ''), '.', '')`;
 }
 function match(a: string, b: string) {
-  return `(lower(trim(${a}.name)) = lower(trim(${b}.name))
-    OR (${b}.email IS NOT NULL AND lower(trim(${a}.email)) = lower(trim(${b}.email)))
-    OR (length(${phone(`${b}.phone`)}) >= 7 AND ${phone(`${a}.phone`)} = ${phone(`${b}.phone`)}))`;
+  return `(lower(trim(${a}.name)) = lower(trim(${b}.name)) OR EXISTS (
+    SELECT 1 FROM (${methods(a)}) ma JOIN (${methods(b)}) mb ON ma.kind = mb.kind
+    WHERE (ma.kind = 'email' AND length(trim(mb.value)) > 0 AND lower(trim(ma.value)) = lower(trim(mb.value)))
+      OR (ma.kind = 'phone' AND length(${phone('mb.value')}) >= 7 AND ${phone('ma.value')} = ${phone('mb.value')}
+        AND (substr(trim(ma.value), 1, 1) = '+' OR COALESCE(ma.country, '') = COALESCE(mb.country, '')))))`;
 }
 const existingMatch = `EXISTS (SELECT 1 FROM contacts c WHERE c.workspace_id = r.workspace_id AND ${match('c', 'r')})`;
 const fileMatch = `EXISTS (SELECT 1 FROM contact_import_rows earlier WHERE earlier.job_id = r.job_id AND earlier.workspace_id = r.workspace_id
@@ -149,7 +165,7 @@ async function advance(db: DB, workspaceId: string, id: string) {
   const statements = [];
   for (const row of rows.results as Array<{ row_number: number }>) {
     statements.push(db.prepare(`INSERT INTO contacts(workspace_id, ${contactColumns.join(', ')})
-      SELECT r.workspace_id, ${contactColumns.map((column) => `json_extract(r.payload, '$.${column}')`).join(', ')} FROM contact_import_rows r
+      SELECT r.workspace_id, ${contactColumns.map((column) => column === 'contact_methods' ? "COALESCE(json_extract(r.payload, '$.contact_methods'), 'null')" : `json_extract(r.payload, '$.${column}')`).join(', ')} FROM contact_import_rows r
       WHERE r.workspace_id = ? AND r.job_id = ? AND r.row_number = ? AND r.state = 'ready'
       AND EXISTS (SELECT 1 FROM contact_import_jobs WHERE id = ? AND workspace_id = ? AND state = 'importing')
       AND (r.force_create = 1 OR NOT ${existingMatch})`).bind(workspaceId, id, row.row_number, id, workspaceId));

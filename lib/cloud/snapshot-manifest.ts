@@ -1,4 +1,6 @@
 import { backupChecksum, maintenanceGuard, removeGuard } from '@/lib/cloud/recovery-storage';
+import { deviceSourceGraphChecks } from './sync-projection';
+import { calendarEventGraphChecks } from './calendar-event-graph';
 import { CloudRecoveryError, SNAPSHOT_TABLES, snapshotColumns, type SnapshotRow, type SnapshotTable } from '@/lib/cloud/recovery-contract';
 import { type SnapshotCaptureJob } from '@/lib/cloud/snapshot-capture';
 import { MANIFEST_PART_CHUNKS, SnapshotArtifactError, readPrivateSnapshotChunk,
@@ -95,6 +97,8 @@ async function verifySourceGraph(job: SnapshotCaptureJob, db: DB, token: string)
   const workspaceId = job.workspace_id;
   const contactTables = SNAPSHOT_TABLES.filter((table) => snapshotColumns(table).some((column) => column.name === 'contact_id'));
   const referenceChecks = [
+    ...deviceSourceGraphChecks(),
+    ...calendarEventGraphChecks(),
     ...contactTables.map((table) => `SELECT 1 AS invalid FROM ${table} item LEFT JOIN contacts target
       ON target.id = item.contact_id AND target.workspace_id = item.workspace_id
       WHERE item.workspace_id = ? AND target.id IS NULL LIMIT 1`),
@@ -205,7 +209,7 @@ export async function advanceCloudSnapshotVerification(workspaceId: string, jobI
       throw new CaptureIntegrityError('Capture verification progress is inconsistent.');
     }
     const { workspace, rowCounts } = await verifySourceGraph(job, DB, token);
-    const manifest = { format: 'everclose-cloud-manifest', version: 1, snapshotSchemaVersion: 4,
+    const manifest = { format: 'everclose-cloud-manifest', version: 1, snapshotSchemaVersion: 14,
       workspaceId, jobId, revision: job.revision, createdAt: new Date().toISOString(), workspace,
       tableOrder: SNAPSHOT_TABLES, rowCounts, chunkCount: job.chunk_count,
       partCount: job.manifest_part_count, partsChainSha256: job.manifest_chain };

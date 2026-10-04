@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Bonds",
+    "name": "Everclose",
     "slug": "bonds-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -19,7 +19,11 @@
         "backgroundColor": "#FFF8F4",
         "foregroundImage": "./assets/images/icon.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "blockedPermissions": [
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
+      ]
     },
     "web": {
       "output": "static",
@@ -38,7 +42,7 @@
       [
         "expo-contacts",
         {
-          "contactsPermission": "Bonds lets you choose a person to add to your private relationship journal."
+          "contactsPermission": "Everclose lets you choose a person to add to your private relationship journal."
         }
       ],
       "expo-notifications",
@@ -46,19 +50,28 @@
       [
         "expo-secure-store",
         {
-          "faceIDPermission": "Allow Bonds to unlock your private relationship journal."
+          "faceIDPermission": "Allow Everclose to unlock your private relationship journal."
         }
       ],
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Allow Bonds to unlock your private relationship journal."
+          "faceIDPermission": "Allow Everclose to unlock your private relationship journal."
+        }
+      ],
+      "expo-web-browser",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Everclose can verify the Calendar events you choose and, when enabled, keep their dates updated. On iOS 16, access is also needed for the system event editor.",
+          "remindersPermission": false
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": true,
+      "onDemandFilesystem": false
     }
   }
 }

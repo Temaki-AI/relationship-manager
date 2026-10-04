@@ -17,6 +17,7 @@ import {
 function contact(lastContacted: string | null, frequency = 14): ContactRecord {
   return {
     id: 'contact-id',
+    contact_methods: '[]',
     remote_id: null,
     device_contact_id: null,
     name: 'Ada Lovelace',

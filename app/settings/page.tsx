@@ -469,6 +469,11 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <SettingsHeading cloud={cloud} />
 
+      {cloud && <Card><CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
+        <div><p className="font-semibold">Connected phones</p><p className="mt-1 text-sm text-muted-foreground">Review your native app sessions and revoke a lost phone.</p></div>
+        <Link href="/settings/devices" className={buttonVariants({ variant: 'outline' })}>Manage phones</Link>
+      </CardContent></Card>}
+
       {erasing && (
         <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
           Erasure is unfinished. New data and recovery operations are paused. Use the erasure confirmation below to resume safely.

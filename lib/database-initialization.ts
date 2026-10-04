@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { contactMethodsBackfillSql, contactMethodsTriggersSql } from '../packages/domain/src/contact-method-storage.ts';
 import {
   DATABASE_SCHEMA_VERSION,
   DATABASE_SCHEMA_VERSION_KEY,
@@ -195,6 +196,24 @@ const DATABASE_SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_contact_group_members_group ON contact_group_members(group_id, contact_id);
   CREATE INDEX IF NOT EXISTS idx_integration_connections_workspace ON integration_connections(workspace_id);
   CREATE INDEX IF NOT EXISTS idx_sync_jobs_workspace_provider ON sync_jobs(workspace_id, provider, started_at DESC);
+  CREATE TABLE IF NOT EXISTS contact_source_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    public_id TEXT NOT NULL,
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    contact_id INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL, account_key TEXT NOT NULL, external_id TEXT NOT NULL, profile_url TEXT NOT NULL,
+    origin TEXT NOT NULL, fields TEXT NOT NULL DEFAULT '{}' CHECK(json_valid(fields) AND json_type(fields) = 'object' AND length(CAST(fields AS BLOB)) <= 16384),
+    revision INTEGER NOT NULL DEFAULT 1 CHECK(revision >= 1),
+    observed_at TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+    UNIQUE(workspace_id, public_id), UNIQUE(workspace_id, provider, account_key, external_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_source_links_contact ON contact_source_links(contact_id, id);
+  CREATE TRIGGER IF NOT EXISTS source_links_limit_insert BEFORE INSERT ON contact_source_links
+    WHEN (SELECT COUNT(*) FROM contact_source_links WHERE contact_id = NEW.contact_id) >= 32
+    BEGIN SELECT RAISE(ABORT, 'SOURCE_LINK_LIMIT'); END;
+  CREATE TRIGGER IF NOT EXISTS source_links_limit_update BEFORE UPDATE OF contact_id ON contact_source_links
+    WHEN (SELECT COUNT(*) FROM contact_source_links WHERE contact_id = NEW.contact_id AND id != NEW.id) >= 32
+    BEGIN SELECT RAISE(ABORT, 'SOURCE_LINK_LIMIT'); END;
 `;
 
 function isBusyError(error: unknown): boolean {
@@ -262,6 +281,11 @@ function migrateKnownLegacySchemas(db: Database.Database) {
       CHECK (birthday_reminder_days BETWEEN 0 AND 365)
     `);
   }
+  if (!contactColumns.has('contact_methods')) {
+    db.exec("ALTER TABLE contacts ADD COLUMN contact_methods TEXT NOT NULL DEFAULT 'null'");
+    db.exec(contactMethodsBackfillSql());
+  }
+  db.exec(contactMethodsTriggersSql());
   const childColumns = getTableColumns(db, 'contact_children');
   if (!childColumns.has('linked_contact_id')) {
     db.exec(`ALTER TABLE contact_children ADD COLUMN linked_contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL

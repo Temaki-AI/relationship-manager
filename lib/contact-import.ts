@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { getDuplicateSignals } from './contact-merge.ts';
 import { normalizeContactPatchInput } from './contact-input.ts';
 import {
   normalizeVCardContact,
@@ -11,6 +12,7 @@ export type ContactIdentity = {
   phone: string | null;
   birthday: string | null;
   custom_fields?: string | null;
+  contact_methods?: string;
 };
 
 export type ContactImportResult = {
@@ -20,43 +22,10 @@ export type ContactImportResult = {
   errors: string[];
 };
 
-function normalizePhoneIdentity(value: string | null): string | null {
-  if (!value) return null;
-  const digits = value.replace(/\D/g, '');
-  return digits.length >= 7 ? digits : null;
-}
-
 export function getContactIdentityKeys(contact: ContactIdentity): string[] {
-  const keys: string[] = [];
-  let additionalEmails: string[] = [];
-  let additionalPhones: string[] = [];
-  if (contact.custom_fields) {
-    try {
-      const customFields = JSON.parse(contact.custom_fields) as { vcard?: Record<string, unknown> };
-      const vcard = customFields.vcard;
-      if (vcard && Array.isArray(vcard.additional_emails)) {
-        additionalEmails = vcard.additional_emails.filter((value): value is string => typeof value === 'string');
-      }
-      if (vcard && Array.isArray(vcard.additional_phones)) {
-        additionalPhones = vcard.additional_phones.filter((value): value is string => typeof value === 'string');
-      }
-    } catch {
-      // Invalid legacy metadata should not block an otherwise valid identity.
-    }
-  }
-
-  const emails = [contact.email, ...additionalEmails]
-    .flatMap((value) => value?.trim().toLowerCase() || [])
-    .filter((value, index, values) => values.indexOf(value) === index);
-  const phones = [contact.phone, ...additionalPhones]
-    .flatMap((value) => normalizePhoneIdentity(value) || [])
-    .filter((value, index, values) => values.indexOf(value) === index);
-  for (const email of emails) keys.push(`email:${email}`);
-  for (const phone of phones) keys.push(`phone:${phone}`);
-  if (emails.length === 0 && phones.length === 0 && contact.birthday) {
-    keys.push(`name-birthday:${contact.name.trim().toLowerCase()}|${contact.birthday}`);
-  }
-  return keys;
+  const signals = getDuplicateSignals({ ...contact, custom_fields: contact.custom_fields ?? null });
+  const addresses = signals.filter((item) => item.kind !== 'name_birthday');
+  return [...new Set((addresses.length ? addresses : signals).map((item) => item.key))];
 }
 
 export function importVCardContacts(
@@ -74,13 +43,13 @@ export function importVCardContacts(
   const insert = db.prepare(`
     INSERT INTO contacts (
       name, nickname, email, phone, photo_url, birthday, birthday_reminder_days, how_we_met,
-      tags, notes, gift_ideas, custom_fields, last_contacted, contact_frequency
+      tags, notes, gift_ideas, custom_fields, last_contacted, contact_frequency, contact_methods
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const importBatch = db.transaction(() => {
-    const existing = db.prepare('SELECT name, email, phone, birthday, custom_fields FROM contacts')
+    const existing = db.prepare('SELECT name, email, phone, birthday, custom_fields, contact_methods FROM contacts')
       .all() as ContactIdentity[];
     const identities = new Set(existing.flatMap(getContactIdentityKeys));
 
@@ -110,7 +79,8 @@ export function importVCardContacts(
           normalized.gift_ideas,
           normalized.custom_fields,
           lastContacted,
-          normalized.contact_frequency
+          normalized.contact_frequency,
+          normalized.contact_methods ?? 'null'
         );
         keys.forEach((key) => identities.add(key));
         result.imported++;

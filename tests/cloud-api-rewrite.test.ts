@@ -28,6 +28,9 @@ test('cloud-visible People, Today, Calendar, and Settings actions have a rewrite
     '/api/contacts', '/api/contacts/bulk', '/api/contacts/duplicates', '/api/contacts/42', '/api/contacts/42/photo',
     '/api/contacts/42/children', '/api/contacts/42/children/7',
     '/api/contacts/42/relationships', '/api/contacts/42/relationships/7',
+    '/api/sources/context', '/api/sources/linkedin', '/api/contacts/42/sources', `/api/contacts/42/sources/${id}`,
+    '/api/sources/linkedin/import', '/api/sources/linkedin/import/preview',
+    '/api/contacts/42/device-sources', '/api/v1/device-sources/push',
     '/api/enrich', '/api/groups/tags', '/api/groups/tags/contacts',
     '/api/import/csv', '/api/import/vcard', '/api/import/jobs', `/api/import/jobs/${id}`,
     `/api/import/jobs/${id}/source`, '/api/export/jobs', `/api/export/jobs/${id}`,
@@ -43,4 +46,28 @@ test('cloud-visible People, Today, Calendar, and Settings actions have a rewrite
   for (const path of visiblePaths) {
     assert.ok(getCloudApiRewrite(path), `${path} must reach a cloud handler`);
   }
+});
+
+test('only supported sync protocol routes reach authenticated cloud handlers', () => {
+  for (const action of ['bootstrap', 'pull', 'push']) {
+    assert.equal(getCloudApiRewrite(`/api/v1/sync/${action}`), `/api/cloud/v1/sync/${action}`);
+    assert.equal(getCloudApiRewrite(`/api/v2/sync/${action}`), `/api/cloud/v2/sync/${action}`);
+    assert.equal(getCloudApiRewrite(`/api/v3/sync/${action}`), `/api/cloud/v3/sync/${action}`);
+    assert.equal(getCloudApiRewrite(`/api/v4/sync/${action}`), `/api/cloud/v4/sync/${action}`);
+  }
+  assert.equal(getCloudApiRewrite('/api/v5/sync/push'), null);
+  assert.equal(getCloudApiRewrite('/api/v4/sync/unknown'), null);
+  assert.equal(getCloudApiRewrite('/api/v3/sync/unknown'), null);
+  assert.equal(getCloudApiRewrite('/api/v2/sync/unknown'), null);
+  assert.equal(getCloudApiRewrite('/api/v1/sync/unknown'), null);
+});
+
+test('phone approval, device management and scoped session routes have exact cloud rewrites', () => {
+  for (const path of ['/api/v1/devices', '/api/v1/devices/authorize', '/api/v1/devices/session',
+    '/api/v1/devices/7a9d9fbc-e4c0-4597-ae15-2df10dfb4955']) {
+    assert.equal(getCloudApiRewrite(path), path.replace('/api/', '/api/cloud/'));
+  }
+  assert.equal(getCloudApiRewrite('/api/v1/devices/not-a-device'), null);
+  assert.equal(getCloudApiRewrite('/api/v1/devices/session/unexpected'), null);
+  assert.equal(getCloudApiRewrite('/api/auth/device/exchange'), null);
 });

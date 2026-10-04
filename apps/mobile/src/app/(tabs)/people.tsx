@@ -1,7 +1,9 @@
-import { Contact as DeviceContact } from 'expo-contacts';
-import { Link, useFocusEffect, useRouter } from 'expo-router';
+import { pickDeviceContact } from '@/native/device-contacts';
+import { DeviceContactAccess } from '@/components/device-contact-access';
+import { ProviderSourceError } from '../../../../../packages/domain/src/provider-sources';
+import { Link, useIsFocused, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,13 +18,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, BrandLockup, StatusPill } from '@/components/design-system';
-import { importDeviceContact, listContacts } from '@/data/contacts';
+import { listContacts } from '@/data/contacts';
 import { getRelationshipState, type ContactRecord } from '@/domain/contact';
 import { formatRelativeDate } from '@/lib/format';
 import { fonts, palette } from '@/theme';
+import { useNativeSync } from '@/native/sync';
 
 export default function PeopleScreen() {
   const db = useSQLiteContext();
+  const focused = useIsFocused();
+  const { revision } = useNativeSync();
   const router = useRouter();
   const [contacts, setContacts] = useState<ContactRecord[]>([]);
   const [search, setSearch] = useState('');
@@ -35,42 +40,25 @@ export default function PeopleScreen() {
     setLoading(false);
   }, [db, search]);
 
-  useFocusEffect(useCallback(() => {
-    void loadContacts();
-  }, [loadContacts]));
+  useEffect(() => {
+    if (!focused) return;
+    let active = true;
+    void listContacts(db, search).then((rows) => { if (active) { setContacts(rows); setLoading(false); } });
+    return () => { active = false; };
+  }, [focused, db, search, revision]);
 
   async function importOneContact() {
     if (Platform.OS === 'web') {
-      Alert.alert('Available on iPhone', 'Open Bonds on iPhone to choose a system contact.');
+      Alert.alert('Available on iPhone', 'Open Everclose on iPhone to choose a system contact.');
       return;
     }
 
     setImporting(true);
     try {
-      const selected = await DeviceContact.presentPicker();
-      if (!selected) return;
-      const [name, emails, phones] = await Promise.all([
-        selected.getFullName(),
-        selected.getEmails(),
-        selected.getPhones(),
-      ]);
-      if (!name.trim()) {
-        Alert.alert('Name needed', 'This system contact does not have a name Bonds can import.');
-        return;
-      }
-      const result = await importDeviceContact(db, {
-        name,
-        email: emails[0]?.address || null,
-        phone: phones[0]?.number || null,
-        deviceContactId: selected.id,
-      });
-      await loadContacts();
-      if (!result.created) {
-        Alert.alert('Already in Bonds', `${result.contact.name} is already in your relationship journal.`);
-      }
-      router.push({ pathname: '/contacts/[id]', params: { id: result.contact.id } });
-    } catch {
-      Alert.alert('Contact unavailable', 'Bonds could not open or import that contact. Try again.');
+      const preview = await pickDeviceContact(db);
+      if (preview) router.push({ pathname: '/contacts/device-review', params: { preview } });
+    } catch (err) {
+      Alert.alert('Contact unavailable', err instanceof ProviderSourceError ? err.message : 'Everclose could not read that contact for review. Try again.');
     } finally {
       setImporting(false);
     }
@@ -121,10 +109,14 @@ export default function PeopleScreen() {
               {importing ? <ActivityIndicator color={palette.primary} /> : (
                 <>
                   <Text style={styles.importTitle}>Choose from iPhone Contacts</Text>
-                  <Text style={styles.importDetail}>You choose one person. Bonds never scans everyone.</Text>
+                  <Text style={styles.importDetail}>Choose one person and review the fields to use.</Text>
                 </>
               )}
             </Pressable>
+            <Pressable accessibilityRole="button" disabled={importing} onPress={() => router.push('/contacts/device-directory')} style={styles.importButton}>
+              <Text style={styles.importTitle}>Browse allowed iPhone contacts</Text><Text style={styles.importDetail}>Read a page of allowed people, then confirm each import.</Text>
+            </Pressable>
+            <DeviceContactAccess disabled={importing} />
           </View>
         )}
         ListEmptyComponent={loading ? (

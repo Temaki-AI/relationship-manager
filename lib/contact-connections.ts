@@ -51,7 +51,7 @@ function buildPagination(total: number, requestedPage: unknown, requestedPageSiz
   return { page, pageSize, total, totalPages };
 }
 
-function normalizedText(value: unknown, field: string, maximumLength: number): string {
+export function normalizeConnectionText(value: unknown, field: string, maximumLength: number): string {
   if (typeof value !== 'string') throw new ContactConnectionInputError(`${field} is required.`);
   const normalized = value.trim().replace(/\s+/gu, ' ');
   if (!normalized) throw new ContactConnectionInputError(`${field} is required.`);
@@ -73,8 +73,8 @@ export function normalizeRelationshipLabels(value: unknown): {
   }
   const body = value as Record<string, unknown>;
   return {
-    relationshipLabel: normalizedText(body.relationship_label, 'Relationship label', 80),
-    reciprocalLabel: normalizedText(body.reciprocal_label, 'Reciprocal label', 80),
+    relationshipLabel: normalizeConnectionText(body.relationship_label, 'Relationship label', 80),
+    reciprocalLabel: normalizeConnectionText(body.reciprocal_label, 'Reciprocal label', 80),
   };
 }
 
@@ -83,7 +83,7 @@ export function normalizeChildInput(value: unknown): { name: string; birthday: s
     throw new ContactConnectionInputError('Child details are required.');
   }
   const body = value as Record<string, unknown>;
-  const name = normalizedText(body.name, 'Child name', 200);
+  const name = normalizeConnectionText(body.name, 'Child name', 200);
   const linkedContactId = body.linked_contact_id === undefined || body.linked_contact_id === null || body.linked_contact_id === ''
     ? null : parsePositiveInteger(body.linked_contact_id);
   if (linkedContactId === null && body.linked_contact_id !== undefined && body.linked_contact_id !== null && body.linked_contact_id !== '') {

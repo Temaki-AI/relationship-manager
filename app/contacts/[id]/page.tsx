@@ -58,6 +58,8 @@ import { useToast } from '@/components/ui/toast';
 import { MentionText } from '@/components/ui/mention-text';
 import { MentionInput } from '@/components/ui/mention-input';
 import { LoadError } from '@/components/ui/load-error';
+import { contactMethodHref, readContactMethods } from '@/packages/domain/src/contact-methods';
+import { PersonCalendarContext } from '@/components/person-calendar-context';
 
 type RelationshipBrief = {
   headline: string;
@@ -1024,6 +1026,7 @@ export default function ContactDetail() {
   const giftIdeas = parseGiftIdeas(contact.gift_ideas);
   const customFields = parseCustomFields(contact.custom_fields);
   const socialLinks = getSocialLinks(contact.custom_fields);
+  const extraMethods = readContactMethods(contact.contact_methods).filter((method) => method.kind === 'profile' || !method.preferred);
   function openLogForm() {
     setMobileSection('activity');
     setActivityFilter('interaction');
@@ -1079,13 +1082,13 @@ export default function ContactDetail() {
               )}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
                 {contact.email && (
-                  <a href={`mailto:${contact.email}`} className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                  <a href={contactMethodHref({ kind: 'email', value: contact.email })} className="flex items-center gap-1.5 hover:text-primary transition-colors">
                     <Mail className="w-3.5 h-3.5" />
                     {contact.email}
                   </a>
                 )}
                 {contact.phone && (
-                  <a href={`tel:${contact.phone}`} className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                  <a href={contactMethodHref({ kind: 'phone', value: contact.phone })} className="flex items-center gap-1.5 hover:text-primary transition-colors">
                     <Phone className="w-3.5 h-3.5" />
                     {contact.phone}
                   </a>
@@ -1108,6 +1111,14 @@ export default function ContactDetail() {
                   </span>
                 )}
               </div>
+              {extraMethods.length > 0 && <div aria-label="Additional contact methods" className="mt-3 flex flex-wrap gap-2">
+                {extraMethods.map((method) => <a key={method.id} href={contactMethodHref(method)}
+                  target={method.kind === 'profile' ? '_blank' : undefined} rel={method.kind === 'profile' ? 'noreferrer noopener' : undefined}
+                  className="flex min-h-11 max-w-full items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:text-primary">
+                  {method.kind === 'email' ? <Mail className="h-4 w-4 shrink-0" /> : method.kind === 'phone' ? <Phone className="h-4 w-4 shrink-0" /> : <Globe className="h-4 w-4 shrink-0" />}
+                  <span className="min-w-0 break-all">{method.label && <span className="font-medium">{method.label}: </span>}{method.value}{method.country ? ` (${method.country})` : ''}</span>
+                </a>)}
+              </div>}
               {Object.keys(socialLinks).length > 0 && (
                 <div className="mt-3 hidden flex-wrap items-center gap-2 sm:flex">
                   {Object.entries(socialLinks).map(([key, url]) => {
@@ -1143,7 +1154,7 @@ export default function ContactDetail() {
         </CardContent>
       </Card>
 
-      <div className="sticky top-14 z-20 flex items-center gap-2 rounded-xl border border-border/70 bg-white/95 p-2 shadow-sm backdrop-blur sm:relative sm:w-fit sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+      <div className="sticky top-14 z-20 flex items-center gap-2 rounded-xl border border-border/70 bg-white/95 p-2 shadow-sm backdrop-blur sm:relative sm:top-auto sm:w-fit sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
         {(contact.phone || contact.email) && (
           <a
             href={contact.phone ? `sms:${contact.phone}` : `mailto:${contact.email}`}
@@ -1167,6 +1178,9 @@ export default function ContactDetail() {
             <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
           </summary>
           <div className="absolute right-0 z-30 mt-2 w-44 rounded-xl border border-border bg-white p-2 shadow-lg">
+            <Link href={`/contacts/${id}/methods`} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-muted/50">Contact methods</Link>
+            <Link href={`/contacts/${id}/sources`} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-muted/50">Linked sources</Link>
+            <Link href={`/calendar/events?contact_id=${id}`} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-muted/50">Calendar context</Link>
             <Link href={`/contacts/${id}/edit`} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-muted/50">
               <Edit className="h-4 w-4" aria-hidden="true" />Edit profile
             </Link>
@@ -1292,7 +1306,7 @@ export default function ContactDetail() {
         </Card>
       )}
 
-      <div id="profile-overview" className={`${mobileSection === 'overview' ? 'grid' : 'hidden md:grid'} grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-[1.5fr_1fr]`}>
+      <div id="profile-overview" className={`${mobileSection === 'overview' ? 'grid' : 'hidden md:grid'} grid-cols-1 items-start gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]`}>
         <Card className="border-0 shadow-sm animate-fade-in-up">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">Relationship brief</CardTitle>
@@ -1333,7 +1347,8 @@ export default function ContactDetail() {
           </CardContent>
         </Card>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
+          {process.env.NEXT_PUBLIC_AUTH_MODE === 'google' && <PersonCalendarContext key={id} contactId={id} refreshKey={contact} />}
           <Card className="border-0 shadow-sm animate-fade-in-up">
             <CardContent className="pt-5 pb-4">
               <div className="flex items-center gap-2">

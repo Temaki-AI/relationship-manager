@@ -22,7 +22,7 @@ export default defineConfig({
     },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: process.env.BONDS_E2E_VIDEO === 'off' ? 'off' : 'retain-on-failure',
   },
   projects: [
     {

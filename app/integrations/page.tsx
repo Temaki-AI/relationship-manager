@@ -21,7 +21,7 @@ import { getResponseErrorMessage } from '@/lib/utils';
 type IntegrationResponse = {
   workspace?: {
     name: string;
-    mode: 'local';
+    mode: 'local' | 'cloud';
   };
   capabilities: DataCapability[];
   automaticAccountSync: {
@@ -35,6 +35,7 @@ const CAPABILITY_ICONS: Record<DataCapability['id'], React.ElementType> = {
   csv: FileSpreadsheet,
   'encrypted-backup': DatabaseBackup,
   'linkedin-extension': Linkedin,
+  'linkedin-link': Linkedin,
 };
 
 function SkeletonConnections() {
@@ -120,7 +121,7 @@ export default function IntegrationsPage() {
         <CardContent className="grid gap-4 pt-6 md:grid-cols-3">
           <div className="rounded-xl border border-border/60 bg-white/80 p-4">
             <HardDrive className="h-5 w-5 text-emerald-600" aria-hidden="true" />
-            <p className="mt-3 text-sm font-semibold">Local workspace</p>
+            <p className="mt-3 text-sm font-semibold">{data.workspace?.mode === 'cloud' ? 'Cloud workspace' : 'Local workspace'}</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               {data.workspace?.name || 'My Everclose CRM'} stores its CRM data in this deployment.
             </p>
@@ -136,13 +137,22 @@ export default function IntegrationsPage() {
             <CloudOff className="h-5 w-5 text-rose-600" aria-hidden="true" />
             <p className="mt-3 text-sm font-semibold">Automatic account sync is off</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              No email, calendar, Google, or Microsoft account is connected behind the scenes.
+              Accounts never import contacts, email, or calendar events without a separate connection and import choice.
             </p>
           </div>
         </CardContent>
       </Card>
 
       <section aria-labelledby="available-connections-heading">
+        {data.workspace?.mode === 'cloud' && <Card className="mb-6 border-0 shadow-sm">
+          <CardHeader><CardTitle className="text-base">Google account authorization</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">Review Google Contacts imports and updates, or authorize Calendar separately and choose calendars for event context.</p>
+            <Link href="/connections/google" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Manage Google Contacts</Link>
+            <Link href="/connections/google/calendar" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Manage Google Calendar</Link>
+            <Link href="/connections/google/publish" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Calendar publishing setup</Link>
+          </CardContent>
+        </Card>}
         <div className="mb-4">
           <h2 id="available-connections-heading" className="text-lg font-semibold">Available today</h2>
           <p className="mt-1 text-sm text-muted-foreground">Working paths included in this release, not roadmap promises.</p>

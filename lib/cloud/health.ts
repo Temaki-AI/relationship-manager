@@ -1,6 +1,6 @@
 import type { D1Database } from '@cloudflare/workers-types';
 
-export const CLOUD_READINESS_MIGRATION = '0023_married_zaran.sql';
+export const CLOUD_READINESS_MIGRATION = '0044_calendar_plan_publications.sql';
 
 export async function getCloudReadinessReport(
   db: Pick<D1Database, 'prepare'>,

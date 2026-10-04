@@ -164,16 +164,16 @@ test('large multi-part manifest reads in bounded steps without D1 chunk metadata
 }, async () => {
   const h = await createCloudHarness();
   try {
-    for (let index = 0; index < 17; index++) {
+    for (let index = 0; index < 54; index++) {
       await h.db.prepare("INSERT INTO contacts (workspace_id, name, notes) VALUES ('test', ?, ?)")
-        .bind(`Person ${index}`, 'x'.repeat(1_000_000)).run();
+        .bind(`Person ${index}`, 'x'.repeat(500_000)).run();
     }
     const capture = await publish(h);
     assert.ok(capture.manifest_part_count >= 2);
     await h.db.prepare('DELETE FROM cloud_snapshot_capture_chunks WHERE job_id = ?').bind(capture.id).run();
     const started = await h.beginSnapshotRead(capture.id);
     const verified = await readAll(h, started.id);
-    assert.equal(JSON.parse(verified.row_counts).contacts, 17);
+    assert.equal(JSON.parse(verified.row_counts).contacts, 54);
     assert.equal(verified.part_chain, capture.manifest_chain);
   } finally { await h.close(); }
 });

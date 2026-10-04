@@ -24,6 +24,10 @@ test('cloud readiness checks D1 migrations and Google configuration without loca
     assert.equal(outdated.ready, false);
     assert.equal(outdated.checks.schema, 'incompatible');
 
+    await db.prepare('INSERT INTO d1_migrations (name) VALUES (?)').bind('0023_married_zaran.sql').run();
+    await db.prepare('INSERT INTO d1_migrations (name) VALUES (?)').bind('0024_contact_sync_foundation.sql').run();
+    assert.equal((await getCloudReadinessReport(db, environment)).ready, false, 'the device migration is required');
+
     await db.prepare('INSERT INTO d1_migrations (name) VALUES (?)').bind(CLOUD_READINESS_MIGRATION).run();
     const current = await getCloudReadinessReport(db, environment);
     assert.equal(current.ready, true);

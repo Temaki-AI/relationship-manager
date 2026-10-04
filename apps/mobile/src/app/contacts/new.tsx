@@ -156,7 +156,7 @@ export default function NewContactScreen() {
         </View>
 
         <View style={styles.actions}>
-          <ActionButton label={saving ? 'Adding...' : 'Add to Bonds'} disabled={saving} onPress={() => void saveContact()} />
+          <ActionButton label={saving ? 'Adding...' : 'Add to Everclose'} disabled={saving} onPress={() => void saveContact()} />
           <ActionButton label="Cancel" variant="secondary" disabled={saving} onPress={() => router.back()} />
         </View>
       </ScrollView>

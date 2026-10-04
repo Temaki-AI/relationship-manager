@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { mock } from 'node:test';
+import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 
@@ -114,4 +116,35 @@ test('ordinary mutations wait for another ordinary writer instead of failing', a
     rmSync(root, { recursive: true, force: true });
     rmSync(lockPath, { force: true });
   }
+});
+
+test('a writer released between exclusive-open and lock inspection is retried before the next mutation runs', () => {
+  const root = mkdtempSync(join(tmpdir(), 'bonds-lock-release-race-'));
+  const backupDirectory = join(root, 'backups'), lockPath = getDatabaseMaintenanceLockPath(backupDirectory);
+  writeFileSync(lockPath, 'mutation:external-writer\n');
+  const originalStat = fs.statSync;
+  let released = false, calls = 0;
+  const inspection = mock.method(fs, 'statSync', (...args: Parameters<typeof fs.statSync>) => {
+    if (String(args[0]) === lockPath && !released) { released = true; rmSync(lockPath); }
+    return originalStat(...args);
+  });
+  syncBuiltinESMExports();
+  try {
+    assert.equal(withDatabaseMutationLock(backupDirectory, () => { calls++; return 'saved'; }), 'saved');
+    assert.equal(released, true); assert.equal(calls, 1); assert.equal(existsSync(lockPath), false);
+  } finally {
+    inspection.mock.restore(); syncBuiltinESMExports(); rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('an exclusive file awaiting its owner contents does not get mistaken for maintenance', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'bonds-lock-owner-publication-'));
+  const backupDirectory = join(root, 'backups'), lockPath = getDatabaseMaintenanceLockPath(backupDirectory);
+  writeFileSync(lockPath, '');
+  const releaser = spawn(process.execPath, ['--input-type=module', '--eval',
+    `import { writeFileSync, rmSync } from 'node:fs'; setTimeout(() => writeFileSync(process.argv[1], 'mutation:external-writer'), 50); setTimeout(() => rmSync(process.argv[1], { force: true }), 150);`, lockPath], { stdio: 'ignore' });
+  try {
+    assert.equal(withDatabaseMutationLock(backupDirectory, () => 'saved'), 'saved');
+    await once(releaser, 'exit');
+  } finally { rmSync(root, { recursive: true, force: true }); rmSync(lockPath, { force: true }); }
 });

@@ -1,0 +1,59 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "everclose-crm-local",
+  "main": "custom-worker.ts",
+  "compatibility_date": "2026-07-12",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "vars": {
+    "AUTH_MODE": "google",
+    "NEXT_PUBLIC_AUTH_MODE": "google",
+    "BETTER_AUTH_URL": "http://localhost:3100",
+    "CRM_LOG_LEVEL": "info",
+    "CLOUD_AUTOMATIC_BACKUP_ENABLED": "false",
+    "CLOUD_LARGE_RECOVERY_ENABLED": "false",
+    "EMAIL_DELIVERY_ENABLED": "false",
+    "EMAIL_FROM": "alerts@everclosecrm.com",
+    "SEED_DEMO_DATA": "false"
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "everclose-crm-local",
+    "database_id": "00000000-0000-0000-0000-000000000001",
+    "migrations_dir": "drizzle",
+    "remote": false
+  }],
+  "r2_buckets": [
+    { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "everclose-local-cache", "remote": false },
+    { "binding": "PRIVATE_ASSETS", "bucket_name": "everclose-local-private-assets", "remote": false }
+  ],
+  "queues": {
+    "producers": [{ "binding": "LARGE_RECOVERY_QUEUE", "queue": "everclose-local-recovery" }, { "binding": "GOOGLE_CONTACTS_QUEUE", "queue": "everclose-local-google-contacts" }, { "binding": "GOOGLE_CALENDAR_QUEUE", "queue": "everclose-local-google-calendar" }],
+    "consumers": [{
+      "queue": "everclose-local-recovery",
+      "max_batch_size": 1,
+      "max_batch_timeout": 1,
+      "max_retries": 9,
+      "max_concurrency": 4,
+      "dead_letter_queue": "everclose-local-recovery-failed"
+    }, {
+      "queue": "everclose-local-google-contacts",
+      "max_batch_size": 1,
+      "max_batch_timeout": 1,
+      "max_retries": 9,
+      "max_concurrency": 4,
+      "dead_letter_queue": "everclose-local-google-contacts-failed"
+    }, {
+      "queue": "everclose-local-google-calendar",
+      "max_batch_size": 1,
+      "max_batch_timeout": 1,
+      "max_retries": 9,
+      "max_concurrency": 4,
+      "dead_letter_queue": "everclose-local-google-calendar-failed"
+    }]
+  },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "everclose-crm-local", "remote": false }],
+  "triggers": { "crons": ["*/15 * * * *"] }
+}

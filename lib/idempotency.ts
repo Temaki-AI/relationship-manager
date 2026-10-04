@@ -50,11 +50,11 @@ function parseStoredResult(value: string): StoredIdempotencyResult | null {
   }
 }
 
-function storageKey(scope: string, idempotencyKey: string): string {
+function storageKey(scope: string, idempotencyKey: string, durable = false): string {
   if (!IDEMPOTENCY_SCOPE_PATTERN.test(scope)) {
     throw new Error(`Invalid internal idempotency scope: ${scope}`);
   }
-  return `${IDEMPOTENCY_PREFIX}${scope}:${idempotencyKey}`;
+  return `${durable ? 'durable-' : ''}${IDEMPOTENCY_PREFIX}${scope}:${idempotencyKey}`;
 }
 
 function pruneExpiredIdempotencyRecords(db: Database.Database) {
@@ -97,15 +97,16 @@ export function runIdempotentCreate<T extends ResourceWithId>(
   db: Database.Database,
   options: {
     scope: string;
+    durable?: boolean;
     idempotencyKey: string;
     fingerprint: string;
     create: () => T | null;
     load: (resourceId: number) => T | undefined;
   }
 ): { resource: T | null; replayed: boolean } {
-  const key = storageKey(options.scope, options.idempotencyKey);
+  const key = storageKey(options.scope, options.idempotencyKey, options.durable);
   const operation = db.transaction(() => {
-    pruneExpiredIdempotencyRecords(db);
+    if (!options.durable) pruneExpiredIdempotencyRecords(db);
     const existing = db.prepare('SELECT value FROM app_metadata WHERE key = ?')
       .get(key) as { value: string } | undefined;
 
@@ -127,7 +128,7 @@ export function runIdempotentCreate<T extends ResourceWithId>(
       return { resource, replayed: true };
     }
 
-    makeRoomForIdempotencyRecord(db);
+    if (!options.durable) makeRoomForIdempotencyRecord(db);
     const resource = options.create();
     if (!resource) return { resource: null, replayed: false };
 

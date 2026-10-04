@@ -130,14 +130,14 @@ export async function createCloudBackup(workspaceId: string, reason: BackupReaso
   try {
     const workspace = result[4].results[0] as { name: string; persona: string | null; recovery_revision: number };
     const tables = Object.fromEntries(SNAPSHOT_TABLES.map((table, index) => [table, result[5 + index].results])) as CloudSnapshot['tables'];
-    const snapshot: CloudSnapshot = { format: 'bonds-cloud-backup', version: 4, workspaceId, createdAt, workspace: { name: workspace.name, persona: workspace.persona }, tables };
+    const snapshot: CloudSnapshot = { format: 'bonds-cloud-backup', version: 14, workspaceId, createdAt, workspace: { name: workspace.name, persona: workspace.persona }, tables };
     validateCloudSnapshot(snapshot, workspaceId);
     const payload = new TextEncoder().encode(JSON.stringify(snapshot));
     if (payload.byteLength > MAX_CLOUD_BACKUP_BYTES) throw new CloudRecoveryError('This backup exceeds the interactive recovery limit. No data was changed.', 413);
     const checksum = await backupChecksum(payload);
     const rowCounts = Object.fromEntries(SNAPSHOT_TABLES.map((table) => [table, tables[table].length]));
     const key = `${workspaceId}/backups/${filename}`;
-    await PRIVATE_ASSETS.put(key, payload, { httpMetadata: { contentType: 'application/json' }, customMetadata: { sha256: checksum, rowCounts: JSON.stringify(rowCounts), reason, createdAt, schemaVersion: 'cloud-4' } });
+    await PRIVATE_ASSETS.put(key, payload, { httpMetadata: { contentType: 'application/json' }, customMetadata: { sha256: checksum, rowCounts: JSON.stringify(rowCounts), reason, createdAt, schemaVersion: 'cloud-14' } });
     const verified = await PRIVATE_ASSETS.get(key);
     if (!verified || verified.size !== payload.byteLength || await backupChecksum(new Uint8Array(await verified.arrayBuffer())) !== checksum) throw new CloudRecoveryError('The recovery file could not be verified. No data was changed.', 503);
     // R2 upload is outside the D1 snapshot transaction. Never publish a
@@ -154,7 +154,7 @@ export async function createCloudBackup(workspaceId: string, reason: BackupReaso
         .bind(workspaceId, filename),
       removeGuard(DB, `${token}-finalize`),
     ]);
-    return { token, revision: workspace.recovery_revision, snapshot, backup: { filename, createdAt, reason, schemaVersion: 'cloud-4', sizeBytes: payload.byteLength, sha256: checksum, rowCounts, protected: true } satisfies CloudBackupMetadata };
+    return { token, revision: workspace.recovery_revision, snapshot, backup: { filename, createdAt, reason, schemaVersion: 'cloud-14', sizeBytes: payload.byteLength, sha256: checksum, rowCounts, protected: true } satisfies CloudBackupMetadata };
   } catch (error) {
     await releaseBackupPin(workspaceId, token, DB);
     await DB.prepare("UPDATE cloud_backup_files SET state = 'failed' WHERE workspace_id = ? AND filename = ?").bind(workspaceId, filename).run();

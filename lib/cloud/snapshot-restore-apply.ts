@@ -3,6 +3,8 @@ import { backupChecksum, maintenanceGuard, removeGuard } from '@/lib/cloud/recov
 import { MANIFEST_PART_CHUNKS, readPrivateSnapshotChunk, readPrivateSnapshotPart,
   readPrivateSnapshotRoot } from '@/lib/cloud/snapshot-artifact';
 import type { SnapshotRestorePreparation } from '@/lib/cloud/snapshot-restore-preparation';
+import { pauseCloudSyncStatements, resumeCloudSyncStatements, deviceSourceGraphChecks } from '@/lib/cloud/sync-projection';
+import { calendarEventGraphChecks } from './calendar-event-graph';
 
 type DB = CloudflareEnv['DB'];
 type Assets = CloudflareEnv['PRIVATE_ASSETS'];
@@ -86,6 +88,7 @@ export async function beginCloudSnapshotRestoreApply(workspaceId: string, id: st
       )`, [id, workspaceId]),
       env.DB.prepare("UPDATE workspaces SET lifecycle = 'restoring' WHERE id = ? AND lifecycle = 'active'")
         .bind(workspaceId),
+      ...pauseCloudSyncStatements(env.DB, workspaceId),
       env.DB.prepare(`UPDATE cloud_snapshot_restore_jobs SET state = 'deleting', apply_source = 'target', apply_table_index = 0,
         apply_chunk_index = 0, apply_row_index = 0, apply_part_chain = '', apply_row_counts = '{}',
         background_state = 'running', background_version = background_version + 1,
@@ -483,6 +486,8 @@ async function verifyDestinationGraph(db: DB, workspaceId: string, expected: Rec
   const contactTables = SNAPSHOT_TABLES.filter((table) => snapshotColumns(table)
     .some((column) => column.name === 'contact_id'));
   const referenceChecks = [
+    ...deviceSourceGraphChecks(),
+    ...calendarEventGraphChecks(),
     ...contactTables.map((table) => `SELECT 1 FROM ${table} item LEFT JOIN contacts target
       ON target.id = item.contact_id AND target.workspace_id = item.workspace_id
       WHERE item.workspace_id = ? AND target.id IS NULL LIMIT 1`),
@@ -620,6 +625,7 @@ export async function advanceCloudSnapshotRestoreVerification(workspaceId: strin
       guard(),
       DB.prepare("UPDATE workspaces SET name = ?, persona = ?, lifecycle = 'active' WHERE id = ? AND lifecycle = 'restoring'")
         .bind(root.workspace.name, root.workspace.persona, workspaceId),
+      ...resumeCloudSyncStatements(DB, workspaceId),
       DB.prepare(`UPDATE reminder_email_preferences SET enabled = 0, enabled_at = NULL,
         updated_at = ? WHERE workspace_id = ?`).bind(completedAt, workspaceId),
       DB.prepare(`UPDATE cloud_backup_schedules SET next_attempt_at = ?, lease_until = NULL,

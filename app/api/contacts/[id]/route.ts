@@ -94,7 +94,9 @@ export async function PATCH(
     const contactId = parsePositiveInteger(id);
     if (!contactId) return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
     const body = await readJsonBody(request);
-    const fields = normalizeContactPatchInput(body);
+    const original = db.prepare('SELECT contact_methods FROM contacts WHERE id = ?').get(contactId) as { contact_methods: string } | undefined;
+    if (!original) return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
+    const fields = normalizeContactPatchInput(body, original.contact_methods);
     const expectedRevision = getExpectedContactRevision(body);
 
     if (Object.keys(fields).length === 0) {

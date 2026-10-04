@@ -20,6 +20,7 @@ export const EDITABLE_CONTACT_FIELDS = [
   'custom_fields',
   'last_contacted',
   'contact_frequency',
+  'contact_methods',
 ] as const satisfies ReadonlyArray<keyof Contact>;
 
 export class ContactRevisionError extends Error {

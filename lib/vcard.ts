@@ -1,3 +1,4 @@
+import { normalizeUserContactMethods, readContactMethods, type ContactMethodDraft, type ContactMethodKind } from '../packages/domain/src/contact-methods.ts';
 import type { Contact } from './db.ts';
 import {
   normalizeContactCreateInput,
@@ -34,6 +35,7 @@ export type ParsedVCardContact = {
   lastContacted: string | null;
   contactFrequency: number | null;
   customFields: Record<string, unknown> | null;
+  contactMethods?: ContactMethodDraft[];
 };
 
 type VCardProperty = {
@@ -193,6 +195,15 @@ function buildContact(properties: VCardProperty[]): ParsedVCardContact {
   let lastContacted: string | null = null;
   let contactFrequency: number | null = null;
   let customFields: Record<string, unknown> | null = null;
+  const methods: ContactMethodDraft[] = [];
+  let portableMethods: ContactMethodDraft[] | undefined;
+  function addMethod(kind: ContactMethodKind, value: string, property: VCardProperty) {
+    const types = property.params.TYPE || [];
+    methods.push({ id: crypto.randomUUID(), kind, value,
+      label: types.filter((type) => !['PREF', 'INTERNET'].includes(type.toUpperCase())).join(', ') || null,
+      country: kind === 'phone' ? property.params['X-EVERCLOSE-COUNTRY']?.[0] ?? null : null,
+      preferred: types.some((type) => type.toUpperCase() === 'PREF') || property.params.PREF?.[0] === '1' });
+  }
 
   for (const property of properties) {
     const decoded = decodeEscapedValue(property.value).trim();
@@ -203,10 +214,12 @@ function buildContact(properties: VCardProperty[]): ParsedVCardContact {
     if (property.name === 'EMAIL') {
       const email = decoded.replace(/^mailto:/i, '').trim().toLowerCase();
       if (email && !emails.includes(email)) emails.push(email);
+      if (email) addMethod('email', decoded.replace(/^mailto:/i, '').trim(), property);
     }
     if (property.name === 'TEL') {
       const phone = decoded.replace(/^tel:/i, '').trim();
       if (phone && !phones.includes(phone)) phones.push(phone);
+      if (phone) addMethod('phone', phone, property);
     }
     if (property.name === 'BDAY') {
       ({ birthday, birthdayText } = normalizeBirthday(property.value));
@@ -252,6 +265,7 @@ function buildContact(properties: VCardProperty[]): ParsedVCardContact {
       if (url) {
         const network = inferSocialNetwork(url, property.params.TYPE || []);
         socialLinks[network] = url;
+        addMethod('profile', url, property);
       }
     }
     if (property.name === 'X-BONDS-HOW-WE-MET') howWeMet = decoded || null;
@@ -273,6 +287,15 @@ function buildContact(properties: VCardProperty[]): ParsedVCardContact {
         // Invalid vendor fields should not prevent importing an otherwise valid contact.
       }
     }
+    if (property.name === 'X-EVERCLOSE-CONTACT-METHODS') {
+      try { portableMethods = readContactMethods(normalizeUserContactMethods(decoded)); }
+      catch { throw new VCardValidationError('Invalid portable contact methods.'); }
+    }
+  }
+
+  if (!portableMethods) for (const kind of ['email', 'phone', 'profile'] as const) {
+    const chosen = methods.find((method) => method.kind === kind && method.preferred) ?? methods.find((method) => method.kind === kind);
+    for (const method of methods) if (method.kind === kind) method.preferred = method === chosen;
   }
 
   return {
@@ -295,6 +318,7 @@ function buildContact(properties: VCardProperty[]): ParsedVCardContact {
     lastContacted,
     contactFrequency,
     customFields,
+    contactMethods: portableMethods ?? methods,
   };
 }
 
@@ -390,8 +414,9 @@ export function normalizeVCardContact(
   const normalized = normalizeContactCreateInput({
     name: displayName,
     nickname: contact.nickname,
-    email: contact.emails[0] || null,
-    phone: contact.phones[0] || null,
+    email: contact.contactMethods ? contact.contactMethods.find((method) => method.kind === 'email' && method.preferred)?.value ?? null : contact.emails[0] || null,
+    phone: contact.contactMethods ? contact.contactMethods.find((method) => method.kind === 'phone' && method.preferred)?.value ?? null : contact.phones[0] || null,
+    ...(contact.contactMethods ? { contact_methods: contact.contactMethods } : {}),
     photo_url: contact.photoUrl,
     birthday: contact.birthday,
     birthday_reminder_days: contact.birthdayReminderDays ?? 7,
@@ -458,6 +483,7 @@ function parseStoredCustomFields(value: string | null): Record<string, unknown> 
 }
 
 export function serializeContactToVCard(contact: Contact): string {
+    const methods = contact.contact_methods === undefined ? undefined : readContactMethods(contact.contact_methods);
     const customFields = parseStoredCustomFields(contact.custom_fields);
     const vcardDetails = customFields.vcard && typeof customFields.vcard === 'object'
       ? customFields.vcard as Record<string, unknown>
@@ -470,9 +496,15 @@ export function serializeContactToVCard(contact: Contact): string {
       `N:${escapeVCardValue(contact.name)};;;;`,
     ];
 
-    if (contact.email) lines.push(`EMAIL;TYPE=INTERNET:${escapeVCardValue(contact.email)}`);
+    if (!methods && contact.email) lines.push(`EMAIL;TYPE=INTERNET:${escapeVCardValue(contact.email)}`);
     if (contact.nickname) lines.push(`NICKNAME:${escapeVCardValue(contact.nickname)}`);
-    if (contact.phone) lines.push(`TEL;TYPE=CELL:${escapeVCardValue(contact.phone)}`);
+    if (!methods && contact.phone) lines.push(`TEL;TYPE=CELL:${escapeVCardValue(contact.phone)}`);
+    for (const method of [...(methods ?? [])].sort((a, b) => Number(b.preferred) - Number(a.preferred))) {
+      const property = method.kind === 'email' ? 'EMAIL' : method.kind === 'phone' ? 'TEL' : 'URL';
+      const label = method.label?.toUpperCase().replace(/[^A-Z0-9-]/gu, '-') || (method.kind === 'email' ? 'INTERNET' : 'OTHER');
+      const country = method.country ? `;X-EVERCLOSE-COUNTRY=${method.country}` : '';
+      lines.push(`${property};TYPE=${label}${method.preferred ? ',PREF' : ''}${country}:${escapeVCardValue(method.value)}`);
+    }
     const embeddedPhoto = parseEmbeddedContactPhoto(contact.photo_url);
     if (embeddedPhoto) {
       const photoType = embeddedPhoto.mimeType === 'image/jpeg'
@@ -482,7 +514,7 @@ export function serializeContactToVCard(contact: Contact): string {
     } else if (contact.photo_url && normalizeWebUrl(contact.photo_url) === contact.photo_url) {
       lines.push(`PHOTO;VALUE=URI:${escapeVCardValue(contact.photo_url)}`);
     }
-    const additionalEmails = Array.isArray(vcardDetails.additional_emails)
+    const additionalEmails = contact.contact_methods === undefined && Array.isArray(vcardDetails.additional_emails)
       ? vcardDetails.additional_emails.filter((value): value is string => typeof value === 'string')
       : [];
     const seenEmails = new Set(contact.email ? [contact.email.trim().toLowerCase()] : []);
@@ -492,7 +524,7 @@ export function serializeContactToVCard(contact: Contact): string {
       seenEmails.add(normalized);
       lines.push(`EMAIL;TYPE=OTHER:${escapeVCardValue(email.trim())}`);
     }
-    const additionalPhones = Array.isArray(vcardDetails.additional_phones)
+    const additionalPhones = contact.contact_methods === undefined && Array.isArray(vcardDetails.additional_phones)
       ? vcardDetails.additional_phones.filter((value): value is string => typeof value === 'string')
       : [];
     const seenPhones = new Set(contact.phone ? [contact.phone.replace(/\D/g, '')] : []);
@@ -509,6 +541,7 @@ export function serializeContactToVCard(contact: Contact): string {
     if (contact.last_contacted) lines.push(`X-BONDS-LAST-CONTACTED:${contact.last_contacted}`);
     lines.push(`X-BONDS-CONTACT-FREQUENCY:${contact.contact_frequency}`);
     if (contact.custom_fields) lines.push(`X-BONDS-CUSTOM-FIELDS:${escapeVCardValue(contact.custom_fields)}`);
+    if (contact.contact_methods !== undefined) lines.push(`X-EVERCLOSE-CONTACT-METHODS:${escapeVCardValue(contact.contact_methods)}`);
 
     const tags = parseStoredStringList(contact.tags);
     if (tags.length > 0) lines.push(`CATEGORIES:${tags.map(escapeVCardValue).join(',')}`);
@@ -524,7 +557,7 @@ export function serializeContactToVCard(contact: Contact): string {
     if (typeof customFields.location === 'string' && customFields.location) {
       lines.push(`ADR;TYPE=HOME:;;;${escapeVCardValue(customFields.location)};;;`);
     }
-    if (customFields.social && typeof customFields.social === 'object') {
+    if (!methods && customFields.social && typeof customFields.social === 'object') {
       for (const [network, rawUrl] of Object.entries(customFields.social)) {
         const url = normalizeWebUrl(rawUrl);
         const safeNetwork = network.toLowerCase().replace(/[^a-z0-9-]/g, '');

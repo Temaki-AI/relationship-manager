@@ -118,8 +118,8 @@ export function listContactPage(
     'contacts.custom_fields',
   ]);
   if (searchFilter.sql) {
-    conditions.push(searchFilter.sql);
-    params.push(...searchFilter.params);
+    conditions.push(`(${searchFilter.sql} OR EXISTS (SELECT 1 FROM json_each(contacts.contact_methods) WHERE instr(lower(json_extract(value, '$.value')), lower(?)) > 0 OR instr(lower(COALESCE(json_extract(value, '$.label'), '')), lower(?)) > 0))`);
+    params.push(...searchFilter.params, search, search);
   }
   if (tag) {
     conditions.push(TAG_MEMBERSHIP_SQL);

@@ -50,6 +50,7 @@ export function getInteractionEditRevision(interaction: Interaction): string {
     interaction.type,
     interaction.summary,
     interaction.notes,
+    interaction.occurred_at ?? null,
   ])).digest('hex');
 }
 

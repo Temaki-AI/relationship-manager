@@ -12,6 +12,16 @@ import { handleCloudLargeRecovery } from '@/lib/cloud/large-recovery-api';
 import { handleCloudEnrich } from '@/lib/cloud/enrich-api';
 import { handleCloudDuplicateReview } from '@/lib/cloud/duplicate-review-api';
 import { handleCloudDuplicateMerge } from '@/lib/cloud/duplicate-merge-api';
+import { handleCloudSync } from '@/lib/cloud/sync-api';
+import { handleCloudSyncV2, handleCloudSyncV3, handleCloudSyncV4 } from '@/lib/cloud/sync-v2-api';
+import { handleCloudDevices } from '@/lib/cloud/device-api';
+import { handleCloudContactSources } from '@/lib/cloud/contact-source-api';
+import { handleProviderConnections } from '@/lib/cloud/provider-connection-api';
+import { handleProviderSources } from '@/lib/cloud/provider-source-api';
+import { handleDeviceSources } from '@/lib/cloud/device-source-api';
+import { isNativeDeviceApiPath } from '@/packages/domain/src/devices';
+import { handleSavedCalendarEvents } from '@/lib/cloud/calendar-event-links';
+import { handleCalendarEventLinks } from '@/lib/cloud/calendar-event-link-api';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +29,22 @@ type Context = { params: Promise<{ path: string[] }> };
 
 async function dispatch(request: Request, context: Context) {
   try {
-    const { workspaceId, userId, lifecycle, role } = await requireCloudWorkspace(request.headers);
     const { path } = await context.params;
+    const actor = await requireCloudWorkspace(request.headers, isNativeDeviceApiPath(`/api/${path.join('/')}`));
+    const { workspaceId, userId, lifecycle, role } = actor;
     const maintenance = cloudWorkspaceMaintenanceResponse(lifecycle, path, request.method);
     if (maintenance) return maintenance;
+    if (path[0] === 'connections') return handleProviderConnections(request, actor, path);
+    if (path[0] === 'calendar' && path[1] === 'events') return handleSavedCalendarEvents(request, actor, path);
+    if (path.join('/') === 'v1/calendar-event-links/push') return handleCalendarEventLinks(request, actor, path);
+    if (path[0] === 'contacts' && path[2] === 'provider-sources') return handleProviderSources(request, actor, path);
+    if (path.join('/') === 'v1/device-sources/push' || path[0] === 'contacts' && path[2] === 'device-sources') return handleDeviceSources(request, actor, path);
+    if (path[0] === 'v1' && path[1] === 'devices') return handleCloudDevices(request, actor, path);
+    if (path[0] === 'v1' && path[1] === 'sync') return handleCloudSync(request, workspaceId, path);
+    if (path[0] === 'v2' && path[1] === 'sync') return handleCloudSyncV2(request, workspaceId, path);
+    if (path[0] === 'v4' && path[1] === 'sync') return handleCloudSyncV4(request, workspaceId, path);
+    if (path[0] === 'v3' && path[1] === 'sync') return handleCloudSyncV3(request, workspaceId, path);
+    if (path[0] === 'sources' || path[0] === 'contacts' && path[2] === 'sources') return handleCloudContactSources(request, workspaceId, path);
     if (path.length === 2 && path.join('/') === 'contacts/duplicates') {
       return request.method === 'POST'
         ? handleCloudDuplicateMerge(request, workspaceId)
@@ -45,7 +67,7 @@ async function dispatch(request: Request, context: Context) {
     }
     if (path.join('/') === 'settings/restore' && request.method === 'POST') return await handleCloudRestore(request, workspaceId);
     if (path.join('/') === 'settings/erase' && request.method === 'POST') return handleCloudErasure(request, workspaceId);
-    return handleCloudCore(request, workspaceId, path);
+    return handleCloudCore(request, workspaceId, path, userId);
   } catch (error) {
     if (error instanceof CloudAuthenticationError || error instanceof CloudWorkspaceError) {
       return Response.json({ error: error.message }, { status: error.status });

@@ -23,7 +23,7 @@ test('cloud duplicate scan is bounded, tenant-scoped, and groups matches across 
       name: 'Ada other', email: 'ada@example.test', phone: '+1 650 555 9988',
     } })).body.contact;
     const lastMatch = (await h.call('contacts', { method: 'POST', body: {
-      name: 'Ada third', phone: '16505559988',
+      name: 'Ada third', phone: '+16505559988',
     } })).body.contact;
     await h.call('contacts', { workspace: 'other', method: 'POST', body: {
       name: 'Foreign Ada', email: 'ada@example.test',
@@ -157,7 +157,7 @@ test('cloud duplicate scan reaches a match beyond ten thousand contacts', {
 test('authenticated cloud dispatch reaches duplicate review and merge before the generic contact handler', () => {
   const source = readFileSync('app/api/cloud/[...path]/route.ts', 'utf8');
   const duplicate = source.indexOf("path.join('/') === 'contacts/duplicates'");
-  const generic = source.indexOf("path[0] === 'contacts'");
+  const generic = source.indexOf('return handleCloudContacts(request, workspaceId, path)');
   assert.ok(duplicate >= 0 && generic > duplicate);
   assert.match(source, /handleCloudDuplicateReview\(request, workspaceId\)/);
   assert.match(source, /handleCloudDuplicateMerge\(request, workspaceId\)/);

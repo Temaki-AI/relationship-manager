@@ -74,13 +74,13 @@ test('large capture and manifest parts exceed 16 MB without one large read', {
 }, async () => {
   const h = await createCloudHarness();
   try {
-    for (let index = 0; index < 17; index++) {
+    for (let index = 0; index < 54; index++) {
       await h.db.prepare("INSERT INTO contacts (workspace_id, name, notes) VALUES ('test', ?, ?)")
-        .bind(`Person ${index}`, 'x'.repeat(1_000_000)).run();
+        .bind(`Person ${index}`, 'x'.repeat(500_000)).run();
     }
     const job = await h.beginCapture();
     const finished = await captureAll(h, job.id);
-    assert.equal(JSON.parse(finished.row_counts).contacts, 17);
+    assert.equal(JSON.parse(finished.row_counts).contacts, 54);
     const totals = await h.db.prepare(`SELECT COUNT(*) AS chunks, SUM(byte_length) AS bytes
       FROM cloud_snapshot_capture_chunks WHERE job_id = ?`).bind(job.id)
       .first<{ chunks: number; bytes: number }>();
@@ -104,7 +104,7 @@ test('large capture and manifest parts exceed 16 MB without one large read', {
       described += value.chunks.reduce((sum: number, chunk: { row_count: number }) => sum + chunk.row_count, 0);
       chain = createHash('sha256').update(`${chain}:${hash}`).digest('hex');
     }
-    assert.equal(described, 17);
+    assert.equal(described, 54);
     const root = await h.assets.get(`test/recovery-jobs/${job.id}/manifest-${verified.manifest_sha256}.json`);
     assert.equal(JSON.parse(await root!.text()).partsChainSha256, chain);
   } finally { await h.close(); }

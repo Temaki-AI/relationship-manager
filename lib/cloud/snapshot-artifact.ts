@@ -8,7 +8,7 @@ const decoder = new TextDecoder('utf-8', { fatal: true });
 const hashPattern = /^[a-f0-9]{64}$/u;
 
 export const MANIFEST_PART_CHUNKS = 8;
-export type SnapshotArtifactIdentity = { workspaceId: string; jobId: string; revision: number };
+export type SnapshotArtifactIdentity = { workspaceId: string; jobId: string; revision: number; snapshotSchemaVersion?: 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 };
 export type SnapshotChunkDescriptor = {
   sequence: number;
   table_name: SnapshotTable;
@@ -21,7 +21,7 @@ export type SnapshotReadCursor = { tableIndex: number; cursorKey: string };
 export type PrivateSnapshotRoot = SnapshotArtifactIdentity & {
   format: 'everclose-cloud-manifest';
   version: 1;
-  snapshotSchemaVersion: 4;
+  snapshotSchemaVersion: 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14;
   createdAt: string;
   workspace: { name: string; persona: string | null };
   tableOrder: SnapshotTable[];
@@ -68,23 +68,24 @@ export async function readPrivateSnapshotRoot(identity: Pick<SnapshotArtifactIde
   }
   const value = parseBytes(bytes, 'Snapshot manifest');
   if (!record(value) || value.format !== 'everclose-cloud-manifest' || value.version !== 1
-    || value.snapshotSchemaVersion !== 4 || value.workspaceId !== identity.workspaceId || value.jobId !== identity.jobId
+    || ![4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].includes(Number(value.snapshotSchemaVersion)) || typeof value.snapshotSchemaVersion !== 'number' || value.workspaceId !== identity.workspaceId || value.jobId !== identity.jobId
     || !natural(value.revision) || typeof value.createdAt !== 'string' || !Number.isFinite(Date.parse(value.createdAt))
     || !record(value.workspace) || typeof value.workspace.name !== 'string' || !value.workspace.name.trim()
     || value.workspace.name.length > 200 || value.workspace.persona !== null && typeof value.workspace.persona !== 'string') {
     return invalid('Snapshot manifest identity or schema is invalid.');
   }
-  if (!Array.isArray(value.tableOrder) || value.tableOrder.length !== SNAPSHOT_TABLES.length
-    || value.tableOrder.some((table, index) => table !== SNAPSHOT_TABLES[index]) || !record(value.rowCounts)
-    || Object.keys(value.rowCounts).length !== SNAPSHOT_TABLES.length
-    || SNAPSHOT_TABLES.some((table) => !natural((value.rowCounts as Record<string, unknown>)[table]))
+  const expectedTables = SNAPSHOT_TABLES.filter((table) => !(table === 'contact_source_links' && Number(value.snapshotSchemaVersion) < 10 || table === 'contact_provider_links' && Number(value.snapshotSchemaVersion) < 11 || table === 'provider_field_rules' && Number(value.snapshotSchemaVersion) < 12 || table === 'contact_device_links' && Number(value.snapshotSchemaVersion) < 13 || table.startsWith('calendar_event') && Number(value.snapshotSchemaVersion) < 14));
+  if (!Array.isArray(value.tableOrder) || value.tableOrder.length !== expectedTables.length
+    || value.tableOrder.some((table, index) => table !== expectedTables[index]) || !record(value.rowCounts)
+    || Object.keys(value.rowCounts).length !== expectedTables.length
+    || expectedTables.some((table) => !natural((value.rowCounts as Record<string, unknown>)[table]))
     || !natural(value.chunkCount) || !natural(value.partCount)
     || value.partCount !== Math.ceil(value.chunkCount / MANIFEST_PART_CHUNKS)
     || value.partCount === 0 && value.partsChainSha256 !== ''
     || value.partCount > 0 && (typeof value.partsChainSha256 !== 'string' || !hashPattern.test(value.partsChainSha256))) {
     return invalid('Snapshot manifest counts or part chain are invalid.');
   }
-  return value as PrivateSnapshotRoot;
+  return { ...value, tableOrder: SNAPSHOT_TABLES, rowCounts: { ...(value.rowCounts as Record<string, number>), ...(Number(value.snapshotSchemaVersion) < 10 ? { contact_source_links: 0 } : {}), ...(Number(value.snapshotSchemaVersion) < 11 ? { contact_provider_links: 0 } : {}), ...(Number(value.snapshotSchemaVersion) < 12 ? { provider_field_rules: 0 } : {}), ...(Number(value.snapshotSchemaVersion) < 13 ? { contact_device_links: 0 } : {}), ...(Number(value.snapshotSchemaVersion) < 14 ? { calendar_events: 0, calendar_event_people: 0, calendar_event_plans: 0 } : {}) } } as PrivateSnapshotRoot;
 }
 
 export async function readPrivateSnapshotPart(root: PrivateSnapshotRoot, index: number, assets: Assets) {
@@ -158,7 +159,7 @@ export async function readPrivateSnapshotChunk(identity: SnapshotArtifactIdentit
     return invalid('Snapshot chunk identity does not match.');
   }
   let rows: SnapshotRow[];
-  try { rows = validateSnapshotRows(chunk.table_name, value.rows, identity.workspaceId, 4); }
+  try { rows = validateSnapshotRows(chunk.table_name, value.rows, identity.workspaceId, identity.snapshotSchemaVersion ?? 14); }
   catch { return invalid('Snapshot chunk contains invalid CRM rows.'); }
   if (rows.length !== chunk.row_count) return invalid('Snapshot chunk row count does not match.');
   let cursor = previous.tableIndex === tableIndex ? previous.cursorKey : '';

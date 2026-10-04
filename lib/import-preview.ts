@@ -8,6 +8,7 @@ export type ImportContact = NormalizedContactInput & { last_contacted: string | 
 export type ImportPreviewRow = { row_number: number; name: string; email: string | null; phone: string | null; birthday: string | null; payload: string | null; state: 'pending' | 'invalid'; message: string | null };
 
 const fields: Record<string, string> = {
+  'contact methods': 'contact_methods', contact_methods: 'contact_methods',
   name: 'name', nickname: 'nickname', email: 'email', phone: 'phone', birthday: 'birthday',
   'birthday alert (days before)': 'birthday_reminder_days', 'birthday alert': 'birthday_reminder_days', birthday_reminder_days: 'birthday_reminder_days',
   'how we met': 'how_we_met', how_we_met: 'how_we_met', tags: 'tags', notes: 'notes',
@@ -30,6 +31,7 @@ export function parseImportPreview(text: string, format: 'csv' | 'vcard', import
     inputs = records.slice(1).map((values) => ({ label: values[headers.indexOf('name')] || 'Unnamed contact', read: () => {
       const row: Record<string, unknown> = {};
       headers.forEach((field, index) => { if (field) row[field] = values[index] || ''; });
+      if (!row.contact_methods) delete row.contact_methods;
       const tags = parseImportedTagsValue(String(row.tags || ''));
       const gifts = parseImportedGiftIdeasValue(String(row.gift_ideas || ''));
       if (row.custom_fields) {

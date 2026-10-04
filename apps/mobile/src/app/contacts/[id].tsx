@@ -1,9 +1,12 @@
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { DeviceSavedSources } from '@/components/device-saved-sources';
+import { PersonCalendarContext } from '@/components/person-calendar-context';
+import { Stack, useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, Eyebrow, SectionHeading, StatusPill, Surface } from '@/components/design-system';
+import { ActionButton, Avatar, Eyebrow, SectionHeading, StatusPill, Surface } from '@/components/design-system';
 import {
   getContact,
   listContactInteractions,
@@ -24,6 +27,10 @@ import { listOpenReminders, type ReminderRecord } from '@/data/reminders';
 import { getRelationshipState, type ContactRecord } from '@/domain/contact';
 import { formatDateTime, formatRelativeDate } from '@/lib/format';
 import { fonts, palette } from '@/theme';
+import { useNativeSync } from '@/native/sync';
+import { readContactMethods, contactMethodHref } from '../../../../../packages/domain/src/contact-methods';
+import { readContactSources, readSourceFacts, SOURCE_FIELD_LABELS } from '../../../../../packages/domain/src/contact-sources';
+import { readProviderSources, readProviderFacts } from '../../../../../packages/domain/src/provider-sources';
 
 const TOUCH_OPTIONS: { type: InteractionType; label: string }[] = [
   { type: 'message', label: 'Messaged' },
@@ -33,6 +40,8 @@ const TOUCH_OPTIONS: { type: InteractionType; label: string }[] = [
 
 export default function ContactDetailScreen() {
   const db = useSQLiteContext();
+  const focused = useIsFocused();
+  const { revision } = useNativeSync();
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -55,9 +64,15 @@ export default function ContactDetailScreen() {
     setLoading(false);
   }, [db, id]);
 
-  useFocusEffect(useCallback(() => {
-    void load();
-  }, [load]));
+  useEffect(() => {
+    if (!focused || !id) return;
+    let active = true;
+    void Promise.all([getContact(db, id), listContactInteractions(db, id), listOpenReminders(db, id)])
+      .then(([nextContact, nextInteractions, nextReminders]) => {
+        if (active) { setContact(nextContact); setInteractions(nextInteractions); setReminders(nextReminders); setLoading(false); }
+      });
+    return () => { active = false; };
+  }, [focused, db, id, revision]);
 
   async function recordTouch(type: InteractionType) {
     if (!contact) return;
@@ -113,12 +128,37 @@ export default function ContactDetailScreen() {
           </View>
         </View>
 
+        <ActionButton label="Edit contact details" variant="secondary" onPress={() => router.push({ pathname: '/contacts/edit', params: { id: contact.id } })} />
+        <ActionButton label="Contact methods" variant="secondary" onPress={() => router.push({ pathname: '/contacts/methods', params: { id: contact.id } })} />
+        <ActionButton label="Plans, family & relationships" variant="secondary" onPress={() => router.push({ pathname: '/contacts/context', params: { contactId: contact.id } })} />
+
         {(contact.email || contact.phone) && (
           <Surface style={styles.detailsCard}>
             {contact.email && <DetailRow label="Email" value={contact.email} />}
             {contact.phone && <DetailRow label="Phone" value={contact.phone} />}
           </Surface>
         )}
+        {readContactMethods(contact.contact_methods).filter((method) => !method.preferred || method.kind === 'profile').map((method) => <Pressable key={method.id} accessibilityRole="link"
+          accessibilityLabel={`Open ${method.label ?? method.kind}: ${method.value}`} onPress={() => { void Linking.openURL(contactMethodHref(method)).catch(() => Alert.alert('Unable to open this method', 'Check that an app is available for this link.')); }}>
+          <Surface style={styles.detailsCard}><DetailRow label={`${method.label ?? method.kind}${method.preferred ? ' · preferred' : ''}`} value={method.value} /></Surface>
+        </Pressable>)}
+        <DeviceSavedSources contactId={contact.id} />
+        {readContactSources(contact.source_links).map((source) => <Surface key={source.public_id} style={styles.detailsCard}>
+          <Eyebrow>LinkedIn · user supplied</Eyebrow>
+          {Object.entries(readSourceFacts(source.fields)).map(([field, fact]) => fact.observed_value && <DetailRow key={field} label={SOURCE_FIELD_LABELS[field as keyof typeof SOURCE_FIELD_LABELS]} value={fact.observed_value} />)}
+          <ActionButton label="Open LinkedIn profile" variant="secondary" onPress={() => { void Linking.openURL(source.profile_url).catch(() => Alert.alert('Unable to open profile', 'Check your internet connection.')); }} />
+          <Text style={styles.lastTouch}>Edit linked sources on the web. Saved details remain available offline.</Text>
+        </Surface>)}
+        {readProviderSources(contact.provider_links).map((source) => { const facts = readProviderFacts(source.observed_facts); return <Surface key={source.public_id} style={styles.detailsCard}>
+          <Eyebrow>Google Contacts · saved source</Eyebrow>
+          <DetailRow label="Account" value={source.account_email} />
+          {facts.name && <DetailRow label="Source name" value={facts.name} />}
+          {facts.emails.concat(facts.phones).map((method, index) => <DetailRow key={index} label={method.label || 'Contact method'} value={method.value} />)}
+          {facts.company && <DetailRow label="Company" value={facts.company} />}
+          {facts.title && <DetailRow label="Title" value={facts.title} />}
+          {facts.location && <DetailRow label="Location" value={facts.location} />}
+          <Text style={styles.lastTouch}>Saved details remain available offline. Manage this source on the web; your corrections stay in Everclose.</Text>
+        </Surface>; })}
 
         <View style={styles.section}>
           <Eyebrow>Quick capture</Eyebrow>
@@ -166,6 +206,7 @@ export default function ContactDetailScreen() {
           </View>
         )}
 
+        <PersonCalendarContext contactId={id} />
         <View style={styles.section}>
           <SectionHeading title="Open reminders" />
           {reminders.length === 0 ? (
@@ -190,7 +231,7 @@ export default function ContactDetailScreen() {
               <View style={[styles.timelineDot, styles.timelineDotMoss]} />
               <View style={styles.timelineCopy}>
                 <Text style={styles.timelineTitle}>{interaction.summary || interaction.type}</Text>
-                <Text style={styles.timelineMeta}>{formatDateTime(interaction.occurred_at)}</Text>
+                <Text style={styles.timelineMeta}>{interaction.occurred_at ? formatDateTime(interaction.occurred_at) : interaction.date}</Text>
               </View>
             </View>
           ))}

@@ -1,15 +1,17 @@
 import type Database from 'better-sqlite3';
 import { parseDateOnly } from './relationship-validation.ts';
 import { birthdayMatchesDaySQL, dateInTimeZone, normalizeTimeZone } from './civil-date.ts';
+import type { CalendarDisplayFacts } from '../packages/domain/src/calendar-event-display.ts';
+import type { SavedCalendarEvent } from '../packages/domain/src/calendar-events.ts';
 
 export const MAX_CALENDAR_RANGE_DAYS = 62;
 export const MAX_CALENDAR_EVENTS = 5_000;
 
-export type CalendarEventKind = 'birthday' | 'reminder' | 'plan' | 'interaction';
+export type CalendarEventKind = 'birthday' | 'reminder' | 'plan' | 'interaction' | 'source_event';
 
-export type CalendarEvent = {
+export type CoreCalendarEvent = {
   id: string;
-  kind: CalendarEventKind;
+  kind: Exclude<CalendarEventKind, 'source_event'>;
   date: string;
   starts_at: string | null;
   title: string;
@@ -20,6 +22,28 @@ export type CalendarEvent = {
   source_id: number;
   subtype: string;
 };
+
+export type CalendarEventCardContext = Pick<SavedCalendarEvent, 'public_id' | 'calendar_label' | 'calendar_time_zone' | 'account_email' | 'observed_at' | 'source_status' | 'people' | 'plans'> & { facts: CalendarDisplayFacts };
+export type SourceCalendarEvent = Omit<CoreCalendarEvent, 'kind' | 'contact_id' | 'source_id' | 'completed'> & {
+  kind: 'source_event'; contact_id: null; source_id: null; completed: false;
+  last_date: string; source: CalendarEventCardContext;
+};
+export type CalendarEvent = CoreCalendarEvent | SourceCalendarEvent;
+
+export function calendarEventPeople(event: CalendarEvent): Array<{ id: number; name: string }> {
+  if (event.kind !== 'source_event') return [{ id: event.contact_id, name: event.contact_name }];
+  return [...new Map([...event.source.people, ...event.source.plans.map((plan) => ({ id: plan.contact_id, name: plan.contact_name }))].map((person) => [person.id, person])).values()];
+}
+
+/** Expand only inside the requested grid; the agenda keeps one card per saved meeting. */
+export function calendarEventDates(event: CalendarEvent, range: { start: string; end: string }): string[] {
+  const first = event.date < range.start ? range.start : event.date;
+  const last = event.kind === 'source_event' ? event.last_date : event.date;
+  const end = last > range.end ? range.end : last;
+  const dates: string[] = [];
+  for (let value = Date.parse(first + 'T12:00:00Z'), stop = Date.parse(end + 'T12:00:00Z'); value <= stop && dates.length < MAX_CALENDAR_RANGE_DAYS; value += 86_400_000) dates.push(new Date(value).toISOString().slice(0, 10));
+  return dates;
+}
 
 export class CalendarRangeError extends Error {
   constructor(message: string) {

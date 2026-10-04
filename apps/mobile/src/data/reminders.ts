@@ -3,6 +3,8 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { normalizeReminderDraft, type ReminderDraft } from '@/domain/reminder';
 import { enqueueSyncIntent } from './sync-queue';
+import { signalSyncChange } from './sync-signals';
+import { canonicalContactId } from './contact-aliases';
 
 export type ReminderRecord = {
   id: string;
@@ -19,6 +21,7 @@ export async function listOpenReminders(
   db: SQLiteDatabase,
   contactId?: string
 ): Promise<ReminderRecord[]> {
+  if (contactId) contactId = await canonicalContactId(db, contactId);
   const whereContact = contactId ? 'AND reminders.contact_id = ?' : '';
   return db.getAllAsync<ReminderRecord>(`
     SELECT
@@ -52,6 +55,7 @@ export async function createReminder(
   notificationId: string | null
 ): Promise<ReminderRecord> {
   const input = normalizeReminderDraft(draft);
+  input.contactId = await canonicalContactId(db, input.contactId);
   const id = Crypto.randomUUID();
   const now = new Date().toISOString();
 
@@ -62,6 +66,9 @@ export async function createReminder(
   if (!contact) throw new Error('Choose an available contact for this reminder.');
 
   await db.withExclusiveTransactionAsync(async (transaction) => {
+    if (!await transaction.getFirstAsync('SELECT id FROM contacts WHERE id = ? AND deleted_at IS NULL', input.contactId)) {
+      throw new Error('Choose an available contact for this reminder.');
+    }
     await transaction.runAsync(`
       INSERT INTO reminders (
         id, contact_id, title, notes, remind_at, notification_id,
@@ -79,6 +86,7 @@ export async function createReminder(
     await enqueueSyncIntent(transaction, 'reminder', id, 'create', input, now);
   });
 
+  signalSyncChange(db);
   return {
     id,
     contact_id: input.contactId,
@@ -95,23 +103,25 @@ export async function completeReminder(
   db: SQLiteDatabase,
   reminderId: string
 ): Promise<string | null> {
-  const reminder = await db.getFirstAsync<{ notification_id: string | null }>(`
-    SELECT notification_id
-    FROM reminders
-    WHERE id = ? AND completed_at IS NULL AND deleted_at IS NULL
-  `, reminderId);
-  if (!reminder) return null;
-
   const now = new Date().toISOString();
+  let notificationId: string | null = null;
   await db.withExclusiveTransactionAsync(async (transaction) => {
+    const reminder = await transaction.getFirstAsync<{ notification_id: string | null; completed_at: string | null }>(`
+      SELECT r.notification_id, r.completed_at FROM reminders r JOIN contacts c ON c.id = r.contact_id
+      WHERE r.id = ? AND r.completed_at IS NULL AND r.deleted_at IS NULL AND c.deleted_at IS NULL`, reminderId);
+    if (!reminder) return;
+    const remote = await transaction.getFirstAsync<{ record_json: string }>("SELECT record_json FROM sync_remote_entities WHERE entity_type = 'reminder' AND id = ?", reminderId);
+    notificationId = reminder.notification_id;
     await transaction.runAsync(`
       UPDATE reminders
       SET completed_at = ?, updated_at = ?, sync_state = 'pending'
       WHERE id = ? AND completed_at IS NULL AND deleted_at IS NULL
     `, now, now, reminderId);
     await enqueueSyncIntent(transaction, 'reminder', reminderId, 'update', {
-      completedAt: now,
-    }, now);
+      completed_at: now,
+    }, now, { revision: remote ? (JSON.parse(remote.record_json) as { revision: number }).revision : null,
+      values: { completed_at: reminder.completed_at } });
   });
-  return reminder.notification_id;
+  signalSyncChange(db);
+  return notificationId;
 }

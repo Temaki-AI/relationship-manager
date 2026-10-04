@@ -1,0 +1,56 @@
+import { expect, test } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+
+test('linked sources preserve private fields and drafts with reviewed name changes on mobile and desktop', async ({ page }, info) => {
+  const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message));
+  await page.request.post('/api/auth/login', { data: { password: 'bonds-e2e-account-password' } });
+  const contact = (await (await page.request.post('/api/contacts', { headers: { 'Idempotency-Key': crypto.randomUUID() }, data: { name: `My Ana ${info.project.name}`, notes: 'Private relationship note' } })).json()).contact;
+  await page.goto(`/contacts/${contact.id}/sources`);
+  await expect(page.getByText('No LinkedIn profiles linked yet.', { exact: true })).toBeVisible();
+  await page.getByLabel('LinkedIn profile URL', { exact: true }).fill(`linkedin.com/in/ana-${info.project.name}`);
+  await page.getByLabel('Name on LinkedIn (optional)', { exact: true }).fill('Ana source name');
+  await page.getByLabel('Company on LinkedIn (optional)', { exact: true }).fill('Original company');
+  await page.getByRole('button', { name: 'Link profile', exact: true }).click();
+  const card = page.getByRole('article'); await expect(card).toHaveCount(1);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Sources · ${contact.name}`);
+  await card.getByLabel('Company on LinkedIn', { exact: true }).fill('Updated company');
+  await card.getByRole('button', { name: 'Save source details', exact: true }).click();
+  await expect(card.getByText('Original: Original company', { exact: true })).toBeVisible();
+  await expect(card.getByLabel('Company on LinkedIn', { exact: true })).toHaveValue('Updated company');
+  await card.getByRole('button', { name: 'Use source name', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sources · Ana source name');
+  const current = (await (await page.request.get(`/api/contacts/${contact.id}`)).json()).contact;
+  expect(current.notes).toBe('Private relationship note');
+  const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: info.outputPath('linked-sources.png') });
+  const source = (await (await page.request.get(`/api/contacts/${contact.id}/sources`)).json()).sources[0];
+  await card.getByLabel('Company on LinkedIn', { exact: true }).fill('My retained draft');
+  expect((await page.request.patch(`/api/contacts/${contact.id}/sources/${source.public_id}`, { data: { action: 'observe', expected_revision: source.revision, fields: { company: 'Elsewhere' } } })).ok()).toBe(true);
+  await card.getByRole('button', { name: 'Save source details', exact: true }).click();
+  await expect(card.getByRole('alert')).toContainText('changed');
+  await expect(card.getByLabel('Company on LinkedIn', { exact: true })).toHaveValue('My retained draft');
+  await page.getByRole('link', { name: 'Back to person', exact: true }).click();
+  await page.getByRole('alertdialog', { name: 'Discard unsaved changes?' }).getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(card.getByLabel('Company on LinkedIn', { exact: true })).toHaveValue('My retained draft');
+  await card.getByRole('button', { name: 'Refresh source', exact: true }).click();
+  await page.getByRole('alertdialog', { name: 'Discard this source draft?' }).getByRole('button', { name: 'Discard draft and refresh', exact: true }).click();
+  await expect(card.getByLabel('Company on LinkedIn', { exact: true })).toHaveValue('Elsewhere');
+  await card.getByRole('button', { name: 'Unlink profile', exact: true }).click();
+  await page.getByRole('alertdialog', { name: 'Unlink LinkedIn profile?' }).getByRole('button', { name: 'Unlink profile', exact: true }).click();
+  await expect(page.getByText('No LinkedIn profiles linked yet.', { exact: true })).toBeVisible();
+  expect((await (await page.request.get(`/api/contacts/${contact.id}`)).json()).contact.notes).toBe('Private relationship note');
+  expect(errors).toEqual([]);
+});
+
+test('a source can create a person before any CRM record exists', async ({ page }, info) => {
+  await page.request.post('/api/auth/login', { data: { password: 'bonds-e2e-account-password' } });
+  await page.goto('/connections/linkedin');
+  await page.getByLabel('LinkedIn profile URL', { exact: true }).fill(`https://www.linkedin.com/in/source-first-${info.project.name}`);
+  await page.getByLabel('Name on LinkedIn (required)', { exact: true }).fill(`Source first ${info.project.name}`);
+  await page.getByRole('button', { name: 'Link profile', exact: true }).click();
+  await expect(page).toHaveURL(/\/contacts\/\d+\/sources$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Sources · Source first ${info.project.name}`);
+  await expect(page.getByRole('article')).toHaveCount(1);
+});

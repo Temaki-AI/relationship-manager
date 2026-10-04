@@ -146,8 +146,10 @@ async function listContacts(request: Request, workspaceId: string) {
     // instr treats %, _, and backslashes literally, without D1's LIKE-pattern byte limit.
     clauses.push(`(${fields.map((field) => `instr(lower(COALESCE(${field}, '')), lower(?)) > 0`).join(' OR ')}
       OR EXISTS (SELECT 1 FROM json_tree(CASE WHEN json_valid(custom_fields) THEN custom_fields ELSE '{}' END)
-        WHERE type = 'text' AND instr(lower(CAST(atom AS TEXT)), lower(?)) > 0))`);
-    values.push(...fields.map(() => search), search);
+        WHERE type = 'text' AND instr(lower(CAST(atom AS TEXT)), lower(?)) > 0)
+      OR EXISTS (SELECT 1 FROM json_each(contact_methods) WHERE instr(lower(json_extract(value, '$.value')), lower(?)) > 0
+        OR instr(lower(COALESCE(json_extract(value, '$.label'), '')), lower(?)) > 0))`);
+    values.push(...fields.map(() => search), search, search, search);
   }
   const rawTag = url.searchParams.get('tag');
   if (rawTag?.trim()) {
@@ -334,12 +336,12 @@ async function contactPhoto(workspaceId: string, contactId: number) {
 async function updateContact(request: Request, workspaceId: string, contactId: number) {
   const db = getCloudflareContext().env.DB;
   const body = await readCloudObject(request);
-  const fields = normalizeContactPatchInput(body);
   const expectedRevision = getExpectedContactRevision(body);
-  if (Object.keys(fields).length === 0) return json({ error: 'No supported fields to update' }, 400);
   const current = await db.prepare('SELECT * FROM contacts WHERE workspace_id = ? AND id = ?')
     .bind(workspaceId, contactId).first<ContactRow>();
   if (!current) return json({ error: 'Contact not found' }, 404);
+  const fields = normalizeContactPatchInput(body, current.contact_methods);
+  if (Object.keys(fields).length === 0) return json({ error: 'No supported fields to update' }, 400);
   const revision = getContactEditRevision(current);
   if (expectedRevision !== revision) {
     return json({ error: 'This contact changed after you opened it. Your draft has not been saved.', current_edit_revision: revision }, 409);
@@ -453,6 +455,7 @@ export async function handleCloudContacts(request: Request, workspaceId: string,
     if (path[2] === 'relationships') return await relationships(request, workspaceId, contactId, parsePositiveInteger(path[3]) || undefined);
     return json({ error: 'Cloud contact endpoint not found.' }, 404);
   } catch (error) {
+    if (String(error).includes('CONTACT_SYNC_LIMIT')) return json({ error: 'This person has reached the device-sync size limit. Shorten the profile or unlink an unused source before saving.', code: 'contact_capacity' }, 413);
     if (error instanceof Error && error.message.includes('CONTACT_RELATIONSHIP_EXISTS')) return json({ error: 'These contacts are already connected.' }, 409);
     if (error instanceof Error && error.message.includes('UNIQUE constraint failed: contact_children.workspace_id, contact_children.contact_id, contact_children.linked_contact_id')) {
       return json({ error: 'This child profile is already linked to this contact.' }, 409);

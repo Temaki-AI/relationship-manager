@@ -16,6 +16,9 @@ test('normal cloud API actions are blocked during maintenance without hiding rec
     }
     assert.equal(cloudWorkspaceMaintenanceResponse(lifecycle, ['settings', 'backups'], 'GET'), null);
     assert.equal(cloudWorkspaceMaintenanceResponse(lifecycle, ['settings', 'backups'], 'POST')?.status, 423);
+    assert.equal(cloudWorkspaceMaintenanceResponse(lifecycle, ['v1', 'devices'], 'GET'), null);
+    assert.equal(cloudWorkspaceMaintenanceResponse(lifecycle, ['v1', 'devices', 'session'], 'DELETE'), null);
+    assert.equal(cloudWorkspaceMaintenanceResponse(lifecycle, ['v1', 'devices', 'authorize'], 'POST')?.status, 423);
   }
   assert.equal(cloudWorkspaceMaintenanceResponse('erasing', ['settings', 'erase'], 'POST'), null);
   assert.equal(cloudWorkspaceMaintenanceResponse('erasing', ['settings', 'erase'], 'GET')?.status, 423);

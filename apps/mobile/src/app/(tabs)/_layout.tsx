@@ -5,7 +5,7 @@ import type { ColorValue } from 'react-native';
 import { fonts, palette } from '@/theme';
 
 function TabIcon({ name, color }: {
-  name: 'heart.fill' | 'person.2.fill' | 'bell.fill';
+  name: 'heart.fill' | 'person.2.fill' | 'bell.fill' | 'calendar';
   color: ColorValue;
 }) {
   return <SymbolView name={name} tintColor={color} size={21} />;
@@ -44,6 +44,10 @@ export default function TabsLayout() {
           tabBarAccessibilityLabel: 'People',
           tabBarIcon: ({ color }) => <TabIcon name="person.2.fill" color={color} />,
         }}
+      />
+      <Tabs.Screen
+        name="agenda"
+        options={{ title: 'Agenda', tabBarAccessibilityLabel: 'Agenda', tabBarIcon: ({ color }) => <TabIcon name="calendar" color={color} /> }}
       />
       <Tabs.Screen
         name="reminders"

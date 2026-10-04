@@ -1,3 +1,4 @@
+import { suspendMergedProviderRules } from './provider-field-controls';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { buildMergedContact, ContactMergeError, planContactConnectionMerge,
   validateContactMergeIds, validateContactMergeSelection,
@@ -10,13 +11,16 @@ import { readCloudObject } from '@/lib/cloud/request';
 import { parsePositiveInteger } from '@/lib/relationship-validation';
 import { RequestBodyError } from '@/lib/request-body';
 import { fingerprintIdempotencyInput, IdempotencyError, requireIdempotencyKey } from '@/lib/idempotency';
+import { readContactMergeAliases } from '@/packages/domain/src/contact-aliases';
+import { MAX_SYNC_RECORD_BYTES } from '@/packages/domain/src/sync';
 
 type DB = CloudflareEnv['DB'];
 
-async function selectedContacts(db: DB, workspaceId: string, ids: number[]): Promise<Contact[]> {
+type CloudContact = Contact & { public_id: string; merge_aliases: string };
+async function selectedContacts(db: DB, workspaceId: string, ids: number[]): Promise<CloudContact[]> {
   const result = await db.prepare(`SELECT * FROM contacts WHERE workspace_id = ?
     AND id IN (SELECT value FROM json_each(?)) ORDER BY id`)
-    .bind(workspaceId, JSON.stringify(ids)).all<Contact>();
+    .bind(workspaceId, JSON.stringify(ids)).all<CloudContact>();
   return result.results;
 }
 
@@ -92,10 +96,19 @@ export async function mergeCloudDuplicateContacts(workspaceId: string, primaryId
     if (recovery.revision !== expectedRevision) {
       throw new ContactMergeError('Your people changed since this review. Refresh before merging.', 'stale');
     }
-    const { primary, duplicates } = validateContactMergeSelection(primaryId, normalizedIds,
-      await selectedContacts(DB, workspaceId, selectedIds));
+    const selected = await selectedContacts(DB, workspaceId, selectedIds);
+    const { primary, duplicates } = validateContactMergeSelection(primaryId, normalizedIds, selected);
     const mergedAt = new Date().toISOString();
     const merged = buildMergedContact(primary, duplicates, mergedAt);
+    const canonical = selected.find((row) => row.id === primaryId)!;
+    const aliases = JSON.stringify([...new Set(selected.flatMap((row) => [
+      ...readContactMergeAliases(row.merge_aliases, row.public_id), ...(row.id === primaryId ? [] : [row.public_id]),
+    ]))].sort());
+    try { readContactMergeAliases(aliases, canonical.public_id); }
+    catch { throw new ContactMergeError('This combined profile exceeds the supported number of merged identities.'); }
+    if (new TextEncoder().encode(JSON.stringify({ ...merged, photo_url: null, merge_aliases: aliases })).byteLength > MAX_SYNC_RECORD_BYTES - 2048) {
+      throw new ContactMergeError('This combined profile is too large for device sync. Reduce its text before merging.');
+    }
     const { relationships, children } = await affectedConnections(DB, workspaceId, selectedIds);
     const plan = planContactConnectionMerge(primaryId, normalizedIds, relationships, children);
     const relationshipDeleteJson = JSON.stringify(plan.relationshipDeletes);
@@ -150,23 +163,37 @@ export async function mergeCloudDuplicateContacts(workspaceId: string, primaryId
         AND contact_id IN (SELECT value FROM json_each(?))`).bind(primaryId, workspaceId, duplicateJson),
       DB.prepare(`UPDATE birthday_email_scan_state SET contact_id = NULL WHERE workspace_id = ?
         AND contact_id IN (SELECT value FROM json_each(?))`).bind(workspaceId, duplicateJson),
+      suspendMergedProviderRules(DB, workspaceId, [primaryId, ...duplicateIds]),
       DB.prepare(`UPDATE contacts SET name = ?, nickname = ?, email = ?, phone = ?, photo_url = ?,
         birthday = ?, birthday_reminder_days = ?, how_we_met = ?, tags = ?, notes = ?, gift_ideas = ?,
-        custom_fields = ?, last_contacted = ?, contact_frequency = ?, updated_at = ?
+        custom_fields = ?, last_contacted = ?, contact_frequency = ?, updated_at = ?, contact_methods = ?
         WHERE workspace_id = ? AND id = ?`)
         .bind(merged.name, merged.nickname, merged.email, merged.phone, merged.photo_url,
           merged.birthday, merged.birthday_reminder_days, merged.how_we_met, merged.tags, merged.notes,
           merged.gift_ideas, merged.custom_fields, merged.last_contacted, merged.contact_frequency,
-          mergedAt, workspaceId, primaryId),
+          mergedAt, merged.contact_methods ?? '[]', workspaceId, primaryId),
+      DB.prepare(`UPDATE contact_source_links SET contact_id = ? WHERE workspace_id = ? AND contact_id IN (SELECT value FROM json_each(?))`)
+        .bind(primaryId, workspaceId, duplicateJson),
+      DB.prepare(`UPDATE contact_provider_links SET contact_id = ? WHERE workspace_id = ? AND contact_id IN (SELECT value FROM json_each(?))`)
+        .bind(primaryId, workspaceId, duplicateJson),
+      DB.prepare(`UPDATE contact_device_links SET contact_id = ? WHERE workspace_id = ? AND contact_id IN (SELECT value FROM json_each(?))`)
+        .bind(primaryId, workspaceId, duplicateJson),
+      DB.prepare(`DELETE FROM calendar_event_people WHERE workspace_id = ? AND contact_id IN (SELECT value FROM json_each(?))
+        AND (EXISTS (SELECT 1 FROM calendar_event_people primary_link WHERE primary_link.workspace_id = ? AND primary_link.event_id = calendar_event_people.event_id AND primary_link.contact_id = ?)
+          OR id != (SELECT MIN(link.id) FROM calendar_event_people link WHERE link.workspace_id = ? AND link.event_id = calendar_event_people.event_id AND link.contact_id IN (SELECT value FROM json_each(?))))`)
+        .bind(workspaceId, duplicateJson, workspaceId, primaryId, workspaceId, duplicateJson),
+      DB.prepare(`UPDATE calendar_event_people SET contact_id = ? WHERE workspace_id = ? AND contact_id IN (SELECT value FROM json_each(?))`).bind(primaryId, workspaceId, duplicateJson),
       DB.prepare(`DELETE FROM contacts WHERE workspace_id = ?
         AND id IN (SELECT value FROM json_each(?)) RETURNING id`).bind(workspaceId, duplicateJson),
+      // Register retired IDs after deletion, then flatten inherited aliases onto the survivor.
+      DB.prepare('UPDATE contacts SET merge_aliases = ? WHERE workspace_id = ? AND id = ?').bind(aliases, workspaceId, primaryId),
       DB.prepare(`INSERT INTO mutation_receipts
         (workspace_id, scope, request_key, fingerprint, owner_token, resource_id, created_at)
         VALUES (?, 'contact_merge', ?, ?, ?, ?, ?)`)
         .bind(workspaceId, requestKey, fingerprint, recovery.backup.filename, primaryId, recovery.backup.createdAt),
       removeGuard(DB, recovery.token), removeGuard(DB, `${recovery.token}-delivery`),
     ]);
-    const deleted = results.at(-4)?.results.length ?? 0;
+    const deleted = results.at(-5)?.results.length ?? 0;
     if (deleted !== normalizedIds.length) {
       throw new Error('Duplicate merge committed an unexpected contact count. Inspect the recovery point.');
     }

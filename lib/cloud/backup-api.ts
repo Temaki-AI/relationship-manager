@@ -6,9 +6,11 @@ import { CloudRecoveryError, MAX_CLOUD_BACKUP_BYTES, recoveryErrorResponse, SNAP
 import { backupChecksum, cloudBackupResponse, createCloudBackup, deleteCloudBackupFile, listCloudBackups, maintenanceGuard, pinCloudBackup, pruneCloudBackups, readManagedCloudSnapshot, recoveryGuard, releaseBackupPin, removeGuard, safeBackupFilename } from '@/lib/cloud/recovery-storage';
 import { cleanupWorkspaceExportJobs } from '@/lib/cloud/export-jobs';
 import { readAutomaticBackupStatus } from '@/lib/cloud/automatic-backup';
+import { pauseCloudSyncStatements, resumeCloudSyncStatements } from '@/lib/cloud/sync-projection';
 
 function restoreStatements(db: CloudflareEnv['DB'], workspaceId: string, snapshot: CloudSnapshot) {
   const statements = [
+    ...pauseCloudSyncStatements(db, workspaceId),
     db.prepare('DELETE FROM reminder_email_deliveries WHERE workspace_id = ?').bind(workspaceId),
     db.prepare('DELETE FROM birthday_email_deliveries WHERE workspace_id = ?').bind(workspaceId),
     db.prepare('DELETE FROM birthday_email_scan_state WHERE workspace_id = ?').bind(workspaceId),
@@ -51,6 +53,7 @@ function restoreStatements(db: CloudflareEnv['DB'], workspaceId: string, snapsho
   }
   statements.push(db.prepare('UPDATE mutation_receipts SET resource_id = NULL WHERE workspace_id = ?').bind(workspaceId));
   if (snapshot.workspace) statements.push(db.prepare('UPDATE workspaces SET name = ?, persona = ? WHERE id = ?').bind(snapshot.workspace.name, snapshot.workspace.persona, workspaceId));
+  statements.push(...resumeCloudSyncStatements(db, workspaceId));
   return statements;
 }
 
@@ -165,6 +168,11 @@ export async function handleCloudErasure(request: Request, workspaceId: string) 
       [workspaceId, workspaceId, workspaceId, workspaceId, new Date().toISOString(), workspaceId, new Date().toISOString(),
         workspaceId, new Date().toISOString()]),
       // Parents go first so history triggers cannot update surviving contacts.
+      ...pauseCloudSyncStatements(DB, workspaceId),
+      DB.prepare('DELETE FROM device_authorization_codes WHERE workspace_id = ?').bind(workspaceId),
+      DB.prepare('UPDATE device_sessions SET revoked_at = COALESCE(revoked_at, ?) WHERE workspace_id = ?').bind(new Date().toISOString(), workspaceId),
+      DB.prepare('DELETE FROM provider_authorization_attempts WHERE workspace_id = ?').bind(workspaceId),
+      DB.prepare('DELETE FROM provider_connections WHERE workspace_id = ?').bind(workspaceId),
       ...SNAPSHOT_TABLES.map((table) => DB.prepare(`DELETE FROM ${table} WHERE workspace_id = ?`).bind(workspaceId)),
       DB.prepare('DELETE FROM reminder_email_deliveries WHERE workspace_id = ?').bind(workspaceId),
       DB.prepare('DELETE FROM birthday_email_deliveries WHERE workspace_id = ?').bind(workspaceId),
@@ -196,6 +204,7 @@ export async function handleCloudErasure(request: Request, workspaceId: string) 
         await DB.batch([
           maintenanceGuard(DB, batchToken, "EXISTS (SELECT 1 FROM workspaces WHERE id = ? AND lifecycle = 'erasing') AND NOT EXISTS (SELECT 1 FROM cloud_erasure_batches WHERE workspace_id = ?)", [workspaceId, workspaceId]),
           DB.prepare('DELETE FROM cloud_backup_files WHERE workspace_id = ?').bind(workspaceId),
+          ...resumeCloudSyncStatements(DB, workspaceId),
           DB.prepare("UPDATE workspaces SET name = 'Personal workspace', persona = NULL, lifecycle = 'active', recovery_revision = recovery_revision + 1 WHERE id = ?").bind(workspaceId), removeGuard(DB, batchToken),
         ]);
         return Response.json({ success: true, erasedWorkspaceId: workspaceId });

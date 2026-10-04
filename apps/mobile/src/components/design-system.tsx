@@ -14,9 +14,9 @@ import { fonts, palette, shadows } from '@/theme';
 
 export function BrandLockup() {
   return (
-    <View style={styles.brandLockup} accessibilityLabel="Bonds">
+    <View style={styles.brandLockup} accessibilityLabel="Everclose">
       <Image source={require('@/assets/images/icon.png')} style={styles.brandIcon} />
-      <Text style={styles.brandName}>Bonds</Text>
+      <Text style={styles.brandName}>Everclose</Text>
     </View>
   );
 }

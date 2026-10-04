@@ -25,7 +25,7 @@ test('mobile configuration declares private native capabilities without a web wr
       plugins?: unknown[];
     };
   };
-  assert.equal(appConfig.expo?.name, 'Bonds');
+  assert.equal(appConfig.expo?.name, 'Everclose');
   assert.equal(appConfig.expo?.scheme, 'bonds');
   assert.equal(appConfig.expo?.ios?.bundleIdentifier, 'com.fernandoamaral.bonds');
   const plugins = JSON.stringify(appConfig.expo?.plugins || []);

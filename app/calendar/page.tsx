@@ -34,16 +34,21 @@ import {
   Users,
 } from 'lucide-react';
 import type { CalendarEvent, CalendarEventKind } from '@/lib/calendar-directory';
+import { calendarEventDates, calendarEventPeople } from '@/lib/calendar-directory';
 import { createIdempotencyKey, getResponseErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { LoadError } from '@/components/ui/load-error';
 import { useToast } from '@/components/ui/toast';
+import { SavedCalendarEventCard } from '@/components/saved-calendar-event-card';
 
 type CalendarResponse = {
   events: CalendarEvent[];
   range: { start: string; end: string };
   truncated: boolean;
+  source_events_available?: boolean;
+  source_truncated?: boolean;
+  source_date_uncertain?: boolean;
 };
 
 type CalendarView = 'month' | 'agenda';
@@ -86,6 +91,10 @@ const EVENT_STYLES: Record<CalendarEventKind, {
     chip: 'border-emerald-200 bg-emerald-50 text-emerald-800',
     panel: 'bg-emerald-100 text-emerald-700',
   },
+  source_event: {
+    label: 'Google meetings', icon: CalendarDays, dot: 'bg-violet-500',
+    chip: 'border-violet-200 bg-violet-50 text-violet-800', panel: 'bg-violet-100 text-violet-800',
+  },
 };
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -117,6 +126,7 @@ function EventDetail({ event, completing, onComplete }: {
   completing: boolean;
   onComplete: (event: CalendarEvent) => void;
 }) {
+  if (event.kind === 'source_event') return <SavedCalendarEventCard event={event.source} />;
   const style = EVENT_STYLES[event.kind];
   const Icon = style.icon;
   const time = formatEventTime(event);
@@ -175,6 +185,9 @@ export default function CalendarPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [truncated, setTruncated] = useState(false);
+  const [sourceEventsAvailable, setSourceEventsAvailable] = useState(false);
+  const [sourceTruncated, setSourceTruncated] = useState(false);
+  const [sourceDateUncertain, setSourceDateUncertain] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -186,6 +199,7 @@ export default function CalendarPage() {
     reminder: true,
     plan: true,
     interaction: true,
+    source_event: true,
   });
   const [createOpen, setCreateOpen] = useState(false);
   const [contactSearch, setContactSearch] = useState('');
@@ -242,6 +256,7 @@ export default function CalendarPage() {
             reminder: kinds.reminder !== false,
             plan: kinds.plan !== false,
             interaction: kinds.interaction !== false,
+            source_event: kinds.source_event !== false,
           });
         }
       }
@@ -307,8 +322,12 @@ export default function CalendarPage() {
         }
         const data = await response.json() as CalendarResponse;
         if (!cancelled) {
-          setEvents(Array.isArray(data.events) ? data.events : []);
+          const nextEvents = Array.isArray(data.events) ? data.events : [];
+          setEvents(nextEvents);
           setTruncated(Boolean(data.truncated));
+          setSourceEventsAvailable(Boolean(data.source_events_available || nextEvents.some((event) => event.kind === 'source_event')));
+          setSourceTruncated(Boolean(data.source_truncated));
+          setSourceDateUncertain(Boolean(data.source_date_uncertain));
         }
       } catch (error) {
         if (!cancelled) {
@@ -326,22 +345,32 @@ export default function CalendarPage() {
   const filteredEvents = events.filter((event) => {
     if (!activeKinds[event.kind]) return false;
     if (!showCompleted && event.completed) return false;
-    if (contactId !== 'all' && event.contact_id !== Number(contactId)) return false;
+    const people = calendarEventPeople(event);
+    if (contactId !== 'all' && !people.some((person) => person.id === Number(contactId))) return false;
     if (!normalizedQuery) return true;
-    return [event.title, event.detail, event.contact_name, event.subtype]
+    return [event.title, event.detail, ...people.map((person) => person.name), event.subtype,
+      ...(event.kind === 'source_event' ? [event.source.calendar_label, event.source.account_email, event.source.facts.location] : [])]
       .some((value) => value?.toLocaleLowerCase().includes(normalizedQuery));
   });
   const contacts = Array.from(new Map(
-    events.map((event) => [event.contact_id, event.contact_name] as const)
+    events.flatMap((event) => calendarEventPeople(event).map((person) => [person.id, person.name] as const))
   ).entries()).sort((left, right) => left[1].localeCompare(right[1]));
   const eventsByDate = new Map<string, CalendarEvent[]>();
+  const agendaByDate = new Map<string, CalendarEvent[]>();
   for (const event of filteredEvents) {
-    const dayEvents = eventsByDate.get(event.date) || [];
-    dayEvents.push(event);
-    eventsByDate.set(event.date, dayEvents);
+    const dates = calendarEventDates(event, { start: visibleStartKey, end: visibleEndKey });
+    for (const date of dates) {
+      const dayEvents = eventsByDate.get(date) || [];
+      dayEvents.push(event); eventsByDate.set(date, dayEvents);
+    }
+    if (dates.length) {
+      const dayEvents = agendaByDate.get(dates[0]) || [];
+      dayEvents.push(event); agendaByDate.set(dates[0], dayEvents);
+    }
   }
   const selectedEvents = eventsByDate.get(selectedDate) || [];
-  const activeFilterCount = Object.values(activeKinds).filter(Boolean).length;
+  const availableKinds = (Object.keys(EVENT_STYLES) as CalendarEventKind[]).filter((kind) => kind !== 'source_event' || sourceEventsAvailable);
+  const activeFilterCount = availableKinds.filter((kind) => activeKinds[kind]).length;
 
   function moveMonth(offset: number) {
     const nextMonth = addMonths(currentMonth, offset);
@@ -359,7 +388,7 @@ export default function CalendarPage() {
     setQuery('');
     setContactId('all');
     setShowCompleted(true);
-    setActiveKinds({ birthday: true, reminder: true, plan: true, interaction: true });
+    setActiveKinds({ birthday: true, reminder: true, plan: true, interaction: true, source_event: true });
   }
 
   function openReminder(date = selectedDate) {
@@ -431,7 +460,7 @@ export default function CalendarPage() {
         body: JSON.stringify({ completed: true }),
       });
       if (!response.ok) throw new Error(await getResponseErrorMessage(response, 'Could not complete event'));
-      setEvents((current) => current.map((item) => item.id === event.id ? { ...item, completed: true } : item));
+      setEvents((current) => current.map((item) => item.id === event.id && (item.kind === 'plan' || item.kind === 'reminder') ? { ...item, completed: true } : item));
       setReloadToken((value) => value + 1);
       toast({ message: event.kind === 'plan' ? 'Plan completed and added to history' : 'Reminder completed' });
     } catch (error) {
@@ -459,6 +488,7 @@ export default function CalendarPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Link className="inline-flex min-h-11 items-center underline" href="/calendar/events">Saved calendar context</Link>
             <Button type="button" onClick={() => openReminder()} className="min-h-10">
               <Plus className="h-4 w-4" aria-hidden="true" /> Add reminder
             </Button>
@@ -631,7 +661,7 @@ export default function CalendarPage() {
               className="inline-flex min-h-10 items-center justify-between rounded-lg border bg-white px-3 text-sm font-semibold md:hidden"
             >
               <span className="inline-flex items-center gap-2"><Filter className="h-4 w-4" aria-hidden="true" /> Filters</span>
-              <span className="text-xs font-normal text-muted-foreground">{activeFilterCount < 4 || query || contactId !== 'all' || !showCompleted ? 'Active' : 'All events'}</span>
+              <span className="text-xs font-normal text-muted-foreground">{activeFilterCount < availableKinds.length || query || contactId !== 'all' || !showCompleted ? 'Active' : 'All events'}</span>
             </button>
 
             <div id="calendar-filters" className={`${filtersOpen ? 'space-y-3' : 'hidden'} md:block md:space-y-3`}>
@@ -677,7 +707,7 @@ export default function CalendarPage() {
               <span className="mr-1 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <Filter className="h-3.5 w-3.5" aria-hidden="true" /> Types
               </span>
-              {(Object.keys(EVENT_STYLES) as CalendarEventKind[]).map((kind) => {
+              {availableKinds.map((kind) => {
                 const style = EVENT_STYLES[kind];
                 const Icon = style.icon;
                 return (
@@ -696,7 +726,7 @@ export default function CalendarPage() {
                   </button>
                 );
               })}
-              {(activeFilterCount < 4 || query || contactId !== 'all' || !showCompleted) && (
+              {(activeFilterCount < availableKinds.length || query || contactId !== 'all' || !showCompleted) && (
                 <button type="button" onClick={resetFilters} className="min-h-8 px-2 text-xs font-semibold text-primary hover:underline">
                   Reset filters
                 </button>
@@ -709,12 +739,17 @@ export default function CalendarPage() {
 
       {truncated && (
         <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          This date range contains more than 5,000 events. Refine the month or filters to keep the view responsive.
+          This date range contains more than 5,000 events. Choose another month to see more; filters apply to the events already downloaded.
         </p>
       )}
+      {(sourceTruncated || sourceDateUncertain) && <p role="status" className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
+        {sourceTruncated && 'More saved meetings are available than fit in this calendar view. '}
+        {sourceDateUncertain && 'Some saved meetings have no reliable date and cannot be placed on this calendar. '}
+        <Link className="inline-flex min-h-11 items-center underline" href="/calendar/events">Review all saved context</Link>
+      </p>}
 
       {view === 'month' ? (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
           <Card className="overflow-hidden border-0 shadow-sm">
             <div className="grid grid-cols-7 border-b bg-muted/40">
               {WEEKDAYS.map((weekday) => (
@@ -752,7 +787,7 @@ export default function CalendarPage() {
                     <span className="hidden space-y-1 sm:block" aria-hidden="true">
                       {dayEvents.slice(0, 3).map((event) => (
                         <span key={event.id} className={`block truncate rounded border px-1.5 py-0.5 text-[10px] font-medium lg:text-xs ${EVENT_STYLES[event.kind].chip} ${event.completed ? 'line-through' : ''}`}>
-                          {formatEventTime(event) && `${formatEventTime(event)} · `}{event.title}
+                          {formatEventTime(event) && `${formatEventTime(event)} · `}{event.kind === 'source_event' && event.source.facts.status === 'cancelled' && 'Cancelled · '}{event.title}
                         </span>
                       ))}
                       {dayEvents.length > 3 && (
@@ -765,7 +800,7 @@ export default function CalendarPage() {
             </div>
           </Card>
 
-          <aside className="xl:sticky xl:top-24 xl:self-start">
+          <aside className="min-w-0 xl:sticky xl:top-24 xl:self-start">
             <Card className="overflow-hidden border-0 shadow-sm">
               <div className="bg-foreground px-5 py-4 text-white">
                 <p className="text-xs font-semibold uppercase tracking-wider text-white/60">Selected day</p>
@@ -796,11 +831,11 @@ export default function CalendarPage() {
       ) : (
         <Card className="overflow-hidden border-0 shadow-sm">
           <CardContent className="p-0">
-            {calendarDays.some((day) => (eventsByDate.get(format(day, 'yyyy-MM-dd')) || []).length > 0) ? (
+            {calendarDays.some((day) => (agendaByDate.get(format(day, 'yyyy-MM-dd')) || []).length > 0) ? (
               <div className="divide-y">
                 {calendarDays.map((day) => {
                   const dateKey = format(day, 'yyyy-MM-dd');
-                  const dayEvents = eventsByDate.get(dateKey) || [];
+                  const dayEvents = agendaByDate.get(dateKey) || [];
                   if (dayEvents.length === 0) return null;
                   return (
                     <section key={dateKey} className="grid gap-4 p-4 sm:grid-cols-[7rem_minmax(0,1fr)] sm:p-5">
@@ -832,7 +867,7 @@ export default function CalendarPage() {
       <div className="flex flex-col gap-3 rounded-xl border border-dashed bg-white/60 p-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4" aria-hidden="true" />
-          Events stay connected to the contact who gives them context.
+          Plans, reminders and saved meetings keep their relationship context.
         </div>
         <div className="flex gap-3">
           <Link href="/reminders" className="inline-flex items-center gap-1 font-semibold text-foreground hover:text-primary">
