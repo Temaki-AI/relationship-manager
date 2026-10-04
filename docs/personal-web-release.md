@@ -10,6 +10,7 @@ The working web release is deployed at **https://everclosecrm.com**. It uses the
 - Unauthenticated contact access: HTTP 401.
 - Real Google sign-in succeeded. The owner's signed-in People directory displays 12 contacts; the database retains 26 across its two workspaces.
 - Live People, an existing contact profile and its populated edit form load successfully. At 390-pixel iPhone width, the edit form and Calendar have no error alerts or horizontal overflow; Calendar uses its responsive Agenda view.
+- Live Data & recovery loads without errors or horizontal overflow. Creating an in-app manual backup succeeded; Settings shows the current 12-contact recovery point, 62.7 KB and its SHA-256 checksum, alongside the retained prior backup.
 - A real pre-release database copy passed all 21 pending migrations in isolation. Original fields were preserved across all original tables, except the expected monotonic recovery counter. After the production upgrade, 33 original data tables match their pre-release field hashes, including contacts, notes, photos, relationships and history. Operational authentication tables were excluded from the production comparison because sign-in refreshes them.
 - The prior complete root run passed 756 tests. A further 33 core synchronization tests, final Cloudflare build, TypeScript and the release script's lint pass.
 
