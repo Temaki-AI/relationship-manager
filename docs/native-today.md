@@ -193,6 +193,6 @@ current healthy native run without additional pushes until it completes.
 
 Private server receipts and exact deployment logs are under
 `apps/mobile/build/releases/shared-prompt-server/`. The limited source is
-published on `codex/shared-prompt-server`; its managed worktree remains attached
-for rollout verification and cleanup. Main development remains on
+published on `codex/shared-prompt-server`; its managed worktree is archived and
+recoverable after the compiled output and deployment receipts were preserved. Main development remains on
 `codex/personal-working-release`, including the separate undeployed Gmail work.
