@@ -79,6 +79,10 @@ final class OfflineJournalTests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [disappeared], timeout: 15), .completed)
     }
 
+    private func reminderCard(_ title: String) -> XCUIElement {
+        journal.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "Open \(person). Reminder:", title)).firstMatch
+    }
+
     func testOfflineJournalAndRestart() {
         XCTAssertTrue(journal.buttons["Continue with Google"].waitForExistence(timeout: 20))
         tap("Use only on this iPhone")
@@ -164,14 +168,14 @@ final class OfflineJournalTests: XCTestCase {
         if journal.alerts["Reminder saved without an alert"].waitForExistence(timeout: 5) {
             journal.alerts.buttons["OK"].tap()
         }
-        XCTAssertTrue(journal.staticTexts["Simulator check-in"].waitForExistence(timeout: 15))
+        XCTAssertTrue(reminderCard("Simulator check-in").waitForExistence(timeout: 15))
         let time = journal.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "9:00")).firstMatch
         XCTAssertTrue(time.waitForExistence(timeout: 15))
         let initialTime = time.label
         restart()
         tap("Reminders")
-        XCTAssertTrue(journal.staticTexts["Simulator check-in"].waitForExistence(timeout: 15))
-        tap("Snooze reminder for \(person)")
+        XCTAssertTrue(reminderCard("Simulator check-in").waitForExistence(timeout: 15))
+        tap("Snooze reminder for \(person): Simulator check-in")
         journal.alerts.buttons["Next week · 9:00 AM"].tap()
         if journal.alerts["Reminder moved without an alert"].waitForExistence(timeout: 5) {
             journal.alerts.buttons["OK"].tap()
@@ -179,13 +183,13 @@ final class OfflineJournalTests: XCTestCase {
         XCTAssertFalse(journal.staticTexts[initialTime].exists, "The reminder did not move to next week")
         restart()
         tap("Reminders")
-        XCTAssertTrue(journal.staticTexts["Simulator check-in"].waitForExistence(timeout: 15))
+        XCTAssertTrue(reminderCard("Simulator check-in").waitForExistence(timeout: 15))
         XCTAssertFalse(journal.staticTexts[initialTime].exists)
-        tap("Complete reminder for \(person)")
-        expectGone(journal.staticTexts["Simulator check-in"])
+        tap("Complete reminder for \(person): Simulator check-in")
+        expectGone(reminderCard("Simulator check-in"))
         restart()
         tap("Reminders")
-        XCTAssertFalse(journal.staticTexts["Simulator check-in"].exists)
+        XCTAssertFalse(reminderCard("Simulator check-in").exists)
 
         restart()
         tap("Account and sync")

@@ -16,6 +16,11 @@ The UI distinguishes a saved CRM change from an unconfirmed iOS alert replacemen
 Completing a reminder now reports an alert-cancellation failure truthfully rather
 than saying the durable completion was unchanged. Both reminder action targets
 are at least 44 points tall. Leaving the screen suppresses late action alerts.
+The reminder's person link and its Snooze/Complete buttons are separate native
+accessibility controls. The person link announces the title and due time; each
+action includes the reminder title so multiple reminders for one person are
+distinguishable. The previous enclosing button hid this information and its
+nested actions from VoiceOver and XCTest.
 
 The actual build-6 simulator exposed a first-use notification race: allowing iOS
 permission while the automatic reminder refresh ran saved the reminder but left

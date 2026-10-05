@@ -143,33 +143,30 @@ export default function RemindersScreen() {
         renderItem={({ item }) => {
           const overdue = new Date(item.remind_at).getTime() <= currentTime;
           return (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Open ${item.contact_name}`}
-              onPress={() => router.push({ pathname: '/contacts/[id]', params: { id: item.contact_id } })}
-              style={({ pressed }) => [styles.reminderCard, pressed && styles.cardPressed]}
-            >
-              <View style={styles.reminderTop}>
+            <View style={styles.reminderCard}>
+              <Pressable accessibilityRole="button"
+                accessibilityLabel={`Open ${item.contact_name}. Reminder: ${item.title}. ${overdue ? 'Due' : 'Upcoming'} ${formatDateTime(item.remind_at)}`}
+                onPress={() => router.push({ pathname: '/contacts/[id]', params: { id: item.contact_id } })}
+                style={({ pressed }) => [styles.reminderTop, pressed && styles.cardPressed]}>
                 <Avatar name={item.contact_name} size={44} />
                 <View style={styles.reminderCopy}>
                   <Text style={styles.contactName}>{item.contact_name}</Text>
                   <Text style={styles.reminderTitle}>{item.title}</Text>
                 </View>
                 <StatusPill tone={overdue ? 'rose' : 'amber'} label={overdue ? 'Due' : 'Upcoming'} />
-              </View>
+              </Pressable>
               <View style={styles.reminderBottom}>
                 <Text style={styles.reminderTime}>{formatDateTime(item.remind_at)}</Text>
-                <Pressable accessibilityRole="button" accessibilityLabel={`Snooze reminder for ${item.contact_name}`}
-                  disabled={completingId !== null} onPress={(event) => { event.stopPropagation(); chooseSnooze(item); }}
+                <Pressable accessibilityRole="button" accessibilityLabel={`Snooze reminder for ${item.contact_name}: ${item.title}`}
+                  disabled={completingId !== null} onPress={() => chooseSnooze(item)}
                   style={({ pressed }) => [styles.snoozeButton, pressed && styles.pressed]}>
                   <Text style={styles.snoozeText}>Snooze</Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Complete reminder for ${item.contact_name}`}
+                  accessibilityLabel={`Complete reminder for ${item.contact_name}: ${item.title}`}
                   disabled={completingId !== null}
-                  onPress={(event) => {
-                    event.stopPropagation();
+                  onPress={() => {
                     void markComplete(item);
                   }}
                   style={({ pressed }) => [styles.completeButton, pressed && styles.pressed]}
@@ -179,7 +176,7 @@ export default function RemindersScreen() {
                     : <Text style={styles.completeText}>Complete</Text>}
                 </Pressable>
               </View>
-            </Pressable>
+            </View>
           );
         }}
       />

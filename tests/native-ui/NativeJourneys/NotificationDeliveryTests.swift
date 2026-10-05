@@ -29,6 +29,8 @@ final class NotificationDeliveryTests: XCTestCase {
             XCTAssertEqual(name.value as? String, "Everclose Native QA")
             tap("Add to Everclose")
             XCTAssertTrue(journal.staticTexts["Everclose Native QA"].waitForExistence(timeout: 15))
+            journal.terminate()
+            journal.launch()
         }
         tap("Reminders")
         tap("Create reminder")
@@ -42,7 +44,9 @@ final class NotificationDeliveryTests: XCTestCase {
         let allow = system.alerts.buttons["Allow"].firstMatch
         XCTAssertTrue(allow.waitForExistence(timeout: 15), "Notification permission was never requested")
         allow.tap()
-        XCTAssertTrue(journal.staticTexts["Delivery QA"].waitForExistence(timeout: 15))
+        let reminder = journal.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", "Delivery QA")).firstMatch
+        XCTAssertTrue(reminder.waitForExistence(timeout: 15))
         XCTAssertFalse(journal.alerts["Reminder saved without an alert"].exists)
         let screenshot = XCTAttachment(screenshot: journal.screenshot())
         screenshot.name = "Reminder after explicit simulator notification permission"
