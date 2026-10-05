@@ -32,7 +32,7 @@ export function Eyebrow({ children }: { children: ReactNode }) {
 export function SectionHeading({ title, action }: { title: string; action?: ReactNode }) {
   return (
     <View style={styles.sectionHeading}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text accessibilityRole="header" style={styles.sectionTitle}>{title}</Text>
       {action}
     </View>
   );
@@ -72,6 +72,7 @@ export function ActionButton({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -125,14 +126,15 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4,
     textTransform: 'uppercase',
   },
-  sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { color: palette.ink, fontFamily: fonts.display, fontSize: 24, fontWeight: '700' },
+  sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
+  sectionTitle: { color: palette.ink, fontFamily: fonts.display, fontSize: 24, fontWeight: '700', flexShrink: 1 },
   avatar: { alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: palette.white, fontFamily: fonts.bodyDemi, fontWeight: '700' },
   actionButton: {
     minHeight: 50,
     borderRadius: 17,
     paddingHorizontal: 20,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -142,7 +144,7 @@ const styles = StyleSheet.create({
   actionQuiet: { backgroundColor: palette.primarySoft, borderColor: palette.primarySoft },
   actionPressed: { opacity: 0.78, transform: [{ scale: 0.99 }] },
   actionDisabled: { opacity: 0.45 },
-  actionLabel: { fontFamily: fonts.bodyDemi, fontSize: 15, fontWeight: '700' },
+  actionLabel: { fontFamily: fonts.bodyDemi, fontSize: 15, fontWeight: '700', textAlign: 'center' },
   actionPrimaryLabel: { color: palette.white },
   actionSecondaryLabel: { color: palette.primary },
   pill: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },

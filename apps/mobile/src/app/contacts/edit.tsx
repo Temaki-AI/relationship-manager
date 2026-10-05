@@ -1,46 +1,47 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback } from 'react';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ActionButton } from '@/components/design-system';
-import { getContactForEditing, updateContact, type ContactEditBase } from '@/data/contacts';
-import { type ContactDraft } from '@/domain/contact';
+import { getContactForEditing, updateContact } from '@/data/contacts';
+import { contactDraftKey, contactForm } from '@/data/contact-drafts';
+import { useContactForm } from '@/native/contact-form';
 import { fonts, palette } from '@/theme';
 
-type Editor = { base: ContactEditBase; draft: ContactDraft; frequency: string };
 export default function EditContactScreen() {
-  const db = useSQLiteContext(), router = useRouter(), params = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string }>();
   const id = typeof params.id === 'string' ? params.id : '';
-  const [editor, setEditor] = useState<Editor | null>(null), [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    let active = true;
-    void getContactForEditing(db, id).then((base) => {
-      if (!active) return;
-      if (!base) { setError('This person is no longer available.'); return; }
-      setEditor({ base, frequency: String(base.contact_frequency), draft: { name: base.name, email: base.email ?? '', phone: base.phone ?? '', notes: base.notes ?? '', contactFrequency: base.contact_frequency } });
-    }, () => { if (active) setError('Unable to open this person. Try again.'); });
-    return () => { active = false; };
+  return <ContactEditor key={id} id={id} />;
+}
+
+function ContactEditor({ id }: { id: string }) {
+  const db = useSQLiteContext(), router = useRouter();
+  const key = contactDraftKey(id || 'unavailable');
+  const initial = useCallback(async () => {
+    const base = await getContactForEditing(db, id);
+    if (!base || base.id !== id) throw new Error('This person is no longer available. Open the current person from People.');
+    return contactForm(base);
   }, [db, id]);
-  function change(field: keyof ContactDraft, value: string | number) {
-    setEditor((current) => current ? { ...current, draft: { ...current.draft, [field]: value } } : null);
-  }
+  const form = useContactForm(db, key, initial), editor = form.draft, { saving, error } = form;
   async function save() {
-    if (!editor || editor.base.id !== id) return;
-    setSaving(true); setError('');
-    try { await updateContact(db, editor.base, { ...editor.draft, contactFrequency: Number(editor.frequency) }); router.back(); }
-    catch (error) { setError(error instanceof Error ? error.message : 'Unable to save. Your form is still here.'); }
-    finally { setSaving(false); }
+    const result = await form.save(async ({ base, fields }) => {
+      if (!base || base.id !== id) throw new Error('Reopen this person from People. Your draft is still here.');
+      await updateContact(db, base, { name: fields.name, email: fields.email, phone: fields.phone,
+        notes: fields.notes, contactFrequency: Number(fields.frequency) }, key);
+      return true;
+    });
+    if (result) router.back();
   }
   return <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={96}>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Edit contact details</Text>
       <Text style={styles.body}>Save on this phone, then sync when connected. Changes to the same field on another device may need review.</Text>
       {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-      {!editor || editor.base.id !== id ? <ActivityIndicator color={palette.primary} /> : <>
+      {!editor || editor.base?.id !== id ? error ? <ActionButton label="Try again" onPress={form.retry} /> : <ActivityIndicator color={palette.primary} accessibilityLabel="Opening your form" /> : <>
+        {form.resumed && <Text style={styles.body}>Resumed your saved draft. Its original version is kept so cloud changes can be reviewed.</Text>}
         {(['name', 'email', 'phone', 'notes'] as const).map((field) => <View key={field} style={styles.field}>
           <Text style={styles.label}>{field === 'notes' ? 'Notes' : field.charAt(0).toUpperCase() + field.slice(1)}</Text>
-          <TextInput accessibilityLabel={field} value={String(editor.draft[field] ?? '')} onChangeText={(value) => change(field, value)}
+          <TextInput accessibilityLabel={field} value={editor.fields[field]} onChangeText={(value) => form.change({ [field]: value })}
             editable={!saving} multiline={field === 'notes'} autoCapitalize={field === 'email' ? 'none' : 'sentences'}
             keyboardType={field === 'email' ? 'email-address' : field === 'phone' ? 'phone-pad' : 'default'}
             maxLength={field === 'name' ? 200 : field === 'email' ? 320 : field === 'phone' ? 100 : 50_000}
@@ -48,11 +49,19 @@ export default function EditContactScreen() {
         </View>)}
         <View style={styles.field}><Text style={styles.label}>Days between check-ins</Text>
           <TextInput accessibilityLabel="Days between check-ins" keyboardType="number-pad" maxLength={4} editable={!saving}
-            value={editor.frequency} onChangeText={(frequency) => setEditor((current) => current ? { ...current, frequency } : null)} style={styles.input} />
+            value={editor.fields.frequency} onChangeText={(frequency) => form.change({ frequency })} style={styles.input} />
         </View>
         <ActionButton label={saving ? 'Saving…' : 'Save details'} disabled={saving} onPress={() => { void save(); }} />
+        {!!error && <ActionButton label="Retry keeping draft" variant="secondary" disabled={saving} onPress={() => form.change({})} />}
+        <Text style={styles.body}>Closing keeps your draft on this phone. Drafts are uploaded only when you save.</Text>
+        <ActionButton label="Discard draft" variant="quiet" disabled={saving} onPress={() => Alert.alert('Discard this draft?', 'Remove the unfinished form. Saved contact details stay as they are.', [
+          { text: 'Keep draft', style: 'cancel' }, { text: 'Discard', style: 'destructive', onPress: () => { void form.discard().then((done) => { if (done) router.back(); }); } },
+        ])} />
       </>}
-      <ActionButton label="Cancel" variant="secondary" disabled={saving} onPress={() => router.back()} />
+      {!editor && !!error && <ActionButton label="Discard saved form" variant="quiet" disabled={saving} onPress={() => Alert.alert('Discard the saved form?', 'Remove the unfinished form. Saved contact details stay as they are.', [
+        { text: 'Keep form', style: 'cancel' }, { text: 'Discard', style: 'destructive', onPress: () => { void form.discard().then((done) => { if (done) router.back(); }); } },
+      ])} />}
+      <ActionButton label={editor ? 'Close and keep draft' : 'Close'} variant="secondary" disabled={saving} onPress={() => { void form.close().then((done) => { if (done) router.back(); }); }} />
     </ScrollView>
   </KeyboardAvoidingView>;
 }

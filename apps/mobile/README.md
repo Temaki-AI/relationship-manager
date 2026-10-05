@@ -153,9 +153,20 @@ Permission loss or a failed read retains saved data and shows a status on this p
 Merge and restore pause reading for review; another phone receives shared observations
 without inheriting permission or field choices. Cloud-visible permission status,
 background execution, optional write-back and physical-device testing remain required.
-People now uses searchable 50-row pages with a sentinel, pull-to-refresh and read
+People uses searchable 50-row pages with a sentinel, pull-to-refresh and read
 error recovery. Reminder selection uses the paged person picker. Profile timelines
-still need broader pagination and physical-device usability testing.
+read 20-entry pages using a stable date/time/identity cursor, show original notes,
+and offer retry without losing already loaded history. Physical-device usability
+testing remains required.
+
+New-person and contact-detail edit forms keep unfinished fields in the current
+account's local database, including invalid or incomplete input. Reopening a form
+resumes its saved draft. Closing flushes pending writes; explicit discard removes
+only that form. Successful save clears it in the same transaction as the person
+and outbox change. The original edit base is retained across restart and cloud
+edits, including merges, so sync compares the actual original fields. Drafts do
+not enter the sync outbox before Save. Other plan/reminder forms do not yet have
+this unfinished-form recovery behavior.
 
 ## Native capabilities and verification
 

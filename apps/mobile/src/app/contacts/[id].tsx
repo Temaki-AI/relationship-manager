@@ -2,7 +2,7 @@ import { DeviceSavedSources } from '@/components/device-saved-sources';
 import { PersonCalendarContext } from '@/components/person-calendar-context';
 import { Stack, useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -18,10 +18,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ActionButton, Avatar, Eyebrow, SectionHeading, StatusPill, Surface } from '@/components/design-system';
 import {
   getContact,
-  listContactInteractions,
+  listContactInteractionPage,
   logInteraction,
   type InteractionRecord,
   type InteractionType,
+  type InteractionCursor,
 } from '@/data/contacts';
 import { listOpenReminders, type ReminderRecord } from '@/data/reminders';
 import { getRelationshipState, type ContactRecord } from '@/domain/contact';
@@ -39,51 +40,68 @@ const TOUCH_OPTIONS: { type: InteractionType; label: string }[] = [
 ];
 
 export default function ContactDetailScreen() {
+  const params = useLocalSearchParams<{ id: string }>();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  return <ContactDetail key={id} id={id} />;
+}
+
+function ContactDetail({ id }: { id: string }) {
   const db = useSQLiteContext();
   const focused = useIsFocused();
   const { revision } = useNativeSync();
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string }>();
-  const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const [contact, setContact] = useState<ContactRecord | null>(null);
   const [interactions, setInteractions] = useState<InteractionRecord[]>([]);
   const [reminders, setReminders] = useState<ReminderRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!!id);
   const [logging, setLogging] = useState<InteractionType | null>(null);
-
-  const load = useCallback(async () => {
-    if (!id) return;
-    const [nextContact, nextInteractions, nextReminders] = await Promise.all([
-      getContact(db, id),
-      listContactInteractions(db, id),
-      listOpenReminders(db, id),
-    ]);
-    setContact(nextContact);
-    setInteractions(nextInteractions);
-    setReminders(nextReminders);
-    setLoading(false);
-  }, [db, id]);
+  const [cursor, setCursor] = useState<InteractionCursor | null>(null), [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState(''), [timelineError, setTimelineError] = useState(''), [reload, setReload] = useState(0);
+  const requestState = useRef({ generation: 0, paging: false }), recording = useRef(false);
 
   useEffect(() => {
     if (!focused || !id) return;
     let active = true;
-    void Promise.all([getContact(db, id), listContactInteractions(db, id), listOpenReminders(db, id)])
-      .then(([nextContact, nextInteractions, nextReminders]) => {
-        if (active) { setContact(nextContact); setInteractions(nextInteractions); setReminders(nextReminders); setLoading(false); }
+    const state = requestState.current;
+    state.generation++; state.paging = false;
+    void Promise.all([getContact(db, id), listContactInteractionPage(db, id), listOpenReminders(db, id)])
+      .then(([nextContact, page, nextReminders]) => {
+        if (active) { setContact(nextContact); setInteractions(page.interactions); setCursor(page.nextCursor); setReminders(nextReminders);
+          setLoading(false); setLoadingMore(false); setError(''); setTimelineError(''); }
+      }, () => {
+        if (active) { setError('Unable to read this person. Your saved details are still on this phone. Try again.'); setLoading(false); setLoadingMore(false); }
       });
-    return () => { active = false; };
-  }, [focused, db, id, revision]);
+    return () => { active = false; state.generation++; };
+  }, [focused, db, id, revision, reload]);
+
+  async function loadOlder() {
+    const state = requestState.current;
+    if (!cursor || state.paging || !contact) return;
+    state.paging = true; setLoadingMore(true); setTimelineError('');
+    const request = state.generation;
+    try {
+      const page = await listContactInteractionPage(db, contact.id, cursor);
+      if (request !== state.generation) return;
+      setInteractions((current) => [...current, ...page.interactions]); setCursor(page.nextCursor);
+    } catch {
+      if (request === state.generation) setTimelineError('Unable to read older entries. Try again.');
+    } finally {
+      if (request === state.generation) { state.paging = false; setLoadingMore(false); }
+    }
+  }
 
   async function recordTouch(type: InteractionType) {
-    if (!contact) return;
+    if (!contact || recording.current) return;
+    recording.current = true;
     setLogging(type);
     try {
       await logInteraction(db, contact.id, type);
-      await load();
+      setReload((value) => value + 1);
     } catch {
       Alert.alert('Could not log this touch', 'Nothing changed. Please try again.');
     } finally {
       setLogging(null);
+      recording.current = false;
     }
   }
 
@@ -98,8 +116,9 @@ export default function ContactDetailScreen() {
   if (!contact) {
     return (
       <SafeAreaView style={styles.centered}>
-        <Text style={styles.missingTitle}>This person is not available.</Text>
-        <Pressable onPress={() => router.replace('/people')} style={styles.returnButton}>
+        <Text accessibilityRole={error ? 'alert' : undefined} style={styles.missingTitle}>{error || 'This person is not available.'}</Text>
+        {!!error && <ActionButton label="Try again" onPress={() => setReload((value) => value + 1)} />}
+        <Pressable accessibilityRole="button" onPress={() => router.replace('/people')} style={styles.returnButton}>
           <Text style={styles.returnText}>Back to your people</Text>
         </Pressable>
       </SafeAreaView>
@@ -120,6 +139,7 @@ export default function ContactDetailScreen() {
     <SafeAreaView style={styles.safeArea}>
       <Stack.Screen options={{ title: contact.name }} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {!!error && <><Text accessibilityRole="alert" style={styles.notes}>{error}</Text><ActionButton label="Try again" variant="secondary" onPress={() => setReload((value) => value + 1)} /></>}
         <View style={styles.identity}>
           <Avatar name={contact.name} size={82} />
           <View style={styles.identityCopy}>
@@ -223,7 +243,7 @@ export default function ContactDetailScreen() {
         </View>
 
         <View style={styles.section}>
-          <SectionHeading title="Recent rhythm" />
+          <SectionHeading title="Relationship timeline" />
           {interactions.length === 0 ? (
             <Text style={styles.emptySection}>Log a touch above to start the relationship timeline.</Text>
           ) : interactions.map((interaction) => (
@@ -232,9 +252,12 @@ export default function ContactDetailScreen() {
               <View style={styles.timelineCopy}>
                 <Text style={styles.timelineTitle}>{interaction.summary || interaction.type}</Text>
                 <Text style={styles.timelineMeta}>{interaction.occurred_at ? formatDateTime(interaction.occurred_at) : interaction.date}</Text>
+                {!!interaction.notes && <Text selectable style={styles.notes}>{interaction.notes}</Text>}
               </View>
             </View>
           ))}
+          {!!timelineError && <Text accessibilityRole="alert" style={styles.notes}>{timelineError}</Text>}
+          {!!cursor && <ActionButton label={loadingMore ? 'Reading older entries…' : 'Show older entries'} variant="secondary" disabled={loadingMore} onPress={() => void loadOlder()} />}
         </View>
       </ScrollView>
     </SafeAreaView>

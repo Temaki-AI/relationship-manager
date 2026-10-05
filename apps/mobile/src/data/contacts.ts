@@ -10,6 +10,7 @@ import { enqueueSyncIntent } from './sync-queue';
 import { signalSyncChange } from './sync-signals';
 import { canonicalContactId } from './contact-aliases';
 import { replacePrimaryContactMethods } from '../../../../packages/domain/src/contact-methods';
+import { clearContactDraft } from './contact-drafts';
 
 export type InteractionType = 'call' | 'message' | 'meetup' | 'email';
 
@@ -85,31 +86,33 @@ export async function getContact(db: SQLiteDatabase, id: string): Promise<Contac
 }
 
 export type ContactEditBase = ContactRecord & { remote_revision: number | null };
+export type ContactFieldEditBase = Pick<ContactEditBase, 'id' | 'name' | 'email' | 'phone' | 'notes' | 'contact_frequency' | 'remote_revision'>;
 export async function getContactForEditing(db: SQLiteDatabase, id: string): Promise<ContactEditBase | null> {
   return db.getFirstAsync<ContactEditBase>(`SELECT c.*, CAST(json_extract(r.record_json, '$.revision') AS INTEGER) AS remote_revision
     FROM contacts c LEFT JOIN sync_remote_contacts r ON r.id = c.id WHERE c.id = ? AND c.deleted_at IS NULL`, await canonicalContactId(db, id));
 }
 
-export async function updateContact(db: SQLiteDatabase, original: ContactEditBase, draft: ContactDraft): Promise<void> {
+export async function updateContact(db: SQLiteDatabase, original: ContactFieldEditBase, draft: ContactDraft, draftKey?: string): Promise<void> {
   const input = normalizeContactDraft(draft);
   const values = { name: input.name, email: input.email, phone: input.phone, notes: input.notes, contact_frequency: input.contactFrequency };
   const fields = (Object.keys(values) as (keyof typeof values)[]).filter((field) => values[field] !== original[field]);
-  if (!fields.length) return;
   const patch = Object.fromEntries(fields.map((field) => [field, values[field]]));
   const base = Object.fromEntries(fields.map((field) => [field, original[field]]));
   const now = new Date().toISOString();
   await db.withExclusiveTransactionAsync(async (transaction) => {
     const current = await getContact(transaction, original.id);
     if (!current) throw new Error('This person is no longer available. Your form is still here; review the cloud changes before saving.');
-    const conflict = await transaction.getFirstAsync<{ id: string }>("SELECT id FROM sync_queue WHERE entity_type = 'contact' AND entity_id = ? AND status = 'conflict' LIMIT 1", original.id);
+    if (draftKey) await clearContactDraft(transaction, draftKey);
+    if (!fields.length) return;
+    const conflict = await transaction.getFirstAsync<{ id: string }>("SELECT id FROM sync_queue WHERE entity_type = 'contact' AND entity_id IN (?, ?) AND status = 'conflict' LIMIT 1", original.id, current.id);
     await transaction.runAsync(`UPDATE contacts SET ${fields.map((field) => `${field} = ?`).join(', ')}, updated_at = ?, sync_state = ? WHERE id = ?`,
-      ...fields.map((field) => values[field]), now, conflict ? 'conflict' : 'pending', original.id);
+      ...fields.map((field) => values[field]), now, conflict ? 'conflict' : 'pending', current.id);
     await enqueueSyncIntent(transaction, 'contact', original.id, 'update', patch, now,
       { revision: original.remote_revision, values: base });
     if (fields.includes('email') || fields.includes('phone')) {
-      const local = await transaction.getFirstAsync<{ contact_methods: string }>('SELECT contact_methods FROM contacts WHERE id = ?', original.id);
+      const local = await transaction.getFirstAsync<{ contact_methods: string }>('SELECT contact_methods FROM contacts WHERE id = ?', current.id);
       const methods = replacePrimaryContactMethods(local?.contact_methods ?? '[]', Object.fromEntries(fields.filter((field) => field === 'email' || field === 'phone').map((field) => [field, values[field]])), Crypto.randomUUID);
-      await transaction.runAsync('UPDATE contacts SET contact_methods = ? WHERE id = ?', methods, original.id);
+      await transaction.runAsync('UPDATE contacts SET contact_methods = ? WHERE id = ?', methods, current.id);
     }
   });
   signalSyncChange(db);
@@ -117,12 +120,14 @@ export async function updateContact(db: SQLiteDatabase, original: ContactEditBas
 
 export async function createContact(
   db: SQLiteDatabase,
-  draft: ContactDraft
+  draft: ContactDraft,
+  draftKey?: string
 ): Promise<ContactRecord> {
   const input = normalizeContactDraft(draft);
   const id = Crypto.randomUUID();
   const now = new Date().toISOString();
   const methods = replacePrimaryContactMethods('[]', { email: input.email, phone: input.phone }, Crypto.randomUUID);
+  let contact: ContactRecord | null = null;
 
   await db.withExclusiveTransactionAsync(async (transaction) => {
     await transaction.runAsync(`
@@ -141,25 +146,41 @@ export async function createContact(
     now,
     now, methods);
     await enqueueSyncIntent(transaction, 'contact', id, 'create', { ...input, contact_methods: methods }, now);
+    if (draftKey) await clearContactDraft(transaction, draftKey);
+    contact = await getContact(transaction, id);
+    if (!contact) throw new Error('The contact could not be reloaded. Your form is still here.');
   });
 
-  const contact = await getContact(db, id);
-  if (!contact) throw new Error('The contact was created but could not be reloaded.');
   signalSyncChange(db);
-  return contact;
+  return contact!;
+}
+
+export type InteractionCursor = { contactId: string; date: string; occurredAt: string; id: string };
+export const INTERACTION_PAGE_SIZE = 20;
+
+export async function listContactInteractionPage(db: SQLiteDatabase, contactId: string, cursor: InteractionCursor | null = null)
+  : Promise<{ interactions: InteractionRecord[]; nextCursor: InteractionCursor | null }> {
+  contactId = await canonicalContactId(db, contactId);
+  if (cursor && (cursor.contactId !== contactId || !cursor.id || typeof cursor.date !== 'string' || typeof cursor.occurredAt !== 'string')) {
+    throw new Error('Refresh this relationship timeline before continuing.');
+  }
+  const rows = await db.getAllAsync<InteractionRecord>(`
+    SELECT id, contact_id, type, date, occurred_at, summary, notes FROM interactions
+    WHERE contact_id = ? AND deleted_at IS NULL
+      AND EXISTS (SELECT 1 FROM contacts WHERE id = interactions.contact_id AND deleted_at IS NULL)
+      ${cursor ? "AND (date, COALESCE(occurred_at, ''), id) < (?, ?, ?)" : ''}
+    ORDER BY date DESC, COALESCE(occurred_at, '') DESC, id DESC LIMIT ?
+  `, contactId, ...(cursor ? [cursor.date, cursor.occurredAt, cursor.id] : []), INTERACTION_PAGE_SIZE + 1);
+  const interactions = rows.slice(0, INTERACTION_PAGE_SIZE), last = interactions.at(-1);
+  return { interactions, nextCursor: rows.length > INTERACTION_PAGE_SIZE && last
+    ? { contactId, date: last.date, occurredAt: last.occurred_at ?? '', id: last.id } : null };
 }
 
 export async function listContactInteractions(
   db: SQLiteDatabase,
   contactId: string
 ): Promise<InteractionRecord[]> {
-  return db.getAllAsync<InteractionRecord>(`
-    SELECT id, contact_id, type, date, occurred_at, summary, notes
-    FROM interactions
-    WHERE contact_id = ? AND deleted_at IS NULL
-    ORDER BY date DESC, occurred_at DESC, id DESC
-    LIMIT 20
-  `, await canonicalContactId(db, contactId));
+  return (await listContactInteractionPage(db, contactId)).interactions;
 }
 
 export async function logInteraction(
