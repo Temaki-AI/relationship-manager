@@ -10,6 +10,7 @@ import { maintainProviderConnections } from './lib/cloud/provider-connections';
 import { processGoogleContactsMessage, reconcileGoogleContactsDownloads } from './lib/cloud/google-contact-downloads';
 import { processCalendarEventMessage, reconcileCalendarEventDownloads } from './lib/cloud/google-event-jobs';
 import { pruneGmailCache } from './lib/cloud/google-gmail-downloads';
+import { processGmailMessage, reconcileGmailDownloads } from './lib/cloud/google-gmail-jobs';
 import type { ProviderEnvironment } from './lib/cloud/google-provider';
 import { processCloudRestoreMessage, reconcileStalledCloudRestoreJobs,
   type RecoveryQueueDelivery } from './lib/cloud/large-recovery-queue';
@@ -31,8 +32,9 @@ const worker = {
       reconcileGoogleContactsDownloads(env.DB, env.GOOGLE_CONTACTS_QUEUE, { ...process.env, ...env }),
       reconcileCalendarEventDownloads(env.DB, env.GOOGLE_CALENDAR_QUEUE, { ...process.env, ...env }),
       pruneGmailCache(env.DB),
+      reconcileGmailDownloads(env.DB, env.GOOGLE_GMAIL_QUEUE, { ...process.env, ...env }),
     ]);
-    const [cleanup, emails, birthdays, backupCleanup, snapshotCleanup, restoreReconciliation, automaticBackups, providerMaintenance, contactsDownloads, calendarDownloads, gmailRetention] = results;
+    const [cleanup, emails, birthdays, backupCleanup, snapshotCleanup, restoreReconciliation, automaticBackups, providerMaintenance, contactsDownloads, calendarDownloads, gmailRetention, gmailDownloads] = results;
     if (cleanup.status === 'fulfilled') console.info('cloud.export.retention', cleanup.value);
     if (emails.status === 'fulfilled') console.info('cloud.reminder.email', emails.value);
     if (birthdays.status === 'fulfilled') console.info('cloud.birthday.email', birthdays.value);
@@ -43,6 +45,7 @@ const worker = {
     if (providerMaintenance.status === 'fulfilled') console.info('cloud.provider.maintenance', providerMaintenance.value);
     if (contactsDownloads.status === 'fulfilled') console.info('cloud.google_contacts.downloads', contactsDownloads.value);
     if (calendarDownloads.status === 'fulfilled') console.info('cloud.google_calendar.downloads', calendarDownloads.value);
+    if (gmailDownloads.status === 'fulfilled') console.info('cloud.google_gmail.downloads', gmailDownloads.value);
     if (cleanup.status === 'rejected' || emails.status === 'rejected'
       || birthdays.status === 'rejected'
       || backupCleanup.status === 'rejected' || snapshotCleanup.status === 'rejected'
@@ -52,6 +55,7 @@ const worker = {
       || contactsDownloads.status === 'rejected'
       || calendarDownloads.status === 'rejected'
       || gmailRetention.status === 'rejected'
+      || gmailDownloads.status === 'rejected'
       || (cleanup.status === 'fulfilled' && cleanup.value.failed)
       || (backupCleanup.status === 'fulfilled' && backupCleanup.value.failed)
       || (snapshotCleanup.status === 'fulfilled' && snapshotCleanup.value.failed)
@@ -63,6 +67,7 @@ const worker = {
     for (const message of batch.messages) {
       if (message.body && typeof message.body === 'object' && 'kind' in message.body && message.body.kind === 'google-contacts') await processGoogleContactsMessage(message, env);
       else if (message.body && typeof message.body === 'object' && 'kind' in message.body && message.body.kind === 'google-calendar') await processCalendarEventMessage(message, env);
+      else if (message.body && typeof message.body === 'object' && 'kind' in message.body && message.body.kind === 'google-gmail') await processGmailMessage(message, env);
       else await processCloudRestoreMessage(message, env);
     }
   },

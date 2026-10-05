@@ -25,7 +25,7 @@ Simulator still require the pending explicit permissions.
 The photo API is deployed in Worker `f300697b-8aa5-46c8-b556-fc00144725d4`.
 Readiness is healthy; an unauthenticated photo POST returns 401. No photo schema
 migration is introduced by photos: installed build 4 remains schema 14, production remains migration 44
-and local cloud development now has migration 47.
+and local cloud development now has migration 48.
 
 ## Installed build-4 verification
 
@@ -58,7 +58,7 @@ Calendar permission/editor journeys and broader accessibility remain unverified.
 1. Configure separate Google Contacts/Calendar clients and credential vault, then verify real consent, recurring reconciliation and publishing. Google endpoint tests use fixtures; account sign-in does not establish data-integration readiness.
 2. Complete the real iPhone Contacts/Calendar and offline-to-web pilot, including reminder delivery, accessibility, timezone/identity changes and recovery.
 3. Resolve shared Google/EventKit publication identity and cross-provider duplicate prevention. Offline local guards alone cannot guarantee a global reservation.
-4. Complete the real Gmail client/vault/pilot, reviewed activity and recurring jobs. Download/matching and web/native context now have tested source implementations. LinkedIn currently supports reviewed profile URLs/export imports; continuous LinkedIn account synchronization is unavailable.
+4. Complete the real Gmail client/vault/pilot, reviewed activity and operational validation of recurring jobs. Download/matching and web/native context now have tested source implementations. LinkedIn currently supports reviewed profile URLs/export imports; continuous LinkedIn account synchronization is unavailable.
 5. Complete Sign in with Apple/account management, dependency security, public provider approvals, TestFlight/App Store distribution, operational checks and the daily-use pilot.
 
 Local development OAuth still needs its own configured credentials. The shared
@@ -68,8 +68,8 @@ complete the integrated personal beta or public release.
 
 The saved Gmail stash `3473e7443855718e3aaee489d4ce1aa739add78e` has been restored
 and extended into the current download implementation; do not apply it again to
-this checkout. It remains as a historical backup. Migration 47 is applied to local
-D1 only. No Gmail download/matching or migration 45–47 is deployed to production. Mobile
+this checkout. It remains as a historical backup. Migration 48 is applied to local
+D1 only. No Gmail download/matching or migration 45–48 is deployed to production. Mobile
 dependencies are present; the signed phone binary remains its separately verified
 build-4 source.
 
@@ -116,8 +116,25 @@ builds pass. Both native build-5 Release jobs and isolated SQLite/Keychain start
 pass in run 37306709947. Build 5 is signed and verified; installation awaits phone
 reconnection/unlock after CoreDevice error 1011. Its exact source/package evidence
 is in [the build-5 record](personal-ios-build5.md). This source is not in installed build 4.
-Cross-account/activity review and consented recurring jobs remain engineering work.
+Cross-account/activity review remains engineering work. Consented recurring Gmail
+jobs now have a tested default-off source implementation; actual queue provisioning,
+OAuth renewal and a controlled mailbox pilot remain required.
 Real clients/vault and a controlled mailbox pilot remain required.
-Readiness requires migrations 45–47 before any source deploy; production was last
-verified at migration 44 and local D1 has 47. Installed mobile remains schema 14;
+Readiness requires migrations 45–48 before any source deploy; production was last
+verified at migration 44 and local D1 has 48. Installed mobile remains schema 14;
 current native development source has schema 15.
+
+## Latest bounded follow-up
+
+Daily/hourly Gmail refresh, cancellation fencing, checkpoint recovery, expired-history
+repair, dispatch fairness and the populated 47-to-48 upgrade pass the focused tests.
+All 878 root tests pass with no skips, as do the twelve download/profile browser
+journeys, root TypeScript/full lint, native source checks and the Cloudflare build.
+The migration metadata/schema generation agrees with migration 48. This is a
+server/web change and does not replace the signed build-5 artifact. After the owner
+reported the phone unlocked, another targeted install still failed with CoreDevice
+1011; cached details reported no tunnel and the same 10:57 UTC last connection.
+The owner has been asked to reconnect directly by USB and confirm Trust. Reuse
+build 5 as soon as the phone is reachable, then verify exact bundle metadata,
+launch and process stability. No physical UI/data or private database result is
+claimed.

@@ -401,7 +401,9 @@ export const providerGmailResources = sqliteTable('provider_gmail_resources', {
   datasetEpoch: text('dataset_epoch').notNull(), authorizationRevision: integer('authorization_revision').notNull(),
   settingsRevision: integer('settings_revision').notNull().default(1), choices: text('choices').notNull(), activeGeneration: text('active_generation'),
   checkpoint: text('checkpoint'), coverage: text('coverage').notNull().default('none'), windowStart: integer('window_start'), windowEnd: integer('window_end'), lastDownloadedAt: text('last_downloaded_at'),
-});
+  syncEnabled: integer('sync_enabled').notNull().default(0), syncInterval: integer('sync_interval').notNull().default(86400),
+  syncRevision: integer('sync_revision').notNull().default(0), nextSyncAt: integer('next_sync_at').notNull().default(0), repairRequired: integer('repair_required').notNull().default(0),
+}, (table) => [index('provider_gmail_due').on(table.syncEnabled, table.nextSyncAt, table.connectionId)]);
 export const providerGmailRuns = sqliteTable('provider_gmail_runs', {
   id: text('id').primaryKey(), connectionId: text('connection_id').notNull().references(() => providerGmailResources.connectionId, { onDelete: 'cascade' }),
   workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
@@ -413,8 +415,10 @@ export const providerGmailRuns = sqliteTable('provider_gmail_runs', {
   pages: integer('pages').notNull().default(0), processed: integer('processed').notNull().default(0), limited: integer('limited').notNull().default(0),
   status: text('status').notNull().default('active'), revision: integer('revision').notNull().default(1), leaseToken: text('lease_token'), leaseUntil: integer('lease_until'),
   failures: integer('failures').notNull().default(0), retryAt: integer('retry_at').notNull().default(0), issue: text('issue'), createdAt: text('created_at').notNull(), updatedAt: text('updated_at').notNull(),
+  scheduleRevision: integer('schedule_revision'),
 }, (table) => [uniqueIndex('provider_gmail_one_active_run').on(table.connectionId).where(sql`${table.status} = 'active'`),
-  uniqueIndex('provider_gmail_run_generation').on(table.connectionId, table.generation), index('provider_gmail_runs_owner').on(table.workspaceId, table.userId, table.connectionId, table.createdAt)]);
+  uniqueIndex('provider_gmail_run_generation').on(table.connectionId, table.generation), index('provider_gmail_runs_owner').on(table.workspaceId, table.userId, table.connectionId, table.createdAt),
+  index('provider_gmail_dispatch').on(table.status, table.scheduleRevision, table.updatedAt, table.id)]);
 export const providerGmailPending = sqliteTable('provider_gmail_pending', {
   runId: text('run_id').notNull().references(() => providerGmailRuns.id, { onDelete: 'cascade' }), messageId: text('message_id').notNull(), phase: text('phase').notNull(), done: integer('done').notNull().default(0),
 }, (table) => [primaryKey({ columns: [table.runId, table.phase, table.messageId] })]);

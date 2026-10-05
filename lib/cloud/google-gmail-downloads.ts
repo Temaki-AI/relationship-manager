@@ -11,11 +11,12 @@ import type { D1PreparedStatement } from '@cloudflare/workers-types';
 type DB = CloudflareEnv['DB'];
 type Access = { id: string; email: string; dataset_epoch: string; authorization_revision: number };
 type Resource = { connection_id: string; choices: string; settings_revision: number; active_generation: string | null; checkpoint: string | null;
-  coverage: GmailSourceReview['coverage']; window_start: number | null; window_end: number | null; last_downloaded_at: string | null };
+  coverage: GmailSourceReview['coverage']; window_start: number | null; window_end: number | null; last_downloaded_at: string | null;
+  sync_enabled: number; sync_interval: number; sync_revision: number; next_sync_at: number; repair_required: number };
 type Run = { id: string; connection_id: string; workspace_id: string; user_id: string; dataset_epoch: string; authorization_revision: number; settings_revision: number;
   fingerprint: string; generation: string; base_generation: string | null; mode: 'full' | 'incremental'; phase: string; status: string; window_start: number; window_end: number;
   history_start: string | null; history_checkpoint: string | null; label_position: number; next_page: string | null; pages: number; processed: number;
-  limited: number; revision: number; failures: number; retry_at: number; issue: string | null; created_at: string };
+  limited: number; revision: number; failures: number; retry_at: number; issue: string | null; created_at: string; schedule_revision: number | null };
 class GmailRunFault extends ProviderConnectionError {
   constructor(readonly reason: 'mailbox_identity_changed' | 'download_expired' | 'history_limit') { super('This Gmail download needs a new reviewed scan. The previous context was kept.'); }
 }
@@ -44,15 +45,18 @@ function owner(c: Access, actor: ConnectionActor) {
 }
 // Matching shares the same owner/grant boundary without requesting provider data.
 export { access as gmailSourceAccess, owner as gmailSourceOwner };
+const scheduleCondition = `(? IS NULL OR EXISTS(SELECT 1 FROM provider_gmail_resources WHERE connection_id=? AND sync_enabled=1 AND sync_revision=?))`;
+const scheduleValues = (run: Run) => [run.schedule_revision, run.connection_id, run.schedule_revision];
 export async function reviewGmailSource(db: DB, actor: ConnectionActor, id: string): Promise<GmailSourceReview | null> {
   const c = await access(db, actor, id), r = await resource(db, id);
   if (!r) return null;
   const latest = await db.prepare("SELECT * FROM provider_gmail_runs WHERE connection_id = ? ORDER BY (status = 'active') DESC, created_at DESC, rowid DESC LIMIT 1").bind(id).first<Run>();
   const current = owner(c, actor), guard = crypto.randomUUID();
-  await db.batch([maintenanceGuard(db, guard, current.condition + ' AND EXISTS(SELECT 1 FROM provider_gmail_resources WHERE connection_id = ? AND settings_revision = ? AND active_generation IS ?)',
-    [...current.values, id, r.settings_revision, r.active_generation]), removeGuard(db, guard)]);
+  await db.batch([maintenanceGuard(db, guard, current.condition + ' AND EXISTS(SELECT 1 FROM provider_gmail_resources WHERE connection_id = ? AND settings_revision = ? AND active_generation IS ? AND sync_revision=? AND sync_enabled=? AND sync_interval=? AND next_sync_at=? AND repair_required=?)',
+    [...current.values, id, r.settings_revision, r.active_generation, r.sync_revision, r.sync_enabled, r.sync_interval, r.next_sync_at, r.repair_required]), removeGuard(db, guard)]);
   return { settings_revision: r.settings_revision, choices: readGmailChoices(JSON.parse(r.choices), c.email), generation: r.active_generation,
-    coverage: r.coverage, window_start: r.window_start, window_end: r.window_end, last_downloaded_at: r.last_downloaded_at, run: latest ? publicRun(latest) : null };
+    coverage: r.coverage, window_start: r.window_start, window_end: r.window_end, last_downloaded_at: r.last_downloaded_at, run: latest ? publicRun(latest) : null,
+    schedule: { enabled: Boolean(r.sync_enabled), interval: r.sync_interval, revision: r.sync_revision, next_at: r.next_sync_at, repair_required: Boolean(r.repair_required) } };
 }
 export async function saveGmailChoices(db: DB, actor: ConnectionActor, env: ProviderEnvironment, id: string, body: Record<string, unknown>, fetcher: ProviderFetch = fetch) {
   const c = await access(db, actor, id), r = await resource(db, id);
@@ -74,7 +78,30 @@ export async function saveGmailChoices(db: DB, actor: ConnectionActor, env: Prov
     .bind(id, actor.workspaceId, actor.userId, c.dataset_epoch, c.authorization_revision, encoded)]), removeGuard(db, guard), removeGuard(db, guard + '-settings')]);
   return reviewGmailSource(db, actor, id);
 }
-export async function startGmailDownload(db: DB, actor: ConnectionActor, env: ProviderEnvironment, id: string, body: Record<string, unknown>) {
+export async function changeGmailSchedule(db: DB, actor: ConnectionActor, env: ProviderEnvironment, id: string, body: Record<string, unknown>) {
+  googleConfiguration(env, 'gmail');
+  const c = await access(db, actor, id), r = await resource(db, id);
+  if (!r || Object.keys(body).sort().join(',') !== 'enabled,expected_authorization_revision,expected_epoch,expected_schedule_revision,expected_settings_revision,interval'
+    || body.expected_epoch !== c.dataset_epoch || body.expected_authorization_revision !== c.authorization_revision
+    || body.expected_settings_revision !== r.settings_revision || body.expected_schedule_revision !== r.sync_revision
+    || typeof body.enabled !== 'boolean' || ![3600, 86400].includes(body.interval as number)) throw new ProviderConnectionError('Refresh the reviewed Gmail choices before saving automatic checks.');
+  if (Boolean(r.sync_enabled) === body.enabled && r.sync_interval === body.interval) return reviewGmailSource(db, actor, id);
+  const current = owner(c, actor), guard = crypto.randomUUID();
+  await db.batch([maintenanceGuard(db, guard, current.condition + ' AND EXISTS(SELECT 1 FROM provider_gmail_resources WHERE connection_id=? AND settings_revision=? AND sync_revision=?)',
+    [...current.values, id, r.settings_revision, r.sync_revision]),
+  db.prepare('UPDATE provider_gmail_resources SET sync_enabled=?,sync_interval=?,sync_revision=sync_revision+1,next_sync_at=? WHERE connection_id=?')
+    .bind(Number(body.enabled), body.interval as number, body.enabled ? Date.now() : 0, id),
+  db.prepare("UPDATE provider_gmail_runs SET status='cancelled',issue='schedule_changed',revision=revision+1,lease_token=NULL,lease_until=NULL,updated_at=? WHERE connection_id=? AND status='active' AND schedule_revision IS NOT NULL")
+    .bind(new Date().toISOString(), id),
+  db.prepare("DELETE FROM provider_gmail_index WHERE connection_id=? AND generation IN(SELECT generation FROM provider_gmail_runs WHERE connection_id=? AND status='cancelled' AND issue='schedule_changed' AND schedule_revision=?)")
+    .bind(id, id, r.sync_revision),
+  db.prepare("DELETE FROM provider_gmail_pending WHERE run_id IN(SELECT id FROM provider_gmail_runs WHERE connection_id=? AND status='cancelled' AND issue='schedule_changed' AND schedule_revision=?)")
+    .bind(id, r.sync_revision),
+  db.prepare("DELETE FROM provider_gmail_pages WHERE run_id IN(SELECT id FROM provider_gmail_runs WHERE connection_id=? AND status='cancelled' AND issue='schedule_changed' AND schedule_revision=?)")
+    .bind(id, r.sync_revision), removeGuard(db, guard)]);
+  return reviewGmailSource(db, actor, id);
+}
+export async function startGmailDownload(db: DB, actor: ConnectionActor, env: ProviderEnvironment, id: string, body: Record<string, unknown>, scheduled?: { revision: number; due: number }) {
   googleConfiguration(env, 'gmail'); const c = await access(db, actor, id), r = await resource(db, id);
   if (!r) throw new ProviderConnectionError('Save the reviewed labels and retention choices before downloading.');
   if (Object.keys(body).sort().join(',') !== 'expected_authorization_revision,expected_epoch,expected_settings_revision,mode,operation_id'
@@ -83,20 +110,25 @@ export async function startGmailDownload(db: DB, actor: ConnectionActor, env: Pr
   const fingerprint = fingerprintIdempotencyInput(body), previous = await runFor(db, body.operation_id);
   if (previous) {
     if (previous.connection_id !== id || previous.workspace_id !== actor.workspaceId || previous.user_id !== actor.userId || previous.fingerprint !== fingerprint
-      || previous.dataset_epoch !== c.dataset_epoch || previous.authorization_revision !== c.authorization_revision || previous.settings_revision !== r.settings_revision) throw new ProviderConnectionError('This download request belongs to different mailbox choices.');
+      || previous.dataset_epoch !== c.dataset_epoch || previous.authorization_revision !== c.authorization_revision || previous.settings_revision !== r.settings_revision
+      || previous.schedule_revision !== (scheduled?.revision ?? null)) throw new ProviderConnectionError('This download request belongs to different mailbox choices.');
     return publicRun(previous);
   }
   if (body.mode === 'incremental' && (!r.checkpoint || !r.active_generation)) throw new ProviderConnectionError('Complete a reviewed full scan before incremental refresh.');
+  if (scheduled && (!r.sync_enabled || r.sync_revision !== scheduled.revision || r.next_sync_at !== scheduled.due || scheduled.due > Date.now())) throw new ProviderConnectionError('Automatic Gmail refresh choices changed.');
   const choices = readGmailChoices(JSON.parse(r.choices), c.email), now = Date.now(), guard = crypto.randomUUID(), generation = crypto.randomUUID(), current = owner(c, actor);
   try { await db.batch([maintenanceGuard(db, guard, current.condition + ` AND EXISTS(SELECT 1 FROM provider_gmail_resources WHERE connection_id = ? AND settings_revision = ? AND active_generation IS ?)
-    AND NOT EXISTS(SELECT 1 FROM provider_gmail_runs WHERE connection_id = ? AND status = 'active')`, [...current.values, id, r.settings_revision, r.active_generation, id]),
+    AND NOT EXISTS(SELECT 1 FROM provider_gmail_runs WHERE connection_id = ? AND status = 'active')
+    ${scheduled ? 'AND EXISTS(SELECT 1 FROM provider_gmail_resources WHERE connection_id=? AND sync_enabled=1 AND sync_revision=? AND next_sync_at=?)' : ''}`,
+    [...current.values, id, r.settings_revision, r.active_generation, id, ...(scheduled ? [id, scheduled.revision, scheduled.due] : [])]),
     db.prepare('DELETE FROM provider_gmail_index WHERE connection_id = ? AND generation IS NOT ?').bind(id, r.active_generation),
-    db.prepare(`INSERT INTO provider_gmail_runs(id,connection_id,workspace_id,user_id,dataset_epoch,authorization_revision,settings_revision,fingerprint,generation,base_generation,mode,window_start,window_end,history_start,created_at,updated_at)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(body.operation_id, id, actor.workspaceId, actor.userId, c.dataset_epoch, c.authorization_revision, r.settings_revision, fingerprint, generation, r.active_generation, body.mode, now - choices.past_days * 86400000, now, body.mode === 'incremental' ? r.checkpoint : null, new Date(now).toISOString(), new Date(now).toISOString()),
+    db.prepare(`INSERT INTO provider_gmail_runs(id,connection_id,workspace_id,user_id,dataset_epoch,authorization_revision,settings_revision,fingerprint,generation,base_generation,mode,window_start,window_end,history_start,created_at,updated_at,schedule_revision)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(body.operation_id, id, actor.workspaceId, actor.userId, c.dataset_epoch, c.authorization_revision, r.settings_revision, fingerprint, generation, r.active_generation, body.mode, now - choices.past_days * 86400000, now, body.mode === 'incremental' ? r.checkpoint : null, new Date(now).toISOString(), new Date(now).toISOString(), scheduled?.revision ?? null),
     db.prepare(`INSERT INTO provider_gmail_index(connection_id,generation,message_id,received_at,observed_at,facts)
       SELECT connection_id,?,message_id,received_at,observed_at,facts FROM provider_gmail_index WHERE connection_id = ? AND generation = ? AND received_at BETWEEN ? AND ?`)
-      .bind(generation, id, r.active_generation ?? '', now - choices.past_days * 86400000, now), removeGuard(db, guard)]);
-  } catch (error) { const replay = await runFor(db, body.operation_id); if (replay && replay.fingerprint === fingerprint && replay.connection_id === id && replay.workspace_id === actor.workspaceId && replay.user_id === actor.userId && replay.dataset_epoch === c.dataset_epoch && replay.authorization_revision === c.authorization_revision) return publicRun(replay); throw error; }
+      .bind(generation, id, r.active_generation ?? '', now - choices.past_days * 86400000, now),
+    ...(scheduled ? [db.prepare('UPDATE provider_gmail_resources SET next_sync_at=? WHERE connection_id=?').bind(now + r.sync_interval * 1000, id)] : []), removeGuard(db, guard)]);
+  } catch (error) { const replay = await runFor(db, body.operation_id); if (replay && replay.fingerprint === fingerprint && replay.connection_id === id && replay.workspace_id === actor.workspaceId && replay.user_id === actor.userId && replay.dataset_epoch === c.dataset_epoch && replay.authorization_revision === c.authorization_revision && replay.settings_revision === r.settings_revision && replay.schedule_revision === (scheduled?.revision ?? null)) return publicRun(replay); throw error; }
   return publicRun((await runFor(db, body.operation_id))!);
 }
 async function pendingCount(db: DB, run: Run, phase: string) {
@@ -110,8 +142,8 @@ export async function advanceGmailDownload(db: DB, actor: ConnectionActor, env: 
   if (!r || run.dataset_epoch !== c.dataset_epoch || run.authorization_revision !== c.authorization_revision || run.settings_revision !== r.settings_revision) throw new ProviderConnectionError('Gmail choices or authorization changed.');
   if (run.status !== 'active' || run.retry_at > Date.now()) return publicRun(run);
   const choices = readGmailChoices(JSON.parse(r.choices), c.email), lease = crypto.randomUUID(), current = owner(c, actor);
-  const runCondition = `EXISTS(SELECT 1 FROM provider_gmail_resources WHERE connection_id = ? AND settings_revision = ? AND active_generation IS ?)`;
-  const runValues = [id, run.settings_revision, run.base_generation];
+  const runCondition = `EXISTS(SELECT 1 FROM provider_gmail_resources WHERE connection_id = ? AND settings_revision = ? AND active_generation IS ?) AND ${scheduleCondition}`;
+  const runValues = [id, run.settings_revision, run.base_generation, ...scheduleValues(run)];
   const claimed = await db.prepare(`UPDATE provider_gmail_runs SET lease_token = ?,lease_until = ? WHERE id = ? AND revision = ? AND status = 'active'
     AND (lease_token IS NULL OR lease_until < ?) AND ${current.condition} AND ${runCondition} RETURNING id`)
     .bind(lease, Date.now() + 150000, run.id, run.revision, Date.now(), ...current.values, ...runValues).first();
@@ -184,7 +216,7 @@ export async function advanceGmailDownload(db: DB, actor: ConnectionActor, env: 
       statements.push(db.prepare(`DELETE FROM provider_gmail_index WHERE connection_id = ? AND generation = ? AND message_id NOT IN(
         SELECT message_id FROM provider_gmail_index WHERE connection_id = ? AND generation = ? ORDER BY received_at DESC,message_id DESC LIMIT ?)`)
         .bind(id, run.generation, id, run.generation, choices.scan_limit));
-      statements.push(db.prepare('UPDATE provider_gmail_resources SET active_generation = ?,checkpoint = ?,coverage = ?,window_start = ?,window_end = ?,last_downloaded_at = ? WHERE connection_id = ?')
+      statements.push(db.prepare('UPDATE provider_gmail_resources SET active_generation = ?,checkpoint = ?,coverage = ?,window_start = ?,window_end = ?,last_downloaded_at = ?,repair_required=0 WHERE connection_id = ?')
         .bind(run.generation, run.history_checkpoint, limited ? 'limited' : 'scanned', publishedStart, publishedEnd, new Date().toISOString(), id));
       statements.push(db.prepare('DELETE FROM provider_gmail_index WHERE connection_id = ? AND generation != ?').bind(id, run.generation));
       statements.push(db.prepare('DELETE FROM provider_gmail_pending WHERE run_id = ?').bind(run.id), db.prepare('DELETE FROM provider_gmail_pages WHERE run_id = ?').bind(run.id));
@@ -208,10 +240,11 @@ export async function advanceGmailDownload(db: DB, actor: ConnectionActor, env: 
     }
     if (error instanceof GoogleGmailError || error instanceof GmailRunFault || /PROVIDER_GMAIL_INVALID|provider_gmail_pages/u.test(String(error))) {
       const retry = error instanceof GoogleGmailError && error.reason === 'retry' && run.failures < 8, guard = crypto.randomUUID();
-      await db.batch([maintenanceGuard(db, guard, current.condition + ` AND EXISTS(SELECT 1 FROM provider_gmail_runs WHERE id = ? AND revision = ? AND lease_token = ? AND status = 'active')`, [...current.values, run.id, run.revision, lease]),
+      await db.batch([maintenanceGuard(db, guard, current.condition + ' AND ' + runCondition + ` AND EXISTS(SELECT 1 FROM provider_gmail_runs WHERE id = ? AND revision = ? AND lease_token = ? AND status = 'active')`, [...current.values, ...runValues, run.id, run.revision, lease]),
         db.prepare('UPDATE provider_gmail_runs SET status = ?,revision = revision + 1,failures = failures + 1,retry_at = ?,issue = ?,lease_token = NULL,lease_until = NULL,updated_at = ? WHERE id = ?')
           .bind(retry ? 'active' : 'failed', retry ? Date.now() + (error instanceof GoogleGmailError ? error.retryAfter : 30) * 1000 : 0,
             retry ? 'provider_retry' : error instanceof GmailRunFault ? error.reason : error instanceof GoogleGmailError && error.reason === 'history_expired' ? 'history_repair_required' : 'unsupported_or_over_limit', new Date().toISOString(), run.id),
+        ...(error instanceof GoogleGmailError && error.reason === 'history_expired' ? [db.prepare('UPDATE provider_gmail_resources SET repair_required=1,next_sync_at=CASE WHEN sync_enabled=1 THEN ? ELSE next_sync_at END WHERE connection_id=?').bind(Date.now(), id)] : []),
         ...(retry ? [] : [db.prepare('DELETE FROM provider_gmail_index WHERE connection_id = ? AND generation = ?').bind(id, run.generation), db.prepare('DELETE FROM provider_gmail_pending WHERE run_id = ?').bind(run.id), db.prepare('DELETE FROM provider_gmail_pages WHERE run_id = ?').bind(run.id)]), removeGuard(db, guard)]);
       return publicRun((await runFor(db, run.id))!);
     }

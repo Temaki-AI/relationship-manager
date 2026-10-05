@@ -337,6 +337,13 @@
       "when": 1791195496553,
       "tag": "0047_gmail_matching",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "6",
+      "when": 1791206096205,
+      "tag": "0048_gmail_recurring",
+      "breakpoints": true
     }
   ]
 }

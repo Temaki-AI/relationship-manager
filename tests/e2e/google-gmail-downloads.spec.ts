@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/auth/get-session*', (route) => route.fulfill({ json: { session: null, user: null } }));
   await page.request.post('/api/auth/login', { data: { password: 'bonds-e2e-account-password' } });
 });
-async function fixture(page: Page, options: { loseStart?: boolean; revokeDuringMessages?: boolean } = {}) {
+async function fixture(page: Page, options: { loseStart?: boolean; loseSchedule?: boolean; revokeDuringMessages?: boolean } = {}) {
   let source: GmailSourceReview | null = null, canPreview = true, authRevision = 1;
   const calls: Array<{ action: string; body: Record<string, unknown> | null }> = [];
   const facts: GmailMessageFacts[] = [0, 1, 2].map((index) => ({ id: 'message_' + index, thread_id: 'thread_' + index,
@@ -26,7 +26,14 @@ async function fixture(page: Page, options: { loseStart?: boolean; revokeDuringM
     calls.push({ action, body });
     if (action === '/settings') {
       source = { settings_revision: (source?.settings_revision ?? 0) + 1, choices: body.choices, generation: null,
-        coverage: 'none', window_start: null, window_end: null, last_downloaded_at: null, run: null };
+        coverage: 'none', window_start: null, window_end: null, last_downloaded_at: null, run: null,
+        schedule: { enabled: false, interval: 86400, revision: (source?.schedule.revision ?? -1) + 1, next_at: 0, repair_required: false } };
+      return route.fulfill({ json: source });
+    }
+    if (action === '/schedule') {
+      expect(body.expected_settings_revision).toBe(source!.settings_revision); expect(body.expected_schedule_revision).toBe(source!.schedule.revision);
+      source!.schedule = { enabled: body.enabled, interval: body.interval, revision: source!.schedule.revision + 1, next_at: body.enabled ? Date.now() : 0, repair_required: false };
+      if (options.loseSchedule && calls.filter((call) => call.action === action).length === 1) return route.abort('failed');
       return route.fulfill({ json: source });
     }
     if (action === '/downloads') {
@@ -111,4 +118,38 @@ test('changed authorization after message reads suppresses subjects, participant
   await expect(page.getByText('Private subject must disappear', { exact: true })).toHaveCount(0);
   await expect(page.getByText('friend@example.test', { exact: false })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Mailbox labels', exact: true })).toHaveCount(0);
+});
+
+test('automatic Gmail checks require explicit saved choices, survive reload and reset after reviewing changed retention', async ({ page }) => {
+  const f = await fixture(page); await saveChoices(page);
+  const frequency = page.getByLabel('Refresh frequency', { exact: true });
+  await expect(frequency).toHaveValue('manual'); expect(f.calls.filter((call) => call.action === '/schedule')).toHaveLength(0);
+  await frequency.selectOption('86400'); await page.getByRole('button', { name: 'Enable daily email refresh', exact: true }).click();
+  await expect(page.getByText('Saved setting: Daily checks.', { exact: true })).toBeVisible();
+  expect(f.calls.find((call) => call.action === '/schedule')!.body).toEqual({ enabled: true, interval: 86400, expected_epoch: epoch,
+    expected_authorization_revision: 1, expected_settings_revision: 1, expected_schedule_revision: 0 });
+  await page.reload(); await expect(frequency).toHaveValue('86400'); expect(f.calls.filter((call) => call.action === '/schedule')).toHaveLength(1);
+  await page.getByLabel('Past days to retain', { exact: true }).fill('30');
+  await expect(page.getByRole('button', { name: 'Enable daily email refresh', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Save download choices', exact: true }).click();
+  await expect(page.getByText('turns automatic refresh off', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Replace download choices', exact: true }).click();
+  await expect(frequency).toHaveValue('manual'); await frequency.selectOption('3600');
+  await page.getByRole('button', { name: 'Enable hourly email refresh', exact: true }).click();
+  await expect(page.getByText('Saved setting: Hourly checks.', { exact: true })).toBeVisible();
+  await frequency.selectOption('manual'); await page.getByRole('button', { name: 'Save manual email refresh', exact: true }).click();
+  await expect(page.getByText('Saved setting: Manual refresh only.', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: 'test-results/gmail-recurring-' + test.info().project.name + '.png', fullPage: true });
+});
+
+test('a lost Gmail schedule reply reloads the authoritative setting without sending another opt-in', async ({ page }) => {
+  const f = await fixture(page, { loseSchedule: true }); await saveChoices(page);
+  await page.getByLabel('Refresh frequency', { exact: true }).selectOption('86400');
+  await page.getByRole('button', { name: 'Enable daily email refresh', exact: true }).click();
+  await expect(page.getByText('Saved setting: Daily checks.', { exact: true })).toBeVisible();
+  expect(f.calls.filter((call) => call.action === '/schedule')).toHaveLength(1);
+  await page.reload(); await expect(page.getByLabel('Refresh frequency', { exact: true })).toHaveValue('86400');
+  expect(f.calls.filter((call) => call.action === '/schedule')).toHaveLength(1);
 });

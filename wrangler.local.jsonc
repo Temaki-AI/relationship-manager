@@ -30,7 +30,7 @@
     { "binding": "PRIVATE_ASSETS", "bucket_name": "everclose-local-private-assets", "remote": false }
   ],
   "queues": {
-    "producers": [{ "binding": "LARGE_RECOVERY_QUEUE", "queue": "everclose-local-recovery" }, { "binding": "GOOGLE_CONTACTS_QUEUE", "queue": "everclose-local-google-contacts" }, { "binding": "GOOGLE_CALENDAR_QUEUE", "queue": "everclose-local-google-calendar" }],
+    "producers": [{ "binding": "LARGE_RECOVERY_QUEUE", "queue": "everclose-local-recovery" }, { "binding": "GOOGLE_CONTACTS_QUEUE", "queue": "everclose-local-google-contacts" }, { "binding": "GOOGLE_CALENDAR_QUEUE", "queue": "everclose-local-google-calendar" }, { "binding": "GOOGLE_GMAIL_QUEUE", "queue": "everclose-local-google-gmail" }],
     "consumers": [{
       "queue": "everclose-local-recovery",
       "max_batch_size": 1,
@@ -52,6 +52,13 @@
       "max_retries": 9,
       "max_concurrency": 4,
       "dead_letter_queue": "everclose-local-google-calendar-failed"
+    }, {
+      "queue": "everclose-local-google-gmail",
+      "max_batch_size": 1,
+      "max_batch_timeout": 1,
+      "max_retries": 9,
+      "max_concurrency": 2,
+      "dead_letter_queue": "everclose-local-google-gmail-failed"
     }]
   },
   "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "everclose-crm-local", "remote": false }],

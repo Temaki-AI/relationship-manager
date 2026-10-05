@@ -1,6 +1,6 @@
 import type { D1Database } from '@cloudflare/workers-types';
 
-export const CLOUD_READINESS_MIGRATION = '0047_gmail_matching.sql';
+export const CLOUD_READINESS_MIGRATION = '0048_gmail_recurring.sql';
 
 export async function getCloudReadinessReport(
   db: Pick<D1Database, 'prepare'>,

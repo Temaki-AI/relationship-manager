@@ -55,7 +55,7 @@ const exactPaths = new Set([
 ]);
 
 export function getCloudApiRewrite(pathname: string): string | null {
-  const gmailPath = /^\/api\/connections\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/gmail\/(?:settings|messages|matches(?:\/directory)?|people\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|downloads(?:\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?:\/step)?)?)$/u.test(pathname);
+  const gmailPath = /^\/api\/connections\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/gmail\/(?:settings|schedule|messages|matches(?:\/directory)?|people\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|downloads(?:\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?:\/step)?)?)$/u.test(pathname);
   const resourcePath = /^\/api\/(?:interactions|plans|reminders|groups)\/\d+$/u.test(pathname);
   const devicePath = /^\/api\/v1\/devices\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(pathname);
   const photoPath = /^\/api\/v1\/contact-photos\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(pathname);

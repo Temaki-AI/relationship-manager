@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getResponseErrorMessage } from '@/lib/utils';
 import type { GmailConnectionReview } from '@/lib/cloud/google-gmail-connection';
-import { readGmailChoices, type GmailChoices, type GmailDownloadRun, type GmailMessagePage } from '@/packages/domain/src/gmail';
+import { readGmailChoices, type GmailChoices, type GmailDownloadRun, type GmailMessagePage, type GmailSourceReview } from '@/packages/domain/src/gmail';
+type GmailSourceReviewSchedule = GmailSourceReview['schedule'];
 
 type Props = { review: GmailConnectionReview; labelIds: string[]; setLabelIds: (ids: string[]) => void;
   onReview: (review: GmailConnectionReview) => void; onPending: (pending: boolean) => void; labelPreviewPending: boolean;
@@ -24,9 +25,15 @@ export function GoogleGmailDownloads({ review, labelIds, setLabelIds, onReview, 
   const [confirmation, setConfirmation] = useState<GmailChoices | null>(null), [page, setPage] = useState<GmailMessagePage | null>(null);
   const [error, setError] = useState(''), [pending, setPending] = useState(false), [starting, setStarting] = useState(false);
   const [progress, setProgress] = useState<GmailDownloadRun | null>(null);
+  const [frequency, setFrequency] = useState('manual');
   const [, updateClock] = useState(0);
   const alive = useRef(false), busy = useRef(false), sequence = useRef(0), startRequest = useRef<Record<string, unknown> | null>(null);
   const savedChoices = JSON.stringify(source?.choices ?? null);
+  const savedSchedule = JSON.stringify(source?.schedule ?? null);
+  useEffect(() => {
+    const schedule = JSON.parse(savedSchedule) as GmailSourceReviewSchedule | null;
+    setFrequency(schedule?.enabled ? String(schedule.interval) : 'manual');
+  }, [savedSchedule]);
   useEffect(() => { alive.current = true; return () => { alive.current = false; onPending(false); }; }, [onPending]);
   useEffect(() => { onPending(pending || confirmation !== null || starting); }, [pending, confirmation, starting, onPending]);
   useEffect(() => {
@@ -117,6 +124,15 @@ export function GoogleGmailDownloads({ review, labelIds, setLabelIds, onReview, 
       return () => {};
     });
   }
+  function saveSchedule() {
+    if (!source?.schedule) return;
+    void run(async () => {
+      await request('/schedule', 'PATCH', { enabled: frequency !== 'manual', interval: frequency === 'manual' ? source.schedule.interval : Number(frequency),
+        expected_epoch: review.epoch, expected_authorization_revision: review.connection.authorization_revision,
+        expected_settings_revision: source.settings_revision, expected_schedule_revision: source.schedule.revision });
+      return () => {};
+    });
+  }
   function messages(more = false) {
     if (!source?.generation || more && (!page?.next || page.generation !== source.generation)) return;
     const generation = source.generation, query = new URLSearchParams({ generation });
@@ -158,7 +174,7 @@ export function GoogleGmailDownloads({ review, labelIds, setLabelIds, onReview, 
       <Button className="h-auto min-h-11 whitespace-normal" disabled={pending} onClick={reviewChoices}>Save download choices</Button>
     </fieldset>
     {confirmation && <div className="space-y-3 rounded-lg border p-3" role="group" aria-label="Confirm changed Gmail choices">
-      <p>Changing these choices removes the saved Gmail metadata, reviewed correspondence choices and any unfinished download. Your people, notes and confirmed interactions stay intact. A new full scan will be required.</p>
+      <p>Changing these choices removes the saved Gmail metadata, reviewed correspondence choices and any unfinished download, and turns automatic refresh off. Your people, notes and confirmed interactions stay intact. A new full scan will be required.</p>
       <p className="break-words text-sm">{confirmation.label_ids.join(', ')} · {confirmation.past_days} days · up to {confirmation.scan_limit} messages · subjects {confirmation.retain_subject ? 'retained' : 'excluded'}.</p>
       <div className="flex flex-wrap gap-2"><Button className="h-auto min-h-11 whitespace-normal" disabled={pending} onClick={() => save(confirmation)}>Replace download choices</Button><Button className="min-h-11" variant="outline" disabled={pending} onClick={() => setConfirmation(null)}>Keep current choices</Button></div>
     </div>}
@@ -178,6 +194,23 @@ export function GoogleGmailDownloads({ review, labelIds, setLabelIds, onReview, 
         <Button className="min-h-11" variant="outline" disabled={pending || labelPreviewPending || !source.generation} onClick={() => messages()}>Show downloaded metadata</Button>
       </div>
     </div>}
+    {source?.schedule && <section aria-labelledby="gmail-schedule-heading" className="space-y-3 border-t pt-4">
+      <h3 id="gmail-schedule-heading" className="font-semibold">Automatic Gmail refresh</h3>
+      <p className="text-sm">Checks are off until you enable them. They use the saved labels, retention, subjects and scan limit above, including a bounded full scan if Gmail’s change history expires. They do not create people or log interactions.</p>
+      <p className="text-sm">Saved setting: {source.schedule.enabled ? source.schedule.interval === 3600 ? 'Hourly checks' : 'Daily checks' : 'Manual refresh only'}.</p>
+      {source.schedule.enabled && source.schedule.next_at > 0 && <p className="text-sm">Next check eligible {new Date(source.schedule.next_at).toLocaleString()}. Check times are approximate.</p>}
+      {source.schedule.repair_required && <p className="text-sm">The saved Gmail change history expired. The next enabled automatic check uses a full scan within your saved limits.</p>}
+      {dirty && <p className="text-sm">Save or revert your download choices before changing automatic checks.</p>}
+      <label htmlFor="gmail-refresh-frequency" className="block text-sm font-medium">Refresh frequency</label>
+      <select id="gmail-refresh-frequency" className="min-h-11 w-full rounded-md border bg-background px-3 text-sm" value={frequency}
+        disabled={disabled || dirty} onChange={(event) => setFrequency(event.target.value)}>
+        <option value="manual">Manual refresh only</option><option value="86400">Daily checks</option><option value="3600">Hourly checks</option>
+      </select>
+      <Button className="h-auto min-h-11 whitespace-normal" disabled={disabled || dirty} onClick={saveSchedule}>
+        {frequency === 'manual' ? 'Save manual email refresh' : frequency === '3600' ? 'Enable hourly email refresh' : 'Enable daily email refresh'}
+      </Button>
+      <p className="text-sm text-muted-foreground">Disabling automatic checks cancels their unfinished downloads. Manual downloads remain separate. Changing labels or retention turns automatic checks off; enable them again after reviewing the new choices.</p>
+    </section>}
     {page && <section aria-labelledby="gmail-message-review-heading" className="space-y-3 border-t pt-4">
       <h3 id="gmail-message-review-heading" className="font-semibold">Downloaded message metadata</h3>
       <p className="text-sm">{page.messages.length} messages shown. This source review does not change your relationship history.</p>

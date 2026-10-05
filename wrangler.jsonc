@@ -58,7 +58,8 @@
     "producers": [
       { "binding": "LARGE_RECOVERY_QUEUE", "queue": "everclose-large-recovery" },
       { "binding": "GOOGLE_CONTACTS_QUEUE", "queue": "everclose-google-contacts" },
-      { "binding": "GOOGLE_CALENDAR_QUEUE", "queue": "everclose-google-calendar" }
+      { "binding": "GOOGLE_CALENDAR_QUEUE", "queue": "everclose-google-calendar" },
+      { "binding": "GOOGLE_GMAIL_QUEUE", "queue": "everclose-google-gmail" }
     ],
     "consumers": [
       {
@@ -84,6 +85,14 @@
         "max_retries": 9,
         "max_concurrency": 4,
         "dead_letter_queue": "everclose-google-calendar-failed"
+      },
+      {
+        "queue": "everclose-google-gmail",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_retries": 9,
+        "max_concurrency": 2,
+        "dead_letter_queue": "everclose-google-gmail-failed"
       }
     ]
   },

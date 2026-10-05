@@ -113,6 +113,7 @@ export type GmailDownloadRun = { id: string; mode: 'full' | 'incremental'; phase
   pages: number; processed: number; limited: boolean; retry_at: number; issue: string | null };
 export type GmailSourceReview = { settings_revision: number; choices: GmailChoices; generation: string | null;
   coverage: 'none' | 'scanned' | 'limited'; window_start: number | null; window_end: number | null;
-  last_downloaded_at: string | null; run: GmailDownloadRun | null };
+  last_downloaded_at: string | null; run: GmailDownloadRun | null;
+  schedule: { enabled: boolean; interval: number; revision: number; next_at: number; repair_required: boolean } };
 export type GmailMessagePage = { generation: string | null; coverage: GmailSourceReview['coverage']; more: boolean; next: string | null;
   messages: Array<{ facts: GmailMessageFacts; observed_at: number }> };

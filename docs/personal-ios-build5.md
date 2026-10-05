@@ -38,7 +38,10 @@ Xcode is 26.4.1, version is 1.0.0, build is 5 and minimum iOS is 16.4.
 Installation could not start because CoreDevice could not find the phone
 (error 1011). The failed receipt/log are preserved in the ignored
 `build5-installation` directory. The owner has been asked to reconnect the iPhone
-by USB and unlock it. There is no build-5 installation or physical UI/data result
+by USB and unlock it. After the owner reported unlocking, a second targeted
+installation still returned error 1011. Cached connection details showed no tunnel
+and the same last connection; direct USB reconnection/Trust confirmation is pending.
+Both failed receipts are preserved. There is no build-5 installation or physical UI/data result
 yet. Build 4 is the last verified installation; its launch/process checks are recorded in
 [the build-4 release record](personal-ios-build4.md).
 
@@ -53,8 +56,10 @@ migration 44, and Gmail requires migrations 45–47 plus a matching source deplo
 These changes have not been deployed. Enabling email storage against the existing
 server reports that email context is unavailable and does not prevent CRM sync.
 Dedicated Google OAuth clients/vault and a controlled real-account pilot remain
-required for complete provider integrations. Recurring Gmail reconciliation,
-reviewed activity behavior and TestFlight/App Store distribution remain open.
+required for complete provider integrations. A later server/web change implements
+default-off recurring Gmail reconciliation and requires migration 48; it does not
+replace this signed package or establish production delivery. Reviewed activity
+behavior and TestFlight/App Store distribution remain open.
 
 Signing keys stay on this Mac. Signed packages, provisioning material and phone
 verification receipts belong in the ignored private release directory.

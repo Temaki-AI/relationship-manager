@@ -8,9 +8,10 @@ keep the previous generation until a complete replacement commits. Real OAuth
 clients are not configured or verified, and no production Gmail grant, mailbox
 read or deployment has occurred. General profile cards and the native offline
 transport/cache now have a source implementation described below. Reviewed
-activity behavior, recurring downloads and the real-account pilot remain unfinished.
+activity behavior and the real-account pilot remain unfinished. Consented recurring
+downloads now have a tested source implementation described below.
 
-The complete **868-test root suite**, root TypeScript/lint, standalone build and
+The complete **878-test root suite**, root TypeScript/lint, standalone build and
 Cloudflare build pass. The 38 focused consent/download/matching checks pass with
 the D1 runtime: 34 run on disposable D1, three preserve prior SQLite data through
 migrations 45–47, and one checks pure matching rules. All **20 desktop/mobile
@@ -30,7 +31,7 @@ run exposed three simulated-downgrade fixtures that retained schema-15 tables an
 two localhost-denied readiness fixtures. After fixing the downgrade fixtures and
 allowing fixture localhost access, the complete rerun passes 868/868 with no skips.
 
-Migration 47 is applied only to isolated local D1; production was last verified at migration
+Migration 48 is applied only to isolated local D1; production was last verified at migration
 44. The installed personal iOS build remains build 4 with mobile schema 14. Its
 physical launch and process-stability checks pass; Gmail context is not in that app.
 
@@ -45,16 +46,19 @@ The implementation rejects sharing client IDs with login, Contacts, Calendar
 reading or Calendar publishing. Use a separate Cloud project when independent
 revocation is required; clients in one project can be revoked together.
 
-Apply `0045_google_gmail_consent.sql`, `0046_google_gmail_downloads.sql` and
-`0047_gmail_matching.sql` in
+Apply `0045_google_gmail_consent.sql`, `0046_google_gmail_downloads.sql`,
+`0047_gmail_matching.sql` and `0048_gmail_recurring.sql` in
 order before deploying this source. Migration 45 permits the dedicated consent
 purpose. Migration 46 adds empty operational cache tables and privacy guards;
 it preserves prior tables, fields and provider grants. Migration 47 adds a derived
 email directory, message participants and private reviewed matching rules/receipts;
 its upgrade preserves populated CRM, grants and previously downloaded message facts.
-The cumulative ORM snapshot includes migrations 46/47 and agrees with the named
-generation index; a fresh schema-generation probe reports no changes. Readiness
-requires 47. No production migration was made, and mobile schema stays 14.
+Migration 48 adds default-off cadence and scheduled-run revisions, preserves all
+prior fields and gives existing manual runs no automatic consent. The cumulative
+ORM snapshot includes migration 48 and the named dispatch indexes; a fresh
+schema-generation probe reports no changes. Readiness requires 48. No production
+migration was made; installed build 4 remains mobile schema 14 and signed build 5
+uses schema 15.
 
 Open `/connections/google/gmail` in the signed-in owner's cloud workspace. Consent
 requests only `openid`, `email`, `profile` and `gmail.metadata`, with offline access,
@@ -91,8 +95,8 @@ action advances at most ten persisted steps; leaving stops additional requests.
 Reload reads the saved run rather than automatically reading Gmail. Uncertain
 starts retry the same operation/body; completed/cancelled requests remain
 idempotent. After a complete full scan, **Refresh changes** uses the exact saved
-history checkpoint. Expired history asks for a new reviewed full scan and retains
-the previous cache. [Google synchronization guidance](https://developers.google.com/workspace/gmail/api/guides/sync).
+history checkpoint. Expired history retains the previous cache. Manual mode asks for a new reviewed
+full scan; enabled recurring checks can repair it within the saved limits. [Google synchronization guidance](https://developers.google.com/workspace/gmail/api/guides/sync).
 
 Each step uses an expiring lease and rechecks the owner, workspace, epoch, grant,
 settings, base generation and run revision after provider reads. Page-token cycles,
@@ -110,6 +114,42 @@ displaying a reply and discards displayed metadata on reload. No labels, message
 or aliases are written to browser storage. The scheduled privacy job expires old
 messages and abandoned staging without making provider reads. Raw Gmail caches
 are excluded from portable/cloud CRM recovery snapshots.
+
+## Consented recurring refresh
+
+Automatic refresh starts off for every mailbox. After saving reviewed download
+choices, the owner can explicitly enable daily or hourly checks on the web.
+Saving the cadence does not read Google. Checks use those same labels, aliases,
+retention, subject choice and scan limit. Changing download choices disables the
+cadence and requires a fresh opt-in; disabling it cancels unfinished scheduled
+runs and removes their staging while preserving the published cache. Separately
+requested manual downloads remain available. Devices cannot enable the schedule.
+
+Cron starts at most five due accounts, dispatches at most five eligible runs and
+expires at most twenty invalid/abandoned scheduled runs per invocation. Each queue
+message advances one persisted step, including at most ten metadata reads. The
+queue uses batch size one and at most two concurrent consumers. Dispatch timestamps
+rotate eligible accounts fairly. Provider retries respect bounded deadlines;
+leases, current owner membership, grant, workspace epoch, choices and schedule
+revision are rechecked before reads and atomic publication. Old, duplicate,
+foreign-workspace and revoked deliveries cannot publish private metadata.
+
+A failed queue send leaves its committed checkpoint available for Cron to resume.
+An expired history checkpoint sets a repair flag; the next enabled check makes a
+bounded full replacement within the same saved limits. The old complete generation
+remains readable until publication, and removed messages are omitted from a
+complete repair. A scan-limit result still reports limited coverage. None of these
+checks creates people, interactions or changes last-contacted dates.
+[Google history repair](https://developers.google.com/workspace/gmail/api/guides/sync).
+
+The production and local configs declare separate Gmail queues and dead-letter
+queues. The production queue has not been provisioned or deployed. Migration 48
+and matching code must precede enabling the feature. All ten focused scheduling
+checks pass in SQLite and with the D1 runtime (including one genuine populated
+SQLite 47-to-48 upgrade). Twelve desktop/mobile download and profile browser
+journeys pass, including lost-save recovery, default-off controls, changed choices,
+WCAG and viewport checks. The rendered phone browser screen was inspected. These
+fixtures do not establish real OAuth renewal, quota behavior or mailbox delivery.
 
 ## Review correspondence
 
@@ -241,7 +281,7 @@ permission failures, malformed data and bounded retry delays remain distinct.
 1. Configure the dedicated clients/vault in an isolated pilot environment and validate actual consent, expiry, reconnection and Google's project-wide revocation behavior.
 2. Validate and deliver the implemented general profile/native context through matching web/native releases and controlled physical-device checks.
 3. Deliver reviewed activity behavior and cross-account correlation, preserving private relationship notes and one underlying message identity where the available evidence supports it.
-4. Add consented recurring download jobs with bounded delivery/recovery, then validate real-account renewal, history repair, privacy retention and disconnect behavior.
+4. Provision and validate the implemented recurring jobs with real-account renewal, history repair, privacy retention, disconnect and dead-letter recovery.
 
 The metadata scope is restricted. Public server-backed use requires the applicable
 Google verification/security process; a personal-pilot exception does not establish
