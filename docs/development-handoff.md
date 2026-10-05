@@ -13,19 +13,27 @@ LinkedIn support uses URLs and export files. It does not continuously synchroniz
 
 ## Verification completed
 
-The last complete regression run passed **756/756 root tests**. Root and native TypeScript/lint checks passed, as did native unit tests and the iOS JavaScript export. Google Calendar publishing/setup passed **18 desktop/mobile browser journeys** using fixtures. Disposable Worker/D1 checks covered publishing and Apple date transport.
+The last complete regression run passed **767/767 root tests**. Root TypeScript,
+targeted root lint and native TypeScript/lint checks passed, as did native unit
+tests and the final Hermes release bundle. Google Calendar publishing/setup passed
+**18 desktop/mobile browser journeys** using fixtures. Disposable Worker/D1 checks
+covered publishing and Apple date transport.
 
 The subsequent web release verified real production Google sign-in, readiness,
 authenticated page loads and preservation of 33 original data tables. Native simulator
 and device release binaries now compile with Xcode 26.4.1, including the custom Apple
 module. The signed iPhone build passes signature verification and is installed.
 The native app also launches locally with working Keychain storage and a clean
-schema-14 SQLite database; its real Google sign-in welcome screen renders. The
-hosted simulator runtime check timed out in Apple's cold-boot data migration.
-The latest hosted iOS build passes device/simulator compilation and simulator
+schema-14 SQLite database; its real Google sign-in welcome screen renders.
+Hosted iOS build 37251198099 passes device/simulator compilation and simulator
 startup. Physical sign-in/first sync now pass cache verification; simulator contact,
 note, interaction and plan creation survive cold restart. Focused account/sync/
-Calendar/paging regressions pass 76/76. Separate Google data consent, physical editor
+Calendar/paging regressions and the complete suite now pass. The final draft/timeline
+update is signed and installed with all 12 original contacts/notes preserved. New
+contact/edit forms resume local drafts, preserving original merge/conflict bases;
+timeline pages reach older history. Other plan/reminder unfinished forms still need
+recovery. The new visual check awaits permission to switch the shared Simulator
+from another project. Separate Google data consent, physical editor
 journeys and a phone edit/web round trip remain. See the iOS release record.
 
 Closeout removed the unfinished Gmail scope changes and dependency manifest changes, restoring the previous verified provider configuration. Gmail integration remains unimplemented.

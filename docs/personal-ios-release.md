@@ -12,7 +12,7 @@ identifier remains `com.fernandoamaral.bonds` and the sign-in callback remains
   custom Swift/EventKit module. The build runs native TypeScript, unit tests and lint.
 - Native source commit: `cbe2caf9064411f019c9d05263fd10826874d281`.
   The initial CI merge commit has the same source-tree hash. The final embedded
-  JavaScript comes from `7407008e96fa95712d51f8426a8f65ef9f646ce9`.
+  JavaScript comes from `d47c5595d7e3038b07b2840b4b2f4c16a8a47334`.
 - Both release apps include a bundled Hermes program and support iOS 16.4+.
 - The downloaded artifacts' SHA-256 checksums match the build manifests.
 - The device app was signed locally using the existing Apple development identity
@@ -43,12 +43,19 @@ identifier remains `com.fernandoamaral.bonds` and the sign-in callback remains
   logging, plan creation and a cold restart. The saved note and queued changes
   survive restart. Google authentication reaches the real accounts.google.com
   sign-in sheet; the simulator has no saved Google session.
+- [The latest complete native build](https://github.com/Temaki-AI/relationship-manager/actions/runs/37251198099)
+  passed device/simulator compilation and the hosted startup/Keychain/SQLite checks
+  for the preceding directory release. The final draft/timeline update changes
+  JavaScript only; the guarded bundle helper verifies unchanged native dependencies,
+  configuration, assets and Swift modules before producing its Hermes program.
 
 The development IPA is saved privately in
-`apps/mobile/build/releases/Everclose-1.0.0-personal-ios.ipa` (ignored by Git).
+`apps/mobile/build/releases/Everclose-1.0.0-ios-closeout.ipa` (ignored by Git).
 Its private `.verification.json` records the source/bundle/package hashes and
 post-install phone checks. The final update is installed, all signatures pass,
 and its upgraded phone cache still contains the same 12 contacts and notes.
+The package SHA-256 is
+`e09570d0fcdef36be4942a5686d6351b848ba178c5fdc82c116f3f3f670ca417`.
 It can run on the four devices already registered in its profile, which expires
 25 July 2027. This is a development installation, not a TestFlight submission.
 
@@ -73,11 +80,26 @@ style merging dropped the contact row's Pressable style callback; direct native
 navigation preserves the row layout. Signed-out Calendar review now provides an
 account action and explains the separate local workspace.
 
-Focused account/sync/calendar/paging regressions pass **76/76**, including a
-606-person pagination fixture, duplicate names, deleted people and literal search.
-Native TypeScript/lint and all five native package tests pass. These JavaScript
-changes use the existing compiled native modules; the release receipt records the
-exact embedded source commit.
+New-person and contact-detail edit forms now keep unfinished fields in the account's
+local database and resume them after reopen. Original edit values survive restart
+and later cloud changes; merged people preserve their original sync identity/base
+while local changes appear on the survivor. Successful saves clear the draft in the
+same transaction as the person and outbox write. Closing waits for queued writes,
+and malformed drafts are retained until explicit discard. Drafts stay off the cloud
+until Save. Other plan/reminder forms still need unfinished-form recovery.
+
+The relationship timeline now reads older 20-entry pages using a stable cursor,
+includes saved interaction notes and handles read failures with retry. The contact
+screen no longer stays on a spinner after an initial read failure. Shared action
+buttons announce their disabled state and have vertical space for larger text.
+
+The complete root regression suite passes **767/767**, including draft reopen,
+rollback, write ordering, merge recovery, timeline pagination and the previous
+606-person directory fixture. Native TypeScript/lint, targeted root lint and all
+five native package tests pass. The final simulator artifact is prepared, but its
+new screens have not been visually rechecked: another project's app owns the
+shared Simulator and approval to switch is pending. Actual phone Calendar/editor,
+closed-app reminder, phone edit/web round-trip and accessibility checks remain.
 
 ## Account and daily use
 
@@ -118,8 +140,8 @@ section rather than the host code signature.
 TestFlight requires a distribution identity/profile and an App Store Connect app
 record; those have not been created. The separate Google Contacts/Calendar data
 clients are still unconfigured on the server, and Gmail is not implemented. LinkedIn
-support uses reviewed exports/profile links. Native photo transport, timeline
-pagination, accessibility and the complete integration pilot remain in the
+support uses reviewed exports/profile links. Native photo transport, unfinished
+plan/reminder form recovery, accessibility and the complete integration pilot remain in the
 [product plan](product-development-plan.md).
 
 The dependency audit currently reports advisories in the Expo/Metro build dependency
