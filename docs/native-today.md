@@ -161,15 +161,38 @@ result bundles under `apps/mobile/build/native-ui/`. The QA simulator retains
 schema 16, normal text size and its four synthetic people, and is shut down.
 
 Build 9 is prepared for a clean compile; build 8 remains installed on the phone
-and user-ready simulator. The shared server endpoint is **not deployed yet**.
+and user-ready simulator. The shared server endpoint is now deployed in Worker `370949af-afef-44e2-8578-900625e1ce0d`, from isolated source `d741d51` over the production-compatible `039c12b` baseline.
 Production remains migration 44, while this branch contains separate undeployed
 Gmail migrations 45–48; deploying the entire branch would change unrelated
-readiness/queue requirements. A production-compatible, bounded server rollout is
-required before claiming live shared behavior. Until then, the client preserves
-choices locally and reports that shared prompt sync is unavailable.
+readiness/queue requirements. The limited candidate passes 793 full root tests, 24 selected D1 checks, three additional D1 HTTP/authorization journeys, lint, the complete Cloudflare build and the deployment dry run. Live readiness/login remain healthy; an invented phone token reaches the exact route and is rejected as an invalid session, while extra paths remain closed. No migration or Gmail binding was added, and no owner preference round trip is claimed.
 
 Latest general CI `37374856861` passes cloud validation but fails at the existing
 `npm audit --audit-level=moderate` gate. This is an actual audit failure, distinct
 from earlier unavailable-runner cancellations. No audit threshold was weakened;
 public release remains gated by dependency remediation and the account/physical
 pilots already recorded in the product plan.
+
+
+Server preflight caught a missing exact-path native middleware allowance after
+handler-only checks had passed. The shared devices policy and its Google-mode
+middleware test now include only `/api/v1/today-snoozes`, with extra paths rejected.
+All 29 focused checks pass; the isolated server's complete actual middleware to
+dispatcher journey also passes against D1, including immediate device revocation.
+The fix is included in the deployed `d741d51` source. It does not alter the
+already compiling iPhone client.
+
+Clean build-9 device CI in run `37380356652` passes compilation and linkage with
+Xcode 26.4.1. Its CI merge `c0df9d70a925806725b4c5f4757cc9efd2800bcb` has no file
+differences from candidate `1d0366818d1aff0ac386305a10704ad651ef2777`. The signed
+IPA passes strict verification and stays private; SHA-256 is
+`9da4c91d11bf12367ea7adee5f6181f97cf3ab641ee6cb29937017c9f7194523`.
+Simulator compilation/startup/offline gates are still running. Build 9 has not
+been installed; the last device discovery showed TIE Fighter paired but
+disconnected. The phone and user-ready simulator retain build 8. Preserve the
+current healthy native run without additional pushes until it completes.
+
+Private server receipts and exact deployment logs are under
+`apps/mobile/build/releases/shared-prompt-server/`. The limited source is
+published on `codex/shared-prompt-server`; its managed worktree remains attached
+for rollout verification and cleanup. Main development remains on
+`codex/personal-working-release`, including the separate undeployed Gmail work.

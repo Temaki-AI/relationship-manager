@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { todaySnoozeFixture } from './helpers/today-snooze-fixture.ts';
 import { getCloudApiRewrite } from '../lib/cloud/api-rewrite.ts';
+import { isNativeDeviceApiPath } from '../packages/domain/src/devices.ts';
 import { promptUntil, readPromptMutation, readPromptSnapshot, readPromptAcknowledgement, type PromptMutation } from '../packages/domain/src/today-snoozes.ts';
 
 test('shared prompt dates use local civil days and strict bounded identity/snapshot/acknowledgement contracts', () => {
@@ -16,6 +17,8 @@ test('shared prompt dates use local civil days and strict bounded identity/snaps
   assert.throws(() => readPromptSnapshot({ version: 1, epoch: crypto.randomUUID(), snoozes: [] }, mutation.epoch));
   assert.throws(() => readPromptAcknowledgement({ version: 1, operationId: mutation.operationId, epoch: mutation.epoch, kind: mutation.kind, targetId: crypto.randomUUID(), untilDate: mutation.untilDate }, mutation));
   assert.equal(getCloudApiRewrite('/api/v1/today-snoozes'), '/api/cloud/v1/today-snoozes');
+  assert.equal(isNativeDeviceApiPath('/api/v1/today-snoozes'), true);
+  assert.equal(isNativeDeviceApiPath('/api/v1/today-snoozes/extra'), false);
 });
 
 test('web snoozes reach the phone by public identity, hide only their reason and return on their local day', async () => {

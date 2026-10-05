@@ -59,8 +59,13 @@ pass. The inspected largest-text picker keeps Cancel and all choices reachable;
 migration preserves all 21 existing synthetic data tables and private intents.
 [Native Today](native-today.md#shared-web-and-iphone-prompt-choices--verified-preview)
 contains exact provenance and scope. Build 9 is prepared for clean compilation;
-the phone and user-ready simulator retain build 8. The new server extension is
-not deployed, and no Gmail migration/queue rollout is implied. Latest general CI
+the phone and user-ready simulator retain build 8. The new extension is deployed
+as Worker `370949af-afef-44e2-8578-900625e1ce0d`, from the limited migration-44
+source `d741d51`, with full server tests/build and healthy live checks. No Gmail
+migration/queue rollout is implied. Build-9 device compilation, source comparison
+and strict package signing pass; clean simulator gates and phone reconnection
+remain pending. The exact native middleware allowance is corrected and passes
+29 focused checks plus the actual D1 middleware/dispatcher journey. Latest general CI
 37374856861 passes cloud validation but fails its unchanged dependency-audit gate.
 
 ## Delivered personal iOS implementation
