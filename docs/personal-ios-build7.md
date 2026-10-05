@@ -94,6 +94,23 @@ editor/source views. It preserves raw stored/source labels and custom labels,
 including when an unrelated method is edited. Source regression checks and a new
 native display test track this separately from the six release results above.
 
+The follow-up source commit is `38e20847c0040eb1a0be62a832ea4f33d38df618`.
+Its 47 focused contact regressions, 17 mobile package tests, root/native types,
+native lint and changed-root-file lint pass. A guarded JavaScript-only preview
+uses the unchanged native build from `e096551` and passes the saved-label native
+test in 21.626 seconds (one test, zero failures/skips). The profile and editor show
+**Work**, opening the editor does not enable Save, and a complete read-only digest
+across the same six CRM/source tables is identical before/after. The screenshot
+was inspected. The preview bundle SHA-256 is
+`46e37eca36febad4cfb33745318edb3f42761b5701b2791f8826f7d2ad3d5958`.
+Private evidence is `build7-contact-label-preview.xcresult` and
+`build7-contact-label-preview/cache-verification.json` under the ignored build
+directories. This preview ran only on QA; the user-ready simulator retains the
+unmodified compiled release. Clean native compilation of the follow-up is in
+[run 37363077696](https://github.com/Temaki-AI/relationship-manager/actions/runs/37363077696)
+and is not yet verified complete. Its result must be checked before replacing
+the user-ready release with that artifact.
+
 The closed-app notification screenshot was inspected. The empty user-ready cache
 also passes read-only schema-15 and SQLite integrity checks, and the launched
 Everclose process remains running. Native tests run serially: an earlier concurrent

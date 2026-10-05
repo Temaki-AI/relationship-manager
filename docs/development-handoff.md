@@ -11,8 +11,11 @@ native CI Release jobs and the complete offline gate pass in run 37353387558.
 The clean user-ready simulator has zero contacts; synthetic data stays on the
 separate, shut-down QA device. [The build-7 record](personal-ios-build7.md) preserves
 exact source, artifacts, checksums and open account/physical/release checks.
-The Contacts display issue found during QA has a follow-up source fix with
-separate validation; do not attribute it to the earlier compiled artifact.
+The Contacts display issue found during QA has a follow-up source fix `38e2084`:
+47 focused regressions, mobile package/types/lint and a 21.626-second native
+JS-preview display test pass with unchanged CRM/source-table hashes. Clean native
+CI run 37363077696 is still pending. The preview is confined to QA; do not
+attribute it to the earlier compiled artifact in the user-ready simulator.
 
 The preceding **build 6** added an optional device-wide
 Face ID/Touch ID/passcode gate to schema 15 and the default-off Gmail cache. Both
