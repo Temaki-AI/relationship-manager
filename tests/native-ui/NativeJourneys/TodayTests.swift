@@ -12,6 +12,10 @@ final class TodayTests: XCTestCase {
         continueAfterFailure = false
         journal = XCUIApplication(bundleIdentifier: "com.fernandoamaral.bonds")
         journal.launch()
+        denyNotificationPromptIfShown()
+        if journal.alerts["Reminder saved without an alert"].waitForExistence(timeout: 2) {
+            journal.alerts.buttons["OK"].tap()
+        }
     }
     override func tearDownWithError() throws {
         let screenshot = XCTAttachment(screenshot: journal.screenshot())
@@ -43,12 +47,22 @@ final class TodayTests: XCTestCase {
         let warning = journal.alerts["Reminder moved without an alert"]
         if warning.waitForExistence(timeout: 3) { warning.buttons["OK"].tap() }
     }
+    private func denyNotificationPromptIfShown() {
+        let system = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let prompt = system.alerts.firstMatch
+        if prompt.waitForExistence(timeout: 3) && prompt.label.contains("Everclose") {
+            let deny = prompt.buttons.matching(NSPredicate(format: "label IN %@", ["Don’t Allow", "Don't Allow"])).firstMatch
+            XCTAssertTrue(deny.waitForExistence(timeout: 5)); deny.tap(); expectGone(deny)
+        }
+    }
     private func saveReminder(_ title: String) {
         tap("Set a reminder for \(person)"); enter("Reminder title", title); tap("Save reminder")
+        denyNotificationPromptIfShown()
         if journal.alerts["Reminder saved without an alert"].waitForExistence(timeout: 3) {
             journal.alerts.buttons["OK"].tap()
         }
-        XCTAssertTrue(journal.staticTexts[title].waitForExistence(timeout: 15))
+        let card = journal.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "Open \(person). Reminder:", title)).firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 15))
     }
 
     func testPrepareTodayFixture() {
@@ -60,9 +74,9 @@ final class TodayTests: XCTestCase {
             tap("Add to Everclose")
         }
         XCTAssertTrue(journal.staticTexts[person].waitForExistence(timeout: 15))
-        saveReminder(first)
+        if !journal.staticTexts[first].exists { saveReminder(first) }
         restart(); tap("People"); tap("Open \(person)")
-        saveReminder(second)
+        if !journal.staticTexts[second].exists { saveReminder(second) }
     }
 
     func testDailyQueueCancelActionsDoNotRecordHistory() {
@@ -74,12 +88,12 @@ final class TodayTests: XCTestCase {
         XCTAssertTrue(journal.staticTexts["Time for a check-in for \(person)"].exists)
         XCTAssertTrue(journal.buttons["Complete reminder for \(person): \(first)"].exists)
         tap("Reach out to \(person)")
-        XCTAssertTrue(journal.alerts["Reach out to \(person)"].waitForExistence(timeout: 5))
-        XCTAssertTrue(journal.alerts.staticTexts["Opening another app does not record a conversation."].exists)
-        journal.alerts.buttons["Cancel"].tap()
+        XCTAssertTrue(journal.staticTexts["Reach out to \(person)"].waitForExistence(timeout: 5))
+        XCTAssertTrue(journal.staticTexts["Opening another app does not record a conversation."].exists)
+        tap("Cancel")
         tap("Log conversation with \(person)")
-        XCTAssertTrue(journal.alerts["Record a conversation"].waitForExistence(timeout: 5))
-        journal.alerts.buttons["Cancel"].tap()
+        XCTAssertTrue(journal.staticTexts["Record a conversation"].waitForExistence(timeout: 5))
+        tap("Cancel")
         restart()
         XCTAssertTrue(journal.buttons["Complete reminder for \(person): \(first)"].waitForExistence(timeout: 15))
         XCTAssertTrue(journal.staticTexts["Time for a check-in for \(person)"].exists)
@@ -88,7 +102,7 @@ final class TodayTests: XCTestCase {
     func testDailyQueueSnoozeCompleteAndExplicitLogSurviveRestart() {
         tap("Today")
         tap("Snooze reminder for \(person): \(first)")
-        journal.alerts.buttons["Tomorrow · 9:00 AM"].tap(); dismissAlertWarning()
+        tap("Tomorrow · 9:00 AM"); dismissAlertWarning()
         XCTAssertTrue(journal.buttons["Complete reminder for \(person): \(second)"].waitForExistence(timeout: 15))
         restart()
         XCTAssertTrue(journal.buttons["Complete reminder for \(person): \(second)"].waitForExistence(timeout: 15))
@@ -96,7 +110,7 @@ final class TodayTests: XCTestCase {
         expectGone(journal.buttons["Complete reminder for \(person): \(second)"])
         XCTAssertTrue(journal.staticTexts["Birthday today for \(person)"].exists)
         XCTAssertTrue(journal.staticTexts["Time for a check-in for \(person)"].exists)
-        tap("Log conversation with \(person)"); journal.alerts.buttons["Messaged"].tap()
+        tap("Log conversation with \(person)"); tap("Messaged")
         expectGone(journal.staticTexts["Time for a check-in for \(person)"])
         XCTAssertTrue(journal.staticTexts["Conversation with \(person) recorded."].exists)
         restart()
@@ -106,5 +120,22 @@ final class TodayTests: XCTestCase {
         tap("Open \(person) from Today")
         XCTAssertTrue(journal.staticTexts["today-qa@example.invalid"].waitForExistence(timeout: 15))
         XCTAssertTrue(journal.staticTexts["Logged a message"].exists)
+    }
+
+    // Invoke separately with simctl content_size accessibility-extra-extra-extra-large.
+    func testDailyQueueLargerTextKeepsActionsReachable() {
+        tap("Today")
+        tap("Reach out to \(person)")
+        XCTAssertTrue(journal.staticTexts["Reach out to \(person)"].waitForExistence(timeout: 5))
+        tap("Cancel")
+        for label in ["Reach out to \(person)", "Log conversation with \(person)", "Open \(person) from Today"] {
+            let button = journal.buttons[label].firstMatch
+            XCTAssertTrue(button.exists)
+            XCTAssertGreaterThanOrEqual(button.frame.height, 44, "Short touch target at larger text: \(label)")
+        }
+        tap("Log conversation with \(person)")
+        XCTAssertTrue(journal.staticTexts["Record a conversation"].waitForExistence(timeout: 5))
+        tap("Cancel")
+        XCTAssertTrue(journal.staticTexts["Birthday today for \(person)"].exists)
     }
 }

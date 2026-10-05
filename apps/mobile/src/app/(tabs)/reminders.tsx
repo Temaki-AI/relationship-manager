@@ -30,7 +30,7 @@ export default function RemindersScreen() {
     setLoading(false);
   }, [db]);
 
-  const { busyId: completingId, markComplete, chooseSnooze } = useReminderActions(loadReminders);
+  const { busyId: completingId, markComplete, chooseSnooze, sheet } = useReminderActions(loadReminders);
 
   useFocusEffect(useCallback(() => {
     void loadReminders();
@@ -118,6 +118,7 @@ export default function RemindersScreen() {
           );
         }}
       />
+      {sheet}
     </SafeAreaView>
   );
 }

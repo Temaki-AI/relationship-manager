@@ -191,7 +191,7 @@ final class OfflineJournalTests: XCTestCase {
         tap("Reminders")
         XCTAssertTrue(reminderCard("Simulator check-in").waitForExistence(timeout: 15))
         tap("Snooze reminder for \(person): Simulator check-in")
-        journal.alerts.buttons["Next week · 9:00 AM"].tap()
+        tap("Next week · 9:00 AM")
         if journal.alerts["Reminder moved without an alert"].waitForExistence(timeout: 5) {
             journal.alerts.buttons["OK"].tap()
         }

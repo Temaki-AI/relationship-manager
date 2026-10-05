@@ -14,6 +14,7 @@ import { fonts, palette } from '@/theme';
 import { useNativeSync } from '@/native/sync';
 import { useNativeAccount } from '@/native/account';
 import { useReminderActions } from '@/native/reminder-actions';
+import { useChoiceSheet } from '@/components/choice-sheet';
 import { contactMethodHref, displayContactMethodLabel, readContactMethods } from '../../../../../packages/domain/src/contact-methods';
 
 const LOG_OPTIONS: { type: InteractionType; label: string }[] = [
@@ -43,6 +44,7 @@ export default function TodayScreen() {
     }
   }, [db]);
   const reminderActions = useReminderActions(refresh, () => working.current);
+  const choices = useChoiceSheet();
   const busy = workingId !== null || reminderActions.busyId !== null;
 
   useEffect(() => {
@@ -76,9 +78,8 @@ export default function TodayScreen() {
   }
   function chooseLog(person: TodayPerson) {
     if (busy) return;
-    Alert.alert('Record a conversation', `What happened with ${person.contact.name}? This records a conversation now.`, [
-      ...LOG_OPTIONS.map(({ type, label }) => ({ text: label, onPress: () => { void record(person, type); } })),
-      { text: 'Cancel', style: 'cancel' },
+    choices.present('Record a conversation', `What happened with ${person.contact.name}? This records a conversation now.`, [
+      ...LOG_OPTIONS.map(({ type, label }) => ({ label, onPress: () => { void record(person, type); } })),
     ]);
   }
   async function reachOut(person: TodayPerson) {
@@ -91,15 +92,14 @@ export default function TodayScreen() {
         tell('Add a way to reach them', 'Open their relationship to add a phone number, email or profile.'); return;
       }
       // The picker opens another app. Only an explicit Log action writes history.
-      Alert.alert(`Reach out to ${contact.name}`, 'Opening another app does not record a conversation.', [
+      choices.present(`Reach out to ${contact.name}`, 'Opening another app does not record a conversation.', [
         ...methods.slice().sort((a, b) => Number(b.preferred) - Number(a.preferred)).slice(0, 6).map((method) => ({
-          text: `${displayContactMethodLabel(method.label) || method.kind}: ${method.value}`,
+          label: `${displayContactMethodLabel(method.label) || method.kind}: ${method.value}`,
           onPress: () => { void openMethod(contact.id, method.id, method.value); },
         })),
-        ...(methods.length > 6 ? [{ text: 'All contact methods', onPress: () => {
+        ...(methods.length > 6 ? [{ label: 'All contact methods', onPress: () => {
           if (visible.current) router.push({ pathname: '/contacts/[id]', params: { id: contact.id } });
         } }] : []),
-        { text: 'Cancel', style: 'cancel' },
       ]);
     } catch (cause) { tell('Could not open contact options', cause instanceof Error ? cause.message : 'Please try again.'); }
     finally { finish(); }
@@ -189,6 +189,8 @@ export default function TodayScreen() {
           </Surface>
         </>}
       </ScrollView>
+      {choices.sheet}
+      {reminderActions.sheet}
     </SafeAreaView>
   );
 }

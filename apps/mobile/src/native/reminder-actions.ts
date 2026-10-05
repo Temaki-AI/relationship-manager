@@ -6,6 +6,7 @@ import { accountScope } from '../../../../packages/domain/src/devices';
 import { completeReminder, isReminderNotificationCurrent, saveReminderNotification, snoozeReminder, type ReminderRecord } from '@/data/reminders';
 import { getReminderPresetDate, REMINDER_PRESETS, type ReminderPresetId } from '@/domain/reminder';
 import { useNativeAccount } from './account';
+import { useChoiceSheet } from '@/components/choice-sheet';
 import { cancelReminderNotification, scheduleReminderNotification } from './notifications';
 
 /** Both Today and Reminders commit the same durable change before replacing an alert. */
@@ -15,6 +16,7 @@ export function useReminderActions(onChanged: () => Promise<void>, isBlocked: ()
   const focused = useIsFocused();
   const visible = useRef(focused), busy = useRef(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const choices = useChoiceSheet();
   useEffect(() => { visible.current = focused; return () => { visible.current = false; }; }, [focused]);
   function tell(title: string, message: string) { if (visible.current) Alert.alert(title, message); }
   async function refresh() {
@@ -68,11 +70,10 @@ export function useReminderActions(onChanged: () => Promise<void>, isBlocked: ()
 
   function chooseSnooze(reminder: ReminderRecord) {
     if (!visible.current || busy.current || isBlocked()) return;
-    Alert.alert('Choose reminder time', `Choose a new time for ${reminder.title}.`, [
-      ...REMINDER_PRESETS.map((preset) => ({ text: `${preset.label} · ${preset.detail}`,
+    choices.present('Choose reminder time', `Choose a new time for ${reminder.title}.`, [
+      ...REMINDER_PRESETS.map((preset) => ({ label: `${preset.label} · ${preset.detail}`,
         onPress: () => { void moveReminder(reminder, preset.id); } })),
-      { text: 'Cancel', style: 'cancel' },
     ]);
   }
-  return { busyId, isBusy: () => busy.current, markComplete, chooseSnooze };
+  return { busyId, isBusy: () => busy.current, markComplete, chooseSnooze, sheet: choices.sheet };
 }
