@@ -12,7 +12,7 @@ identifier remains `com.fernandoamaral.bonds` and the sign-in callback remains
   custom Swift/EventKit module. The build runs native TypeScript, unit tests and lint.
 - Native source commit: `cbe2caf9064411f019c9d05263fd10826874d281`.
   The initial CI merge commit has the same source-tree hash. The final embedded
-  JavaScript comes from `572d88b1a58757e55bcd102a25c03895b5276052`.
+  JavaScript comes from `7407008e96fa95712d51f8426a8f65ef9f646ce9`.
 - Both release apps include a bundled Hermes program and support iOS 16.4+.
 - The downloaded artifacts' SHA-256 checksums match the build manifests.
 - The device app was signed locally using the existing Apple development identity
@@ -45,7 +45,10 @@ identifier remains `com.fernandoamaral.bonds` and the sign-in callback remains
   sign-in sheet; the simulator has no saved Google session.
 
 The development IPA is saved privately in
-`apps/mobile/build/releases/Everclose-1.0.0-final-development.ipa` (ignored by Git).
+`apps/mobile/build/releases/Everclose-1.0.0-personal-ios.ipa` (ignored by Git).
+Its private `.verification.json` records the source/bundle/package hashes and
+post-install phone checks. The final update is installed, all signatures pass,
+and its upgraded phone cache still contains the same 12 contacts and notes.
 It can run on the four devices already registered in its profile, which expires
 25 July 2027. This is a development installation, not a TestFlight submission.
 
