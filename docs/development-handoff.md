@@ -138,3 +138,30 @@ The owner has been asked to reconnect directly by USB and confirm Trust. Reuse
 build 5 as soon as the phone is reachable, then verify exact bundle metadata,
 launch and process stability. No physical UI/data or private database result is
 claimed.
+
+## Device lock and OAuth setup follow-up
+
+The build-6 source candidate adds an optional device-wide authentication gate in
+Account & sync. Twelve new controller scenarios, seventeen mobile package tests,
+all 157 existing native data/sync regressions, native/root types and lint, and the
+Hermes export pass. It uses the already configured Face ID/Keychain modules,
+preserves account caches/drafts and has verified-device recovery for an unreadable
+policy. No mobile or cloud schema migration is added. Native compile/startup and
+physical editor/snapshot/Face ID checks remain required for this new source; it is
+not included in the signed build-5 package. See [native device lock](native-app-lock.md).
+
+The preceding Gmail scheduling source at `b996d75122adcb6fca90acda0c55663b902e99ec`
+passes both native Release jobs and isolated simulator startup in run 37316101486.
+Its CI run 37316101466 passes cloud validation and fails general validation at the
+unchanged dependency-audit gate. Those results do not validate the later lock source.
+
+Google Cloud's existing Everclose CRM project and production identity client were
+located in the signed-in owner's browser. A separate development-project form is
+prepared, but automatic approval review rejected creating that persistent external
+resource because the specific project creation was not explicitly authorized.
+The owner has been asked to choose between approving the new development project
+and creating a localhost client in the existing Everclose project. Do not retry
+creation or create the alternate client until that reply arrives. No Google project,
+client, grant or credential change was made. The prepared browser tab is marked for
+handoff. The Mac was reported locked; both Mac and iPhone should be unlocked and
+connected by USB for the next installation check.

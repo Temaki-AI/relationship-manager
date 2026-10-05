@@ -9,6 +9,7 @@ import { accountScope } from '../../../../packages/domain/src/devices';
 import { selectNotificationAccount, scheduleReminderNotification, cancelReminderNotification } from '@/native/notifications';
 import { AccountDatabase } from '@/components/account-database';
 import { NativeSyncProvider, useNativeSync } from '@/native/sync';
+import { AppLockGate, AppLockProvider } from '@/native/app-lock';
 import { fonts, palette } from '@/theme';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -113,9 +114,9 @@ function AppNavigator() {
 export default function RootLayout() {
   return (
     <ThemeProvider value={navigationTheme}>
-      <NativeAccountProvider><AccountDatabase>
+      <AppLockProvider><AppLockGate><NativeAccountProvider><AccountDatabase>
         <NativeSyncProvider><AppNavigator /></NativeSyncProvider>
-      </AccountDatabase></NativeAccountProvider>
+      </AccountDatabase></NativeAccountProvider></AppLockGate></AppLockProvider>
     </ThemeProvider>
   );
 }

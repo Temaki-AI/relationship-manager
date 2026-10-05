@@ -7,11 +7,13 @@ import { useNativeAccount } from '@/native/account';
 import { useNativeSync } from '@/native/sync';
 import { useRouter } from 'expo-router';
 import { fonts, palette } from '@/theme';
+import { useAppLock } from '@/native/app-lock';
 
 export default function AccountScreen() {
   const { account, signIn, pending, resume, disconnect } = useNativeAccount();
   const sync = useNativeSync(), router = useRouter();
   const db = useSQLiteContext();
+  const lock = useAppLock();
   const [error, setError] = useState('');
   const [emailEnabled, setEmailEnabled] = useState<boolean | null>(null);
   useEffect(() => {
@@ -66,6 +68,15 @@ export default function AccountScreen() {
       </>}
       {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     </Surface>
+    {lock.supported && <Surface style={styles.card}>
+      <Text style={styles.title}>Device lock</Text>
+      <Text style={styles.body}>{lock.enabled ? 'Device authentication is required when you return to Everclose.' : 'Device lock is off.'} Face ID, Touch ID or the device passcode can unlock it. This setting covers every account and local-only data on this phone.</Text>
+      <Text style={styles.body}>Device lock hides these screens. Notification previews and exported copies need their own privacy settings.</Text>
+      <ActionButton label={lock.enabled ? 'Turn off device lock' : 'Enable device lock'} variant="secondary" disabled={lock.authenticating || lock.saving}
+        onPress={() => { void lock.changeEnabled(!lock.enabled); }} />
+      {lock.enabled && <ActionButton label="Lock now" variant="quiet" disabled={lock.authenticating || lock.saving} onPress={lock.lockNow} />}
+      {lock.error && <Text style={styles.error} accessibilityRole="alert">{lock.error}</Text>}
+    </Surface>}
     <View><Text style={styles.body}>{account ? 'Contacts, interaction history and reminders sync with the web while this app is open. Offline changes wait here until the cloud confirms them.'
       : 'People, interaction history and reminders are stored on this phone until you sign in. Local-only data stays separate from account data.'}</Text></View>
   </ScrollView>;

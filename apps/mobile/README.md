@@ -63,8 +63,12 @@ An explicit local-only import/review flow remains planned.
 Disconnect removes local credentials and scheduled notifications, while retaining
 the account's offline cache. When the network is unavailable, revoke the phone on the
 website as well. App files remain protected by the iOS sandbox and device data
-protection; SQLCipher, an app lock and portable native recovery remain public-release
-work. Keeping an offline cache is distinct from deleting the account or its data.
+protection; SQLCipher and portable native recovery remain public-release work.
+The build-6 source candidate adds an optional device authentication gate in Account
+& sync, with default-off device-wide policy and authenticated recovery. It is not
+in signed build 5 yet. See [native device lock](../../docs/native-app-lock.md) for
+validation, privacy limits and remaining native/physical checks. Keeping an offline
+cache is distinct from deleting the account or its data.
 
 ## Workspace sync
 
