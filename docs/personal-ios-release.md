@@ -1,6 +1,16 @@
 # Everclose personal iOS release — 5 October 2026
 
-Build 3 is signed and installed on TIE Fighter. The actual installation receipt
+**Build 4 is the current signed installation on TIE Fighter.** Its installation
+receipt and installed-app metadata confirm success. Both native Release builds,
+linkage verification, isolated simulator startup, SQLite and Keychain checks pass
+in [run 37278926485](https://github.com/Temaki-AI/relationship-manager/actions/runs/37278926485).
+The [build-4 release record](personal-ios-build4.md) contains its exact source,
+package hash and checks. The final physical launch request was refused because
+the iPhone is locked; unlock it and open Everclose to confirm your contacts.
+
+## Previous build 3
+
+Build 3 was signed and installed on TIE Fighter. The actual installation receipt
 reports success. The matching device and simulator builds, native linkage check,
 and isolated simulator first launch with SQLite/Keychain initialization all pass
 in [run 37263450401](https://github.com/Temaki-AI/relationship-manager/actions/runs/37263450401).

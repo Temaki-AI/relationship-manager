@@ -1,7 +1,7 @@
 # Dependency security — 5 October 2026
 
 The remaining security gate is active; no advisory is suppressed and no audit
-severity threshold is lowered. Signed personal iOS build 3 remains the installed
+severity threshold is lowered. Signed personal iOS build 4 is the installed
 release. These changes affect subsequent source builds.
 
 ## Compatible patches applied

@@ -263,16 +263,20 @@ a development or distribution build; Expo Go and Hermes export cannot validate i
 Physical editor behavior, Calendar synchronization and all-day/clock-change boundaries
 remain open. Upgrade 13 to 14 preserves existing data, queues, source links and cursors.
 
-### Installed photo-editor build
+### Installed personal build 4
 
 The photo-picker build 2 was withdrawn after a precompiled framework mismatch.
-Build 3 is signed and installed. It compiles iOS modules from matching sources;
+Build 4 is signed and installed. It compiles iOS modules from matching sources;
 both Release builds, linkage verification and isolated SQLite/Keychain startup
-pass in run 37263450401. Open a person and choose **Edit contact photo** to
+pass in run 37278926485. It also recovers database/account startup errors without
+resetting saved data. The final phone launch request was refused because the
+phone is locked; unlock it and open Everclose to confirm the UI and contacts.
+Open a person and choose **Edit contact photo** to
 select a photo, preview the small copy, and explicitly save or remove it. Drafts
 and queued images remain on the phone offline. Unconfirmed requests retry
-unchanged; a changed cloud photo requires review. The API is deployed, all 796
+unchanged; a changed cloud photo requires review. The API is deployed, all 820
 root tests pass, and the 15 complete photo journeys pass against disposable D1.
 The compiled manifest includes the photo explanation and no camera/microphone
 usage keys. See the personal iOS release record for exact binary/hash evidence
-and remaining physical-device and TestFlight checks.
+and remaining physical-device and TestFlight checks. The exact current package
+and source are recorded in [the build-4 release record](../../docs/personal-ios-build4.md).

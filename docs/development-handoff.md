@@ -1,6 +1,6 @@
 # Development handoff — 5 October 2026
 
-Everclose's personal web release is deployed at everclosecrm.com. Personal iOS build 3 is signed and installed on TIE Fighter. The device and simulator Release binaries, native linkage verification and isolated first launch with SQLite/Keychain initialization pass in [run 37263450401](https://github.com/Temaki-AI/relationship-manager/actions/runs/37263450401). The exact binary sources, hash, installation evidence and remaining checks are in the [personal iOS release record](personal-ios-release.md).
+Everclose's personal web release is deployed at everclosecrm.com. Personal iOS build 4 is signed and installed on TIE Fighter; the actual receipt and installed-app metadata confirm it. Both native Release binaries, linkage verification and isolated first launch with SQLite/Keychain initialization pass in [run 37278926485](https://github.com/Temaki-AI/relationship-manager/actions/runs/37278926485). Exact source, hash, installation evidence and remaining checks are in the [build-4 release record](personal-ios-build4.md). The final phone launch request was refused because the phone is locked; the owner needs to unlock it and open Everclose to confirm the UI and contacts.
 
 ## Delivered personal iOS implementation
 
@@ -9,18 +9,21 @@ Everclose's personal web release is deployed at everclosecrm.com. Personal iOS b
 - Hosted-photo downloads, bounded account-local cache, native system-photo selection, explicit preview/save/removal, offline photo drafts and a durable upload queue. Lost acknowledgements retry the same operation; changed cloud photos require review.
 - Reviewed iPhone Contacts capture and linking, optional consented reads and source sharing; saved Google Calendar context and native agenda/association forms.
 - Reviewed Apple Calendar editor actions and durable creation receipts, with separate optional read access/date following. Real physical Calendar behavior remains unverified.
+- Safe startup recovery for database, Keychain identity and account-cache failures, preserving the original account cache, drafts and queued edits.
 
 The photo API is deployed in Worker `f300697b-8aa5-46c8-b556-fc00144725d4`.
 Readiness is healthy; an unauthenticated photo POST returns 401. No photo schema
-migration is introduced: mobile remains schema 14 and cloud migrations remain 44.
+migration is introduced: mobile remains schema 14, production remains migration 44
+and local cloud development remains migration 45.
 
 ## Verification
 
-All **814 root tests**, five native package tests, five native-picker fixtures,
+All **820 root tests**, **152 native behavior tests**, five native package tests, five native-picker fixtures,
 native/root TypeScript and lint checks, release export and cloud build pass.
 The **15 complete photo journeys pass against real D1**, covering durable offline
 uploads, conflicts, exact retry, merge/recovery, account fences and transaction
-rollback. Both native jobs pass; cloud CI validation passes. General CI validation
+rollback. The full D1 suite passes 354 tests, with nine large-count and two trigger-fault cases covered by
+SQLite. Both native jobs pass; cloud CI validation passes. General CI validation
 fails at `npm audit --audit-level=moderate`; dependency security work remains open.
 
 Build 2 was withdrawn after an actual ExpoFileSystem/Core Swift ABI mismatch in
@@ -31,9 +34,11 @@ screenshot shows the Google sign-in welcome screen. Development signing keys sta
 local; private packages and receipts are ignored by Git.
 
 The preceding phone database was preserved exactly through rollback, including
-all 12 contacts and original tables/fields. A fresh post-build-3 database comparison
+all 12 contacts and original tables/fields. A fresh post-upgrade database comparison
 is unverified: automatic approval review rejected the private contact-database
-copy, and explicit authorization is pending. Physical post-upgrade launch, photo
+copy, and explicit authorization is pending. Build 3's process launch and stability
+passed; build 4's launch request was refused because the phone is locked. Physical
+build-4 UI/data, photo
 selection/rendering, phone-edit/web round trips, closed-app reminder delivery,
 Calendar permission/editor journeys and broader accessibility remain unverified.
 
@@ -49,6 +54,13 @@ Local development OAuth still needs its own configured credentials. The shared
 local Simulator belongs to another active project; permission to switch it remains
 pending. The installed personal build and successful isolated CI simulator do not
 complete the integrated personal beta or public release.
+
+The unfinished Gmail download work is preserved in Git stash
+`3473e7443855718e3aaee489d4ce1aa739add78e`, with the message
+“Gmail metadata downloads WIP preserved while closing the personal iOS release”.
+The checkout matches the released source; apply the stash deliberately to resume
+that work. No migration 46 or Gmail message download is deployed. Mobile
+dependencies were restored after recovering space from reproducible build output.
 
 ## References
 
