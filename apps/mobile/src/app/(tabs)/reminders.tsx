@@ -1,9 +1,8 @@
-import { useFocusEffect, useIsFocused, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -13,23 +12,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, BrandLockup, StatusPill } from '@/components/design-system';
-import { completeReminder, listOpenReminders, snoozeReminder, isReminderNotificationCurrent, saveReminderNotification, type ReminderRecord } from '@/data/reminders';
-import { getReminderPresetDate, REMINDER_PRESETS, type ReminderPresetId } from '@/domain/reminder';
-import { useNativeAccount } from '@/native/account';
-import { accountScope } from '../../../../../packages/domain/src/devices';
+import { listOpenReminders, type ReminderRecord } from '@/data/reminders';
 import { formatDateTime } from '@/lib/format';
-import { cancelReminderNotification, scheduleReminderNotification } from '@/native/notifications';
 import { fonts, palette } from '@/theme';
+import { useReminderActions } from '@/native/reminder-actions';
 
 export default function RemindersScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
-  const { account } = useNativeAccount();
-  const focused = useIsFocused(), visible = useRef(true);
-  useEffect(() => { visible.current = focused; return () => { visible.current = false; }; }, [focused]);
   const [reminders, setReminders] = useState<ReminderRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [completingId, setCompletingId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
 
   const loadReminders = useCallback(async () => {
@@ -38,65 +30,11 @@ export default function RemindersScreen() {
     setLoading(false);
   }, [db]);
 
+  const { busyId: completingId, markComplete, chooseSnooze } = useReminderActions(loadReminders);
+
   useFocusEffect(useCallback(() => {
     void loadReminders();
   }, [loadReminders]));
-
-  async function markComplete(reminder: ReminderRecord) {
-    setCompletingId(reminder.id);
-    try {
-      const notificationId = await completeReminder(db, reminder.id);
-      try { await cancelReminderNotification(notificationId); }
-      catch { tell('Reminder completed; alert needs checking', 'Completion is saved. Reopen Everclose to retry removing its iOS alert.'); }
-      await refreshAfterChange();
-    } catch {
-      tell('Could not complete reminder', 'Your reminder is unchanged. Please try again.');
-    } finally {
-      setCompletingId(null);
-    }
-  }
-
-  function tell(title: string, message: string) { if (visible.current) Alert.alert(title, message); }
-  async function refreshAfterChange() {
-    try { await loadReminders(); }
-    catch { tell('Change saved', 'Could not refresh this screen. Open Reminders again to see the saved change.'); }
-  }
-
-  async function moveReminder(shown: ReminderRecord, preset: ReminderPresetId) {
-    setCompletingId(shown.id);
-    try {
-      const { reminder, previousNotificationId, changed } = await snoozeReminder(db, shown, getReminderPresetDate(preset));
-      if (!changed) { await refreshAfterChange(); return; }
-      let notificationId: string | null = null;
-      try {
-        await cancelReminderNotification(previousNotificationId);
-        const notification = await scheduleReminderNotification({ accountScope: accountScope(account),
-          reminderId: reminder.id, reminderTitle: reminder.title, contactId: reminder.contact_id,
-          contactName: reminder.contact_name, remindAt: new Date(reminder.remind_at),
-          isCurrent: () => isReminderNotificationCurrent(db, reminder) });
-        notificationId = notification.id;
-        if (!await saveReminderNotification(db, reminder, notificationId)) await cancelReminderNotification(notificationId);
-        if (notification.permission === 'denied') tell('Reminder moved without an alert',
-          'The new time is saved. Check Everclose notification permission and reopen the app to retry the alert.');
-      } catch {
-        await cancelReminderNotification(notificationId).catch(() => {});
-        tell('Reminder moved; alert needs checking',
-          'The new time is saved. iOS alert replacement could not be confirmed. Reopen Everclose to retry; do not create the reminder again.');
-      }
-      await refreshAfterChange();
-    } catch (error) {
-      tell('Could not move reminder', error instanceof Error ? error.message : 'Your reminder is unchanged. Please try again.');
-      await loadReminders().catch(() => {});
-    } finally { setCompletingId(null); }
-  }
-
-  function chooseSnooze(reminder: ReminderRecord) {
-    Alert.alert('Choose reminder time', `Choose a new time for ${reminder.title}.`, [
-      ...REMINDER_PRESETS.map((preset) => ({ text: `${preset.label} · ${preset.detail}`,
-        onPress: () => { void moveReminder(reminder, preset.id); } })),
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  }
 
   return (
     <SafeAreaView style={styles.safeArea}>

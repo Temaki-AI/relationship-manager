@@ -1,28 +1,26 @@
 import { useIsFocused, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+  ActivityIndicator, Alert, AppState, Linking, Pressable, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandLockup, Eyebrow, SectionHeading, StatusPill, Surface } from '@/components/design-system';
-import { getDashboardSnapshot, type DashboardSnapshot } from '@/data/contacts';
-import { getNextReminder, type ReminderRecord } from '@/data/reminders';
+import { ActionButton, Avatar, BrandLockup, Eyebrow, SectionHeading, StatusPill, Surface } from '@/components/design-system';
+import { getContact, getDashboardSnapshot, logInteraction, type DashboardSnapshot, type InteractionType } from '@/data/contacts';
+import { getTodayQueue, type TodayPerson } from '@/data/today';
 import { formatDateTime, getGreeting } from '@/lib/format';
 import { fonts, palette } from '@/theme';
 import { useNativeSync } from '@/native/sync';
 import { useNativeAccount } from '@/native/account';
+import { useReminderActions } from '@/native/reminder-actions';
+import { contactMethodHref, displayContactMethodLabel, readContactMethods } from '../../../../../packages/domain/src/contact-methods';
 
-type HomeState = {
-  snapshot: DashboardSnapshot;
-  nextReminder: ReminderRecord | null;
-};
+const LOG_OPTIONS: { type: InteractionType; label: string }[] = [
+  { type: 'message', label: 'Messaged' }, { type: 'call', label: 'Called' },
+  { type: 'meetup', label: 'Met up' }, { type: 'email', label: 'Emailed' },
+];
+type HomeState = { snapshot: DashboardSnapshot; queue: TodayPerson[] };
 
 export default function TodayScreen() {
   const db = useSQLiteContext();
@@ -31,175 +29,207 @@ export default function TodayScreen() {
   const { account } = useNativeAccount();
   const router = useRouter();
   const [state, setState] = useState<HomeState | null>(null);
+  const [error, setError] = useState(''), [notice, setNotice] = useState('');
+  const [reload, setReload] = useState(0), [workingId, setWorkingId] = useState<string | null>(null);
+  const visible = useRef(focused), working = useRef(false), requestState = useRef({ generation: 0 });
+  const refresh = useCallback(async () => {
+    if (!visible.current) return;
+    const current = requestState.current, request = ++current.generation;
+    try {
+      const [snapshot, queue] = await Promise.all([getDashboardSnapshot(db), getTodayQueue(db)]);
+      if (visible.current && request === current.generation) { setState({ snapshot, queue }); setError(''); }
+    } catch {
+      if (visible.current && request === current.generation) setError('Unable to read today’s list. Your saved people are still here. Try again.');
+    }
+  }, [db]);
+  const reminderActions = useReminderActions(refresh, () => working.current);
+  const busy = workingId !== null || reminderActions.busyId !== null;
 
   useEffect(() => {
+    visible.current = focused;
     if (!focused) return;
-    let active = true;
-    void Promise.all([getDashboardSnapshot(db), getNextReminder(db)]).then(([snapshot, nextReminder]) => {
-      if (active) setState({ snapshot, nextReminder });
-    });
-    return () => { active = false; };
-  }, [focused, db, revision]);
+    const current = requestState.current;
+    void Promise.resolve().then(refresh);
+    return () => { visible.current = false; current.generation++; };
+  }, [focused, refresh, revision, reload]);
+  useEffect(() => {
+    if (!focused) return;
+    const subscription = AppState.addEventListener('change', (value) => { if (value === 'active') void refresh(); });
+    const timer = setInterval(() => { if (AppState.currentState === 'active') void refresh(); }, 60_000);
+    return () => { subscription.remove(); clearInterval(timer); };
+  }, [focused, refresh]);
+
+  function tell(title: string, message: string) { if (visible.current) Alert.alert(title, message); }
+  function begin(id: string) {
+    if (!visible.current || working.current || reminderActions.isBusy()) return false;
+    working.current = true; setWorkingId(id); setNotice(''); return true;
+  }
+  function finish() { working.current = false; setWorkingId(null); }
+  async function record(person: TodayPerson, type: InteractionType) {
+    if (!begin(person.contact.id)) return;
+    try {
+      await logInteraction(db, person.contact.id, type);
+      if (visible.current) setNotice(`Conversation with ${person.contact.name} recorded.`);
+      await refresh();
+    } catch { tell('Could not record this conversation', 'Nothing changed. Please try again.'); }
+    finally { finish(); }
+  }
+  function chooseLog(person: TodayPerson) {
+    if (busy) return;
+    Alert.alert('Record a conversation', `What happened with ${person.contact.name}? This records a conversation now.`, [
+      ...LOG_OPTIONS.map(({ type, label }) => ({ text: label, onPress: () => { void record(person, type); } })),
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }
+  async function reachOut(person: TodayPerson) {
+    if (!begin(person.contact.id)) return;
+    try {
+      const contact = await getContact(db, person.contact.id);
+      if (!contact) throw new Error('This person is no longer available.');
+      const methods = readContactMethods(contact.contact_methods);
+      if (!methods.length) {
+        tell('Add a way to reach them', 'Open their relationship to add a phone number, email or profile.'); return;
+      }
+      // The picker opens another app. Only an explicit Log action writes history.
+      Alert.alert(`Reach out to ${contact.name}`, 'Opening another app does not record a conversation.', [
+        ...methods.slice().sort((a, b) => Number(b.preferred) - Number(a.preferred)).slice(0, 6).map((method) => ({
+          text: `${displayContactMethodLabel(method.label) || method.kind}: ${method.value}`,
+          onPress: () => { void openMethod(contact.id, method.id, method.value); },
+        })),
+        ...(methods.length > 6 ? [{ text: 'All contact methods', onPress: () => {
+          if (visible.current) router.push({ pathname: '/contacts/[id]', params: { id: contact.id } });
+        } }] : []),
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    } catch (cause) { tell('Could not open contact options', cause instanceof Error ? cause.message : 'Please try again.'); }
+    finally { finish(); }
+  }
+  async function openMethod(contactId: string, methodId: string, shownValue: string) {
+    if (!begin(contactId)) return;
+    try {
+      const contact = await getContact(db, contactId);
+      const method = contact && readContactMethods(contact.contact_methods).find((item) => item.id === methodId && item.value === shownValue);
+      if (!method) throw new Error('This contact method changed. Open Reach out again to choose its current value.');
+      const href = contactMethodHref(method);
+      if (!href) throw new Error('Open this relationship to review the contact method.');
+      await Linking.openURL(href);
+    } catch (cause) { tell('Could not open another app', cause instanceof Error ? cause.message : 'Check that an app is available for this contact method.'); }
+    finally { finish(); }
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.topBar}>
           <BrandLockup />
-          <Pressable accessibilityRole="button" accessibilityLabel="Account and sync" onPress={() => router.push('/account')}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Account and sync" style={styles.accountButton}
+            onPress={() => router.push('/account')}>
             <StatusPill tone={account ? 'moss' : 'amber'} label={account ? 'Account & sync' : 'Sign in'} />
           </Pressable>
         </View>
-
         <View style={styles.heroCopy}>
           <Eyebrow>{getGreeting()}</Eyebrow>
-          <Text style={styles.title}>Keep the people you love within reach.</Text>
-          <Text style={styles.subtitle}>A private place for the small details that make relationships last.</Text>
+          <Text accessibilityRole="header" style={styles.title}>A little closer, every day.</Text>
+          <Text style={styles.subtitle}>A few people and thoughtful next steps. Go at your own pace.</Text>
         </View>
-
-        {!state ? (
-          <View style={styles.loading}>
-            <ActivityIndicator color={palette.primary} />
+        {!!error && <Surface style={styles.messageCard}>
+          <Text accessibilityRole="alert" style={styles.subtitle}>{error}</Text>
+          <ActionButton label="Try Today again" variant="secondary" onPress={() => setReload((value) => value + 1)} />
+        </Surface>}
+        {!!notice && <Text accessibilityRole="alert" style={styles.notice}>{notice}</Text>}
+        {!state && !error ? <View style={styles.loading}><ActivityIndicator accessibilityLabel="Loading Today" color={palette.primary} /></View> : state && <>
+          <View style={styles.sectionBlock}>
+            <SectionHeading title="Your next small moves" />
+            {state.queue.length ? state.queue.map((person) => <Surface key={person.contact.id} style={styles.personCard}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Open ${person.contact.name} from Today`}
+                onPress={() => router.push({ pathname: '/contacts/[id]', params: { id: person.contact.id } })}
+                style={({ pressed }) => [styles.identity, pressed && styles.pressed]}>
+                <Avatar name={person.contact.name} size={44} />
+                <Text style={styles.personName}>{person.contact.name}</Text>
+              </Pressable>
+              {person.reasons.map((reason) => <View key={reason.kind} style={styles.reason}>
+                <Text accessibilityLabel={`${reason.title} for ${person.contact.name}`} style={styles.reasonTitle}>{reason.title}</Text>
+                <Text style={styles.reasonDetail}>{reason.kind === 'reminder' && person.reminder
+                  ? formatDateTime(person.reminder.remind_at) : reason.detail}</Text>
+              </View>)}
+              <Text numberOfLines={3} style={styles.lastConversation}>{person.latestInteraction
+                ? `Last recorded: ${LOG_OPTIONS.find((item) => item.type === person.latestInteraction!.type)?.label || 'Connected'} · ${person.latestInteraction.date}${person.latestInteraction.summary ? `\n${person.latestInteraction.summary}` : ''}`
+                : 'No conversation recorded yet.'}</Text>
+              <View style={styles.actions}>
+                <QueueAction label="Reach out" accessibilityLabel={`Reach out to ${person.contact.name}`} disabled={busy} onPress={() => { void reachOut(person); }} />
+                <QueueAction label="Log" accessibilityLabel={`Log conversation with ${person.contact.name}`} disabled={busy} onPress={() => chooseLog(person)} />
+                {!!person.reminder && <>
+                  <QueueAction label="Done" accessibilityLabel={`Complete reminder for ${person.contact.name}: ${person.reminder.title}`} disabled={busy}
+                    onPress={() => { void reminderActions.markComplete(person.reminder!); }} />
+                  <QueueAction label="Snooze" accessibilityLabel={`Snooze reminder for ${person.contact.name}: ${person.reminder.title}`} disabled={busy}
+                    onPress={() => reminderActions.chooseSnooze(person.reminder!)} />
+                </>}
+              </View>
+              {!!person.reminder && <Text style={styles.actionHint}>Done completes this reminder. Log records a conversation.</Text>}
+            </Surface>) : <Surface style={styles.messageCard}>
+              <Text style={styles.personName}>Your day is clear</Text>
+              <Text style={styles.subtitle}>{state.snapshot.contactCount === 0
+                ? 'Add the first person you want to stay close to.' : 'Nothing needs your attention today. A small hello is always welcome.'}</Text>
+              <ActionButton label={state.snapshot.contactCount === 0 ? 'Add someone' : 'Set a reminder'}
+                onPress={() => router.push(state.snapshot.contactCount === 0 ? '/contacts/new' : '/reminders/new')} />
+            </Surface>}
+            {!!state.queue.length && <ActionButton label="See all reminders" variant="quiet" onPress={() => router.push('/reminders')} />}
           </View>
-        ) : (
-          <>
-            <Surface style={styles.nextMove}>
-              <View style={styles.nextMoveGlow} />
-              <Eyebrow>Your next small move</Eyebrow>
-              {state.nextReminder ? (
-                <>
-                  <Text style={styles.nextName}>{state.nextReminder.contact_name}</Text>
-                  <Text style={styles.nextTitle}>{state.nextReminder.title}</Text>
-                  <Text style={styles.nextTime}>{formatDateTime(state.nextReminder.remind_at)}</Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Open ${state.nextReminder.contact_name}`}
-                    onPress={() => router.push({
-                      pathname: '/contacts/[id]',
-                      params: { id: state.nextReminder?.contact_id || '' },
-                    })}
-                    style={({ pressed }) => [styles.cardAction, pressed && styles.pressed]}
-                  >
-                    <Text style={styles.cardActionText}>Open relationship</Text>
-                  </Pressable>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.nextName}>Your day is clear</Text>
-                  <Text style={styles.nextTitle}>
-                    {state.snapshot.contactCount === 0
-                      ? 'Add the first person you want to stay close to.'
-                      : 'Set a thoughtful reminder while the moment is fresh.'}
-                  </Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => router.push(
-                      state.snapshot.contactCount === 0 ? '/contacts/new' : '/reminders/new'
-                    )}
-                    style={({ pressed }) => [styles.cardAction, pressed && styles.pressed]}
-                  >
-                    <Text style={styles.cardActionText}>
-                      {state.snapshot.contactCount === 0 ? 'Add someone' : 'Set a reminder'}
-                    </Text>
-                  </Pressable>
-                </>
-              )}
-            </Surface>
-
-            <View style={styles.sectionBlock}>
-              <SectionHeading title="Relationship rhythm" />
-              <View style={styles.metrics}>
-                <Metric value={state.snapshot.contactCount} label="People" />
-                <Metric value={state.snapshot.attentionCount} label="Need care" accent />
-                <Metric value={state.snapshot.touchesThisWeek} label="Touches" />
-              </View>
+          <View style={styles.sectionBlock}>
+            <SectionHeading title="Relationship rhythm" />
+            <View style={styles.metrics}>
+              <Metric value={state.snapshot.contactCount} label="People" />
+              <Metric value={state.snapshot.touchesThisWeek} label="Conversations this week" />
             </View>
-
-            <Surface style={styles.privacyCard}>
-              <View style={styles.privacyMark}><Text style={styles.privacyMarkText}>E</Text></View>
-              <View style={styles.privacyCopy}>
-                <Text style={styles.privacyTitle}>Private by default</Text>
-                <Text style={styles.privacyText}>
-                  {account ? 'Your private workspace syncs with Everclose. An offline copy stays on this iPhone.'
-                    : 'Your relationship data stays on this iPhone. Sign in to connect your existing workspace.'}
-                </Text>
-              </View>
-            </Surface>
-          </>
-        )}
+          </View>
+          <Surface style={styles.messageCard}>
+            <Text style={styles.privacyTitle}>Private by default</Text>
+            <Text style={styles.reasonDetail}>{account ? 'Your private workspace syncs with Everclose. An offline copy stays on this iPhone.'
+              : 'Your relationship data stays on this iPhone. Sign in to connect your existing workspace.'}</Text>
+          </Surface>
+        </>}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function Metric({ value, label, accent = false }: { value: number; label: string; accent?: boolean }) {
-  return (
-    <Surface style={[styles.metric, accent && styles.metricAccent]}>
-      <Text style={[styles.metricValue, accent && styles.metricValueAccent]}>{value}</Text>
-      <Text style={[styles.metricLabel, accent && styles.metricLabelAccent]}>{label}</Text>
-    </Surface>
-  );
+function QueueAction({ label, accessibilityLabel, disabled, onPress }: { label: string; accessibilityLabel: string; disabled: boolean; onPress: () => void }) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} accessibilityState={{ disabled }}
+    disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.action, disabled && styles.disabled, pressed && styles.pressed]}>
+    <Text style={styles.actionText}>{label}</Text>
+  </Pressable>;
 }
-
+function Metric({ value, label }: { value: number; label: string }) {
+  return <Surface style={styles.metric}><Text style={styles.metricValue}>{value}</Text><Text style={styles.metricLabel}>{label}</Text></Surface>;
+}
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: palette.canvas },
-  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 34, gap: 26 },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 34, gap: 24 },
+  topBar: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  accountButton: { minHeight: 44, justifyContent: 'center' },
   heroCopy: { gap: 8, paddingTop: 8 },
-  title: {
-    maxWidth: 355,
-    color: palette.ink,
-    fontFamily: fonts.display,
-    fontSize: 38,
-    fontWeight: '700',
-    lineHeight: 43,
-    letterSpacing: -1.2,
-  },
-  subtitle: { maxWidth: 345, color: palette.muted, fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
+  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 34, fontWeight: '700', lineHeight: 41, letterSpacing: -0.8 },
+  subtitle: { color: palette.muted, fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
   loading: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
-  nextMove: { overflow: 'hidden', padding: 24, gap: 8, backgroundColor: '#FFFEFD' },
-  nextMoveGlow: {
-    position: 'absolute',
-    right: -36,
-    top: -54,
-    width: 170,
-    height: 170,
-    borderRadius: 85,
-    backgroundColor: palette.primarySoft,
-    opacity: 0.72,
-  },
-  nextName: { color: palette.ink, fontFamily: fonts.display, fontSize: 28, fontWeight: '700', marginTop: 8 },
-  nextTitle: { color: palette.muted, fontFamily: fonts.body, fontSize: 15, lineHeight: 22, maxWidth: 285 },
-  nextTime: { color: palette.primary, fontFamily: fonts.bodyDemi, fontSize: 13, marginTop: 2 },
-  cardAction: {
-    alignSelf: 'flex-start',
-    marginTop: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    borderRadius: 14,
-    backgroundColor: palette.primary,
-  },
-  cardActionText: { color: palette.white, fontFamily: fonts.bodyDemi, fontSize: 13, fontWeight: '700' },
-  pressed: { opacity: 0.78, transform: [{ scale: 0.99 }] },
   sectionBlock: { gap: 13 },
-  metrics: { flexDirection: 'row', gap: 10 },
-  metric: { flex: 1, paddingHorizontal: 12, paddingVertical: 16, borderRadius: 20, gap: 2 },
-  metricAccent: { backgroundColor: palette.primary, borderColor: palette.primary },
+  personCard: { padding: 18, gap: 13 },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
+  personName: { flex: 1, color: palette.ink, fontFamily: fonts.display, fontSize: 24, fontWeight: '700' },
+  reason: { gap: 3 },
+  reasonTitle: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 15 },
+  reasonDetail: { color: palette.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 },
+  lastConversation: { color: palette.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, borderTopWidth: 1, borderTopColor: palette.line, paddingTop: 10 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  action: { minWidth: 64, minHeight: 44, paddingHorizontal: 12, paddingVertical: 12, borderRadius: 13, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  actionText: { color: palette.primary, fontFamily: fonts.bodyDemi, fontSize: 13 },
+  actionHint: { color: palette.muted, fontFamily: fonts.body, fontSize: 11, lineHeight: 17 },
+  disabled: { opacity: 0.5 },
+  pressed: { opacity: 0.72 },
+  notice: { color: palette.moss, fontFamily: fonts.bodyMedium, fontSize: 14, lineHeight: 21 },
+  messageCard: { padding: 18, gap: 12 },
+  metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  metric: { flex: 1, minWidth: 120, padding: 16, borderRadius: 20, gap: 4 },
   metricValue: { color: palette.ink, fontFamily: fonts.display, fontSize: 27, fontWeight: '700' },
-  metricValueAccent: { color: palette.white },
-  metricLabel: { color: palette.muted, fontFamily: fonts.bodyMedium, fontSize: 11 },
-  metricLabelAccent: { color: '#FFE8EE' },
-  privacyCard: { padding: 18, borderRadius: 22, flexDirection: 'row', gap: 13, alignItems: 'flex-start' },
-  privacyMark: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: palette.mossSoft,
-  },
-  privacyMarkText: { color: palette.moss, fontFamily: fonts.display, fontSize: 18, fontWeight: '700' },
-  privacyCopy: { flex: 1, gap: 3 },
-  privacyTitle: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 14, fontWeight: '700' },
-  privacyText: { color: palette.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
+  metricLabel: { color: palette.muted, fontFamily: fonts.bodyMedium, fontSize: 12 },
+  privacyTitle: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 14 },
 });

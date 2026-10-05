@@ -49,6 +49,7 @@ export async function createMobileHarness(account: NativeAccount, sqlite = new D
   const photos = load(path.join(repository, 'apps/mobile/src/data/contact-photos.ts')) as typeof import('../../apps/mobile/src/data/contact-photos.ts');
   const photoOutbox = load(path.join(repository, 'apps/mobile/src/data/contact-photo-outbox.ts')) as typeof import('../../apps/mobile/src/data/contact-photo-outbox.ts');
   const reminders = load(path.join(repository, 'apps/mobile/src/data/reminders.ts')) as typeof import('../../apps/mobile/src/data/reminders.ts');
+  const today = load(path.join(repository, 'apps/mobile/src/data/today.ts')) as typeof import('../../apps/mobile/src/data/today.ts');
   const context = load(path.join(repository, 'apps/mobile/src/data/context.ts')) as typeof import('../../apps/mobile/src/data/context.ts');
   const deviceContacts = load(path.join(repository, 'apps/mobile/src/data/device-contacts.ts')) as typeof import('../../apps/mobile/src/data/device-contacts');
   const deviceSourceSync = load(path.join(repository, 'apps/mobile/src/data/device-source-sync.ts')) as typeof import('../../apps/mobile/src/data/device-source-sync');
@@ -63,5 +64,5 @@ export async function createMobileHarness(account: NativeAccount, sqlite = new D
   await database.migrateDatabase(typedDb);
   await database.bindDatabaseAccount(typedDb, accountScope(account));
   await deviceSourceSync.bindDeviceInstallation(typedDb, await deviceSourceSync.installationId(typedDb) ?? crypto.randomUUID());
-  return { db: typedDb, sqlite, faults, database, contacts, contactDrafts, journalDrafts, photos, photoOutbox, reminders, context, methods, deviceContacts, deviceSourceSync, deviceReconciliation, calendarEvents, calendarLinks, appleCalendar, gmailContext, sync, queue, close: () => sqlite.close() };
+  return { db: typedDb, sqlite, faults, database, contacts, contactDrafts, journalDrafts, photos, photoOutbox, reminders, today, context, methods, deviceContacts, deviceSourceSync, deviceReconciliation, calendarEvents, calendarLinks, appleCalendar, gmailContext, sync, queue, close: () => sqlite.close() };
 }
