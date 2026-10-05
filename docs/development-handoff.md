@@ -13,7 +13,7 @@ LinkedIn support uses URLs and export files. It does not continuously synchroniz
 
 ## Verification completed
 
-The last complete regression run passed **767/767 root tests**. Root TypeScript,
+The last complete regression run passed **775/775 root tests**. Root TypeScript,
 targeted root lint and native TypeScript/lint checks passed, as did native unit
 tests and the final Hermes release bundle. Google Calendar publishing/setup passed
 **18 desktop/mobile browser journeys** using fixtures. Disposable Worker/D1 checks
@@ -25,14 +25,17 @@ and device release binaries now compile with Xcode 26.4.1, including the custom 
 module. The signed iPhone build passes signature verification and is installed.
 The native app also launches locally with working Keychain storage and a clean
 schema-14 SQLite database; its real Google sign-in welcome screen renders.
-Hosted iOS build 37251198099 passes device/simulator compilation and simulator
+Hosted iOS build 37253557642 passes device/simulator compilation and simulator
 startup. Physical sign-in/first sync now pass cache verification; simulator contact,
 note, interaction and plan creation survive cold restart. Focused account/sync/
-Calendar/paging regressions and the complete suite now pass. The final draft/timeline
+Calendar/paging regressions and the complete suite now pass. The contact-draft/timeline
 update is signed and installed with all 12 original contacts/notes preserved. New
 contact/edit forms resume local drafts, preserving original merge/conflict bases;
-timeline pages reach older history. Other plan/reminder unfinished forms still need
-recovery. The new visual check awaits permission to switch the shared Simulator
+timeline pages reach older history. Plan, family, relationship and reminder forms
+now also retain unfinished drafts. Reminders preserve their selected time, commit
+before OS scheduling and serialize alert refresh/cancellation. The latest journal
+update is installed and again preserves all 12 original contacts and notes. The new
+visual check awaits permission to switch the shared Simulator
 from another project. Separate Google data consent, physical editor
 journeys and a phone edit/web round trip remain. See the iOS release record.
 
