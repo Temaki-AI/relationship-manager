@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import {
@@ -13,10 +13,10 @@ import {
   View,
 } from 'react-native';
 
-import { ActionButton, Avatar, Eyebrow } from '@/components/design-system';
-import { listContacts } from '@/data/contacts';
+import { ActionButton, Eyebrow } from '@/components/design-system';
+import { PersonPicker } from '@/components/person-picker';
+import { getContact } from '@/data/contacts';
 import { createReminder } from '@/data/reminders';
-import type { ContactRecord } from '@/domain/contact';
 import {
   getReminderPresetDate,
   REMINDER_PRESETS,
@@ -34,29 +34,30 @@ export default function NewReminderScreen() {
   const db = useSQLiteContext();
   const { account } = useNativeAccount();
   const router = useRouter();
+  const focused = useIsFocused();
   const params = useLocalSearchParams<{ contactId?: string }>();
   const initialContactId = Array.isArray(params.contactId) ? params.contactId[0] : params.contactId;
-  const [contacts, setContacts] = useState<ContactRecord[]>([]);
-  const [contactId, setContactId] = useState(initialContactId || '');
+  const [hasPeople, setHasPeople] = useState<boolean | null>(null);
+  const [contactId, setContactId] = useState<string>(initialContactId || '');
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [preset, setPreset] = useState<ReminderPresetId>('tomorrow');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (!focused) return;
     let active = true;
-    void listContacts(db).then((rows) => {
+    void db.getAllAsync<{ id: string }>('SELECT id FROM contacts WHERE deleted_at IS NULL ORDER BY name COLLATE NOCASE, id LIMIT 2').then((rows) => {
       if (active) {
-        setContacts(rows);
-        if (!contactId && rows.length === 1) setContactId(rows[0].id);
+        setHasPeople(rows.length > 0);
+        if (rows.length === 1) setContactId((current) => current || rows[0].id);
       }
-    });
+    }, () => { if (active) setHasPeople(true); });
     return () => { active = false; };
-  }, [contactId, db]);
+  }, [db, focused]);
 
   async function saveReminder() {
-    const contact = contacts.find((candidate) => candidate.id === contactId);
-    if (!contact) {
+    if (!contactId) {
       Alert.alert('Choose someone', 'A reminder needs a person before it can be saved.');
       return;
     }
@@ -65,6 +66,8 @@ export default function NewReminderScreen() {
     const remindAt = getReminderPresetDate(preset);
     let notificationId: string | null = null;
     try {
+      const contact = await getContact(db, contactId);
+      if (!contact) throw new ReminderValidationError('This person is no longer available. Choose someone else.');
       const notification = await scheduleReminderNotification({
         accountScope: accountScope(account),
         reminderTitle: title.trim() || 'Reach out',
@@ -117,7 +120,7 @@ export default function NewReminderScreen() {
 
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>For whom?</Text>
-          {contacts.length === 0 ? (
+          {hasPeople === false ? (
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push('/contacts/new')}
@@ -127,29 +130,8 @@ export default function NewReminderScreen() {
               <Text style={styles.noContactsText}>A relationship reminder always belongs to a person.</Text>
             </Pressable>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.peopleRow}>
-              {contacts.map((contact) => {
-                const selected = contact.id === contactId;
-                return (
-                  <Pressable
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: selected }}
-                    key={contact.id}
-                    onPress={() => setContactId(contact.id)}
-                    style={({ pressed }) => [
-                      styles.personChoice,
-                      selected && styles.personChoiceSelected,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <Avatar name={contact.name} size={38} />
-                    <Text numberOfLines={1} style={[styles.personName, selected && styles.personNameSelected]}>
-                      {contact.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+            <PersonPicker label="Reminder person" value={contactId || null} disabled={saving}
+              onChange={(id) => setContactId(id ?? '')} />
           )}
         </View>
 
@@ -219,7 +201,7 @@ export default function NewReminderScreen() {
         </View>
 
         <View style={styles.actions}>
-          <ActionButton label={saving ? 'Saving...' : 'Save reminder'} disabled={saving || contacts.length === 0} onPress={() => void saveReminder()} />
+          <ActionButton label={saving ? 'Saving...' : 'Save reminder'} disabled={saving || !contactId || hasPeople === null} onPress={() => void saveReminder()} />
           <ActionButton label="Cancel" variant="secondary" disabled={saving} onPress={() => router.back()} />
         </View>
       </ScrollView>

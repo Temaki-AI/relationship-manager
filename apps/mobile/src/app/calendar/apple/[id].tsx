@@ -65,7 +65,12 @@ export default function AppleCalendarScreen() {
     } finally { busyRef.current = false; if (isCurrent()) setBusy(false); }
   }
   if (Platform.OS !== 'ios') return <Text style={styles.content}>The system Calendar bridge is available on iPhone and iPad.</Text>;
-  if (!account) return <Text style={styles.content}>Sign in to your Everclose account before linking a plan to Calendar.</Text>;
+  if (!account) return <View style={styles.content}>
+    <Stack.Screen options={{ title: 'Plan in Calendar' }} />
+    <Text style={styles.title}>Connect your workspace</Text>
+    <Text style={styles.body}>Sign in before linking a plan to Calendar. Your local-only people and plans stay separate from your account.</Text>
+    <ActionButton label="Open account & sign in" onPress={() => router.push('/account')} />
+  </View>;
   if (!review) return <View style={styles.content}>{error ? <Text accessibilityRole="alert">{error}</Text> : <ActivityIndicator />}</View>;
   const receipt = review.receipt, open = Boolean(review.plan && !review.plan.completed_at), canPrepare = open && !review.linkedEventId && (!receipt || ['cancelled', 'discarded'].includes(receipt.status));
   const saved = receipt?.facts ? readAppleCalendarFacts(JSON.parse(receipt.facts)) : null;

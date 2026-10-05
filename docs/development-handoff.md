@@ -1,6 +1,6 @@
-# Development handoff — 4 October 2026
+# Development handoff — 5 October 2026
 
-The owner resumed work to obtain a working version. The [personal web release](personal-web-release.md) is deployed at everclosecrm.com with real Google sign-in and the existing database preserved. The [personal iOS release](personal-ios-release.md) has been compiled and installed on the paired iPhone TIE Fighter. Native sign-in awaits unlocking that phone; TestFlight and the full integrated beta remain unfinished.
+The owner resumed work to obtain a working version. The [personal web release](personal-web-release.md) is deployed at everclosecrm.com with real Google sign-in and the existing database preserved. The [personal iOS release](personal-ios-release.md) is installed on TIE Fighter and has downloaded the existing 12-contact workspace after real sign-in. Native database integrity, original relationship fields and shared identities are verified; TestFlight and the full integrated beta remain unfinished.
 
 ## Implemented locally
 
@@ -22,8 +22,11 @@ module. The signed iPhone build passes signature verification and is installed.
 The native app also launches locally with working Keychain storage and a clean
 schema-14 SQLite database; its real Google sign-in welcome screen renders. The
 hosted simulator runtime check timed out in Apple's cold-boot data migration.
-Separate Google data-connection consent and physical native sign-in/editor journeys
-remain unverified. See the iOS release record for the actual installation evidence.
+The latest hosted iOS build passes device/simulator compilation and simulator
+startup. Physical sign-in/first sync now pass cache verification; simulator contact,
+note, interaction and plan creation survive cold restart. Focused account/sync/
+Calendar/paging regressions pass 76/76. Separate Google data consent, physical editor
+journeys and a phone edit/web round trip remain. See the iOS release record.
 
 Closeout removed the unfinished Gmail scope changes and dependency manifest changes, restoring the previous verified provider configuration. Gmail integration remains unimplemented.
 
@@ -31,8 +34,8 @@ Closeout removed the unfinished Gmail scope changes and dependency manifest chan
 
 1. Configure development Google OAuth credentials and verify real sign-in. The current development check reports missing `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` and refuses a demo/anonymous fallback.
 2. Complete actual provider-consent journeys. The web release already provisioned the required queues, applied migrations through 44 after rehearsing the real database copy, and deployed the tested Worker. Separate data-connection clients are still unconfigured.
-3. Unlock TIE Fighter and complete native Google sign-in, first download and a real
-   phone/web edit. Verify permissions, editors, offline synchronization, calendar
+3. Complete a real native phone edit/web round trip and Calendar editor/permission
+   checks. Verify offline synchronization, calendar
    identity changes, timezones and accessibility on the physical iPhone. Native
    compilation/installation are available through the iOS workflow and local signer.
 4. Resolve Google/EventKit identity coordination and simultaneous publication across web/phone. Current local guards cannot guarantee global duplicate prevention from an offline phone.

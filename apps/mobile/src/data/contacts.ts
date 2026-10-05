@@ -33,6 +33,24 @@ function searchPattern(value: string): string {
   return `%${value.trim().replace(/[\\%_]/g, '\\$&')}%`;
 }
 
+export const PEOPLE_PAGE_SIZE = 50;
+
+export async function listContactPage(db: SQLiteDatabase, search = '', page = 0): Promise<{ contacts: ContactRecord[]; hasMore: boolean }> {
+  if (!Number.isSafeInteger(page) || page < 0 || !Number.isSafeInteger(page * PEOPLE_PAGE_SIZE)) {
+    throw new Error('Choose an available people page.');
+  }
+  const pattern = searchPattern(search);
+  const rows = await db.getAllAsync<ContactRecord>(`
+    SELECT * FROM contacts
+    WHERE deleted_at IS NULL AND (
+      name LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\' OR phone LIKE ? ESCAPE '\\' OR notes LIKE ? ESCAPE '\\'
+      OR EXISTS (SELECT 1 FROM json_each(contact_methods) WHERE json_extract(value, '$.value') LIKE ? ESCAPE '\\' OR json_extract(value, '$.label') LIKE ? ESCAPE '\\')
+    )
+    ORDER BY name COLLATE NOCASE, id LIMIT ? OFFSET ?
+  `, pattern, pattern, pattern, pattern, pattern, pattern, PEOPLE_PAGE_SIZE + 1, page * PEOPLE_PAGE_SIZE);
+  return { contacts: rows.slice(0, PEOPLE_PAGE_SIZE), hasMore: rows.length > PEOPLE_PAGE_SIZE };
+}
+
 export async function listContacts(db: SQLiteDatabase, search = ''): Promise<ContactRecord[]> {
   if (!search.trim()) {
     return db.getAllAsync<ContactRecord>(`

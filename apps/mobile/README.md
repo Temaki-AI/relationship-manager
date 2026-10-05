@@ -153,8 +153,9 @@ Permission loss or a failed read retains saved data and shows a status on this p
 Merge and restore pause reading for review; another phone receives shared observations
 without inheriting permission or field choices. Cloud-visible permission status,
 background execution, optional write-back and physical-device testing remain required.
-People and profile timelines still need broader pagination
-and native usability testing.
+People now uses searchable 50-row pages with a sentinel, pull-to-refresh and read
+error recovery. Reminder selection uses the paged person picker. Profile timelines
+still need broader pagination and physical-device usability testing.
 
 ## Native capabilities and verification
 

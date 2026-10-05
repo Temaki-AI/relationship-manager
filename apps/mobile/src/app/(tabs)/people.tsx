@@ -1,9 +1,9 @@
 import { pickDeviceContact } from '@/native/device-contacts';
 import { DeviceContactAccess } from '@/components/device-contact-access';
 import { ProviderSourceError } from '../../../../../packages/domain/src/provider-sources';
-import { Link, useIsFocused, useRouter } from 'expo-router';
+import { useIsFocused, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,8 +17,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, BrandLockup, StatusPill } from '@/components/design-system';
-import { listContacts } from '@/data/contacts';
+import { ActionButton, Avatar, BrandLockup, StatusPill } from '@/components/design-system';
+import { listContactPage } from '@/data/contacts';
 import { getRelationshipState, type ContactRecord } from '@/domain/contact';
 import { formatRelativeDate } from '@/lib/format';
 import { fonts, palette } from '@/theme';
@@ -28,26 +28,36 @@ import { useNativeAccount } from '@/native/account';
 export default function PeopleScreen() {
   const db = useSQLiteContext();
   const focused = useIsFocused();
-  const { revision, syncing, error: syncError } = useNativeSync();
+  const { revision, syncing, error: syncError, run } = useNativeSync();
   const { account } = useNativeAccount();
   const router = useRouter();
   const [contacts, setContacts] = useState<ContactRecord[]>([]);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [more, setMore] = useState(false);
+  const [loadedKey, setLoadedKey] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [retry, setRetry] = useState(0);
+  const list = useRef<FlatList<ContactRecord>>(null);
+  const queryKey = JSON.stringify([search, page, revision, retry]);
+  const loading = loadedKey !== queryKey;
   const [importing, setImporting] = useState(false);
-
-  const loadContacts = useCallback(async () => {
-    const rows = await listContacts(db, search);
-    setContacts(rows);
-    setLoading(false);
-  }, [db, search]);
 
   useEffect(() => {
     if (!focused) return;
     let active = true;
-    void listContacts(db, search).then((rows) => { if (active) { setContacts(rows); setLoading(false); } });
+    void listContactPage(db, search, page).then((result) => {
+      if (active) { setContacts(result.contacts); setMore(result.hasMore); setLoadError(''); setLoadedKey(queryKey); }
+    }, () => {
+      if (active) { setContacts([]); setMore(false); setLoadError('Unable to read this page. Your saved people are still on this iPhone.'); setLoadedKey(queryKey); }
+    });
     return () => { active = false; };
-  }, [focused, db, search, revision]);
+  }, [focused, db, search, page, revision, queryKey]);
+
+  function changePage(next: number) {
+    setPage(next);
+    list.current?.scrollToOffset({ offset: 0, animated: true });
+  }
 
   async function importOneContact() {
     if (Platform.OS === 'web') {
@@ -69,7 +79,10 @@ export default function PeopleScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <FlatList
-        data={contacts}
+        ref={list}
+        data={loading ? [] : contacts}
+        refreshing={syncing}
+        onRefresh={() => { void run(); setRetry((value) => value + 1); }}
         keyExtractor={(contact) => contact.id}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
@@ -94,8 +107,8 @@ export default function PeopleScreen() {
             <TextInput
               accessibilityLabel="Search people"
               autoCapitalize="none"
-              onChangeText={setSearch}
-              onSubmitEditing={() => void loadContacts()}
+              onChangeText={(value) => { setSearch(value); setPage(0); }}
+              onSubmitEditing={() => setRetry((value) => value + 1)}
               placeholder="Search names, details, notes"
               placeholderTextColor={palette.faint}
               returnKeyType="search"
@@ -125,6 +138,11 @@ export default function PeopleScreen() {
           <View style={styles.empty}><ActivityIndicator color={palette.primary} />
             {account && <Text style={styles.emptyText}>Downloading your workspace…</Text>}
           </View>
+        ) : loadError ? (
+          <View style={styles.empty}>
+            <Text accessibilityRole="alert" style={styles.emptyText}>{loadError}</Text>
+            <ActionButton label="Try again" variant="secondary" onPress={() => setRetry((value) => value + 1)} />
+          </View>
         ) : account && syncError ? (
           <View style={styles.empty}>
             <Text accessibilityRole="alert" style={styles.emptyText}>{syncError}</Text>
@@ -134,16 +152,22 @@ export default function PeopleScreen() {
           </View>
         ) : (
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>{search ? 'No one matches yet' : 'Start with one person'}</Text>
+            <Text style={styles.emptyTitle}>{page ? 'No more people on this page' : search ? 'No one matches yet' : 'Start with one person'}</Text>
             <Text style={styles.emptyText}>
               {search ? 'Try a different name or detail.' : 'Add someone manually or choose one contact from your iPhone.'}
             </Text>
           </View>
         )}
+        ListFooterComponent={loading ? null : <View style={styles.pages}>
+          {page > 0 && <ActionButton label="Previous people" variant="quiet" onPress={() => changePage(page - 1)} />}
+          {(page > 0 || more) && <Text style={styles.emptyText}>Page {page + 1}</Text>}
+          {more && <ActionButton label="Next people" variant="quiet" onPress={() => changePage(page + 1)} />}
+        </View>}
         renderItem={({ item }) => (
-          <Link href={{ pathname: '/contacts/[id]', params: { id: item.id } }} asChild>
             <Pressable
+              accessibilityRole="button"
               accessibilityLabel={`Open ${item.name}`}
+              onPress={() => router.push({ pathname: '/contacts/[id]', params: { id: item.id } })}
               style={({ pressed }) => [styles.personRow, pressed && styles.personRowPressed]}
             >
               <Avatar name={item.name} />
@@ -155,7 +179,6 @@ export default function PeopleScreen() {
               </View>
               <RelationshipPill contact={item} />
             </Pressable>
-          </Link>
         )}
       />
     </SafeAreaView>
@@ -215,6 +238,7 @@ const styles = StyleSheet.create({
   empty: { paddingVertical: 54, alignItems: 'center', gap: 6, paddingHorizontal: 24 },
   emptyTitle: { color: palette.ink, fontFamily: fonts.display, fontSize: 23, fontWeight: '700' },
   emptyText: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  pages: { paddingVertical: 20, gap: 12, alignItems: 'center' },
   personRow: {
     minHeight: 76,
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-# Everclose personal iOS release — 4 October 2026
+# Everclose personal iOS release — 5 October 2026
 
 Everclose 1.0.0 (build 1) has been compiled as native iOS binaries and installed
 on the owner's paired iPhone, **TIE Fighter** (iPhone 13, iOS 18.6.2). The bundle
@@ -21,19 +21,28 @@ identifier remains `com.fernandoamaral.bonds` and the sign-in callback remains
 - No signing key/certificate was exported to GitHub or another build service.
 - Apple's `devicectl` reports successful installation on TIE Fighter. The device
   is registered in the profile and already has Developer Mode enabled.
-- Automatic launch was refused because the physical iPhone is locked. Unlock,
-  native Google approval, first download and a real phone/web edit remain to verify.
+- The physical iPhone has now completed Google sign-in and version-4 download.
+  Its account-specific cache has **12 real contacts**, schema 14, clean integrity
+  and foreign-key checks, a saved sync cursor/last-success record and zero pending
+  writes. All 12 public identities and eight original CRM fields (including notes)
+  match the actual production post-release snapshot. The separate local-only
+  phone database remains empty. This proves real native startup and cloud download;
+  a physical phone edit/web round trip and Calendar permission/editor checks remain.
 - The corrected simulator binary was built in
   [the recovery run](https://github.com/Temaki-AI/relationship-manager/actions/runs/37234498354),
   then installed and launched on this Mac's iOS 26.2 simulator. Its real SQLite
   database is schema 14, passes integrity checks, contains zero contacts, is bound
   to `local-only`, and contains the installation marker written after successful
   native Keychain access. The Google sign-in welcome screen renders correctly.
-- The recovery run's hosted runtime check timed out during Apple's CoreLocation
-  data migration before the app could start. It did not pass. Compilation and local
-  startup are verified independently; the workflow now allows a bounded 10-minute
-  cold boot. Interactive contact/editor and authenticated phone/web journeys are
-  still pending because both the Mac and iPhone locked during this work.
+- The earlier recovery run timed out during Apple's simulator migration. The
+  [subsequent complete build](https://github.com/Temaki-AI/relationship-manager/actions/runs/37236605964)
+  passed both compilation jobs and the hosted simulator startup/Keychain/SQLite
+  checks, including its first-launch screenshot. The bounded cold-boot correction
+  is verified.
+- Interactive simulator checks now cover real contact/note creation, interaction
+  logging, plan creation and a cold restart. The saved note and queued changes
+  survive restart. Google authentication reaches the real accounts.google.com
+  sign-in sheet; the simulator has no saved Google session.
 
 The development IPA is saved privately in
 `apps/mobile/build/releases/Everclose-1.0.0-final-development.ipa` (ignored by Git).
@@ -53,7 +62,19 @@ device entitlements.
 The final account callback opens People after the workspace navigator is ready,
 and People displays download progress or a recoverable sync error before the first
 contact download. The final package includes this correction and has been
-successfully installed over the initial phone candidate.
+successfully installed over the initial phone candidate. People now reads 50-row
+pages with a sentinel and supports pull-to-refresh and recoverable read errors.
+The reminder picker searches/pages through the full directory instead of keeping
+only the first 500 people. Native testing also found that the router's child-slot
+style merging dropped the contact row's Pressable style callback; direct native
+navigation preserves the row layout. Signed-out Calendar review now provides an
+account action and explains the separate local workspace.
+
+Focused account/sync/calendar/paging regressions pass **76/76**, including a
+606-person pagination fixture, duplicate names, deleted people and literal search.
+Native TypeScript/lint and all five native package tests pass. These JavaScript
+changes use the existing compiled native modules; the release receipt records the
+exact embedded source commit.
 
 ## Account and daily use
 
@@ -94,7 +115,7 @@ section rather than the host code signature.
 TestFlight requires a distribution identity/profile and an App Store Connect app
 record; those have not been created. The separate Google Contacts/Calendar data
 clients are still unconfigured on the server, and Gmail is not implemented. LinkedIn
-support uses reviewed exports/profile links. Native photo transport, broader
+support uses reviewed exports/profile links. Native photo transport, timeline
 pagination, accessibility and the complete integration pilot remain in the
 [product plan](product-development-plan.md).
 
