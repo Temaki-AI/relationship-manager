@@ -1,5 +1,9 @@
 # Everclose personal iOS build 7 — simulator release
 
+Historical release: [build 8](personal-ios-build8.md) now replaces build 7 on the
+owner phone and user-ready simulator. The source-specific evidence below remains
+valid for this earlier artifact.
+
 Build 7 (version 1.0.0) is installed and running in the local **Everclose Build 7**
 iPhone 17 Pro / iOS 26.2 simulator. The actual compiled Release app passes the
 native offline journey, hosted Google-login navigation, first-use notification

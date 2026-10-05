@@ -1,42 +1,35 @@
 # Development handoff — 5 October 2026
 
 Everclose's personal web release is deployed at everclosecrm.com. Personal iOS
-build 7 is now signed and installed in place on TIE Fighter at the owner's explicit
-request. Actual metadata reports 1.0.0/build 7; installation, launch and the
-subsequent process-stability query pass (process 13565). The owner confirms
-existing contacts are visible in People after the upgrade. The personal database
-was not copied or reset; exact data equality and a fresh phone/web sync round trip
-remain unverified. Exact source, hash and private receipts are in the
-[build-7 record](personal-ios-build7.md); the previous
-[build-4 record](personal-ios-build4.md) remains historical evidence.
+**build 8** is signed, installed in place and running on TIE Fighter (1.0.0/build 8,
+process 14545). Installation, fresh metadata, launch and subsequent process
+stability pass. The **Everclose Build 8** simulator runs the unmodified compiled
+release at welcome, with its original empty schema-15 cache and installation
+identity. The separate synthetic QA simulator is restored and shut down.
+[The build-8 record](personal-ios-build8.md) preserves source, checksums and receipts.
 
-Native Today now has a per-person queue, explicit reasons/history and direct
-conversation/reminder actions. Four final native journeys pass, including the
-largest accessibility text size, restart persistence and background closure;
-the inspected choice picker keeps Cancel visible. [Native Today](native-today.md)
-records exact JavaScript-preview provenance. Build 8 is configured for the next
-clean compilation; it has not replaced the phone or user-ready simulator.
-Contact-label native CI 37363883290 is now fully green. The subsequent Today
-simulator job could not acquire a GitHub hosted runner; its device compile passed.
-The earlier project CI failed repository lint in a notification test helper;
-that naming issue is fixed and full local lint passes. Audit findings remain open.
+Native Today has a per-person queue, combined reasons/latest history and explicit
+Reach out/Log/Done/Snooze actions. Choice pickers scroll with persistent Cancel and
+close when backgrounded or locked. Standard Apple method labels display clearly
+while stored/raw/custom values are preserved. Native CI 37371940722 passes both
+Release binaries, linkage/startup and the complete offline journey (329.156 seconds,
+one test, zero failures/skips). Actual compiled build-8 background/largest-text
+checks also pass; the picker screenshot was inspected. All 21 QA data tables are
+unchanged, with only the existing installation marker's refresh timestamp updated.
+Earlier action/restart preview evidence remains distinct in [Native Today](native-today.md).
 
-**Build 7 is running in the dedicated Everclose Build 7 simulator and is signed for the phone.**
-The unmodified compiled release passes six separate native journeys: offline
-contacts/drafts/plans/reminders with restarts, first notification permission,
-visible delivery while closed, hosted-login navigation/cancellation, actual
-Contacts create/attach/unlink and denial with unchanged saved data. Both corrected
-native CI Release jobs and the complete offline gate pass in run 37353387558.
-The clean user-ready simulator has zero contacts; synthetic data stays on the
-separate, shut-down QA device. [The build-7 record](personal-ios-build7.md) preserves
-exact source, artifacts, checksums and open account/physical/release checks.
-The Contacts display issue found during QA has a follow-up source fix `38e2084`:
-47 focused regressions, mobile package/types/lint and a 21.626-second native
-JS-preview display test pass with unchanged CRM/source-table hashes. Clean native
-CI run 37363077696 was cancelled by documentation synchronization; replacement
-37363883290 passes both Release builds and its 378.128-second offline journey
-for source-equivalent `3c37a02`. The preview is confined to QA; do not
-attribute it to the earlier compiled artifact in the user-ready simulator.
+All 898 root cases are verified collectively: 896 in the restricted full run and
+two loopback-server cases in their permitted rerun. Seventeen mobile package tests,
+both type checks and full root/mobile lint pass. General runs 37371940769 and
+37371935667 pass Cloudflare build/browser validation, but each general validation
+job fails to acquire a hosted runner before any step. Complete broader CI and the
+recorded dependency findings remain open; audit thresholds are unchanged.
+
+The owner confirmed existing contacts on preceding build 7. Neither phone upgrade
+copied or reset the personal database. Build-8 visibility, exact data equality,
+fresh phone/web sync, provider pilots and physical privacy/accessibility remain
+unverified. [Build 7](personal-ios-build7.md) retains its separate six native
+journeys and physical delivery evidence; [build 4](personal-ios-build4.md) is historical.
 
 The preceding **build 6** added an optional device-wide
 Face ID/Touch ID/passcode gate to schema 15 and the default-off Gmail cache. Both
@@ -46,7 +39,7 @@ That build-6 source passed 878 root tests, 398 D1 tests with 11 documented skips
 first-launch screen and strict signature checks passed. The phone was unreachable
 at that time; its later build-7 upgrade now succeeds. Preserve the package in
 [the build-6 record](personal-ios-build6.md) as historical evidence and use the
-current build-7 record for delivery. The earlier signed
+current build-8 record for delivery. The earlier signed
 [build 5](personal-ios-build5.md) remains separately preserved. Private database
 copying remains subject to the pending explicit permission. The owner's later
 instruction to use Simulator is fulfilled with two new Everclose devices. Actual

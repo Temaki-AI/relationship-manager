@@ -19,10 +19,13 @@ Build around the owner's existing Everclose account and contact database. Local 
 | Public release | The beta plus public authentication/account management, provider approvals where required, App Store distribution, accessibility, deletion, monitored delivery/recovery and support | Release checks pass at the advertised dataset size; permissions, retention, supported integrations and operational ownership are documented |
 
 Native Today’s per-person queue, birthday/reminder/check-in reasons, explicit
-conversation logging and direct reminder Done/Snooze now have passing native
-preview checks, including the largest text size and restarts. Build 8 is prepared
-for clean compilation; installed build 7 remains the owner-confirmed phone
-release. Shared birthday/check-in prompt snoozes, current-account sync/provider
+conversation logging and direct reminder Done/Snooze now pass native preview
+checks, including the largest text size and restarts. Clean build 8 passes both
+Release binaries and the full offline CI journey, plus actual-release largest-text
+and background checks. It is installed and running on the phone and user-ready
+simulator; existing contact visibility was owner-confirmed on preceding build 7.
+See [the build-8 delivery record](personal-ios-build8.md).
+Shared birthday/check-in prompt snoozes, current-account sync/provider
 pilots and physical accessibility/privacy checks remain open. See [Native Today](native-today.md).
 
 The personal beta is the first complete product target. General sales workflows, teams and additional providers do not delay that target. LinkedIn automatic connection sync is conditional on approved access; useful profile links and export import remain part of the beta. A personal pilot may qualify for Google's verification exception, but that exception must be checked against the actual use and does not establish readiness for a public service. [Google verification exceptions](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification).

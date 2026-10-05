@@ -906,3 +906,10 @@ verified build 7 with owner-confirmed contact visibility. [Native Today](native-
 records exact source/results, the real hosted-runner capacity failure and the
 remaining shared-prompt/provider/physical/public gates. The full development goal
 remains active; this completed engineering slice does not close those gates.
+
+### Clean build-8 delivery — 5 October 2026
+
+- Native run 37371940722 passes both Release binaries, linkage, actual SQLite/Keychain startup and the complete offline journey in 329.156 seconds, with one test and no failures/skips. Source is `3d39dcd`; CI merge `c0e369d` adds no file changes. Artifact checksums, versions and strict signatures pass.
+- The actual unmodified compiled build 8 passes two local QA checks: background closure in 29.047 seconds and largest-text controls/persistent Cancel in 32.289 seconds. The picker screenshot was inspected. All 21 data tables are unchanged; metadata keys/values are preserved, and only the installation marker's refresh timestamp changes. The retained QA device is restored and shut down.
+- Build 8 upgrades the owner phone in place and runs as process 14545. Installed metadata, installation, launch and later process stability pass. The user-ready **Everclose Build 8** simulator runs the same compiled source as process 63529 with its original empty schema-15 cache and installation identity. No personal database was copied or reset. Existing contact visibility was confirmed by the owner on preceding build 7; current-build visibility and fresh sync remain unverified.
+- Source checks collectively verify all 898 root cases; 17 mobile tests, both type checks and full lint pass. General runs 37371940769 and 37371935667 pass Cloudflare validation but fail to acquire hosted validation runners before any step. Complete general CI, dependencies, shared prompts, physical privacy/accessibility, provider pilots and public release remain open. [The build-8 record](personal-ios-build8.md) preserves the exact packages and private receipts. The full development goal remains active.

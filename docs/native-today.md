@@ -1,5 +1,10 @@
 # Native Today — 5 October 2026
 
+Today is now delivered in the clean compiled **build 8**, installed and running on
+the owner phone and user-ready simulator. [The build-8 record](personal-ios-build8.md)
+contains the green native CI, actual-release accessibility checks and installation
+receipts. The earlier JavaScript-preview evidence below remains separate.
+
 Today now offers up to eight people, with one card per person and explicit reminder,
 birthday and check-in reasons. It includes the most recent recorded interaction.
 It reads relevant people directly from SQLite, including people beyond the first
@@ -38,8 +43,8 @@ Native binary source: `e0965517348e6e979cea5ec2d54be541c7355bd9`.
 Hermes bundle SHA-256:
 `de9ae9e83b725fc1a5a7576bce64cecc813a860f375deb61d9cba3cb6d2e6c3f`.
 This is a guarded, ad-hoc-signed **JavaScript preview over compiled build 7**,
-not an unmodified clean build of the new source. Build 8 is now configured for
-the next clean native CI compilation. It has not been installed on the phone.
+not an unmodified clean build of the new source. The subsequent clean build 8
+passes native CI and is installed on the phone and user-ready simulator.
 
 - Thirty focused Today/reminder/notification/date/intelligence/snooze regressions
   pass with zero failures/skips. Seventeen mobile package tests, both TypeScript
@@ -72,8 +77,9 @@ verified ZIP archives; the interrupted log is preserved losslessly as gzip.
 The first Today preview's passing results remain distinct from this final picker.
 
 The QA simulator's text size is restored and it is shut down. The user-ready
-build-7 simulator remains running at welcome, and the phone keeps its previously
-verified build 7 with owner-confirmed existing contact visibility.
+build-8 simulator runs at welcome, and the phone runs build 8 after an in-place
+upgrade. The owner's contact-visibility confirmation applies to preceding build 7;
+current-build visibility and a fresh phone/web sync round trip remain unverified.
 
 Native CI [37363883290](https://github.com/Temaki-AI/relationship-manager/actions/runs/37363883290)
 passes both Release binaries and the complete 378.128-second offline journey for
@@ -81,8 +87,12 @@ the contact-label source. Later Today CI
 [37367898696](https://github.com/Temaki-AI/relationship-manager/actions/runs/37367898696)
 compiles the device binary; its simulator job is cancelled without steps because
 GitHub reports that a hosted runner could not be acquired after multiple attempts.
-That is not a passed simulator build. The next build must verify the final picker
-source and updated offline harness before delivery. Both broader CI jobs in
+That is not a passed simulator build. Its replacement
+[37371940722](https://github.com/Temaki-AI/relationship-manager/actions/runs/37371940722)
+passes both clean build-8 Release binaries and the complete 329.156-second offline
+journey. Two local checks against the actual compiled build 8 pass background
+closure and largest-text cancellation; all 21 data tables are unchanged, with only
+the existing installation marker's refresh timestamp updated. Both broader CI jobs in
 run 37367992123 likewise failed to acquire hosted runners; no test failure or
 audit result can be inferred from that cancellation.
 

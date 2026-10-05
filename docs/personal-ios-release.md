@@ -1,14 +1,19 @@
 # Everclose personal iOS release — 5 October 2026
 
-**Build 7 is the current signed installation on TIE Fighter.** At the owner's
-request, the verified signed package upgraded build 4 in place. Installation,
-actual metadata (1.0.0/build 7), launch and process stability pass. The owner
-confirms existing contacts are visible in People after the upgrade. No personal
-database was copied for this delivery; fresh phone/web sync and physical provider/
-notification/photo/biometric/accessibility journeys still need verification.
-[The build-7 record](personal-ios-build7.md) contains exact source, checksum and
-private receipts. Its separate later contact-label fix has simulator preview
-proof, with clean native compilation still running. The simulator remains ready.
+**Build 8 is the current signed installation on TIE Fighter.** At the owner's
+request, the verified signed package upgraded build 7 in place. Installed metadata
+(1.0.0/build 8), launch and subsequent process stability pass. The matching
+**Everclose Build 8** simulator is running at welcome. Both Release binaries,
+startup and the full offline CI journey pass; actual-release largest-text and
+background checks also pass. This release includes the native Today queue/actions
+and readable Apple contact labels. [The build-8 record](personal-ios-build8.md)
+contains exact source, checksums and receipts.
+
+The owner confirmed existing contacts on preceding build 7. The personal database
+was not copied or reset for either upgrade. Build-8 data visibility, fresh
+phone/web sync and physical provider/notification/photo/biometric/accessibility
+journeys still need verification. [The build-7 record](personal-ios-build7.md)
+preserves its distinct earlier delivery and six native journeys.
 
 **Previously installed build 4.** Its installation
 receipt and installed-app metadata confirm success. Both native Release builds,
