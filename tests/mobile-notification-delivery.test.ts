@@ -7,7 +7,7 @@ function fixture() {
   let status = 'undetermined', grant: (() => void) | undefined;
   const scheduled = new Set<string>(), cancelled: string[] = [];
   let scheduleHook: (() => Promise<void>) | undefined;
-  const module = { exports: {} as Record<string, (...args: unknown[]) => Promise<unknown>> };
+  const loadedModule = { exports: {} as Record<string, (...args: unknown[]) => Promise<unknown>> };
   const code = ts.transpileModule(readFileSync(new URL('../apps/mobile/src/native/notifications.ts', import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
@@ -27,8 +27,8 @@ function fixture() {
   };
   new Function('require', 'module', 'exports', code)((name: string) => {
     assert.equal(name, 'expo-notifications'); return api;
-  }, module, module.exports);
-  return { native: module.exports, scheduled, cancelled,
+  }, loadedModule, loadedModule.exports);
+  return { native: loadedModule.exports, scheduled, cancelled,
     async waitForPermission() { while (!grant) await new Promise((resolve) => setImmediate(resolve)); },
     async allow() { while (!grant) await new Promise((resolve) => setImmediate(resolve)); grant(); },
     granted() { status = 'granted'; }, onSchedule(hook: () => Promise<void>) { scheduleHook = hook; } };

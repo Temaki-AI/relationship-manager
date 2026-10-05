@@ -44,7 +44,7 @@ final class TodayTests: XCTestCase {
         if warning.waitForExistence(timeout: 3) { warning.buttons["OK"].tap() }
     }
     private func saveReminder(_ title: String) {
-        tap("Set reminder"); enter("Reminder title", title); tap("Save reminder")
+        tap("Set a reminder for \(person)"); enter("Reminder title", title); tap("Save reminder")
         if journal.alerts["Reminder saved without an alert"].waitForExistence(timeout: 3) {
             journal.alerts.buttons["OK"].tap()
         }
@@ -53,9 +53,12 @@ final class TodayTests: XCTestCase {
 
     func testPrepareTodayFixture() {
         if journal.buttons["Use only on this iPhone"].waitForExistence(timeout: 2) { tap("Use only on this iPhone") }
-        tap("People"); tap("Add someone")
-        enter("Name", person); enter("Email", "today-qa@example.invalid\n")
-        tap("Add to Everclose")
+        tap("People")
+        if journal.buttons["Open \(person)"].exists { tap("Open \(person)") }
+        else {
+            tap("Add someone"); enter("Name", person); enter("Email", "today-qa@example.invalid\n")
+            tap("Add to Everclose")
+        }
         XCTAssertTrue(journal.staticTexts[person].waitForExistence(timeout: 15))
         saveReminder(first)
         restart(); tap("People"); tap("Open \(person)")
