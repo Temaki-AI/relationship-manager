@@ -9,7 +9,14 @@ package hash and checks. After the owner unlocked the phone, the physical launch
 and process-stability checks passed. Confirmation that People shows the existing
 contacts remains pending.
 
-**Build 5 is now signed and ready to install.** Both native Release builds,
+**Build 6 is signed and ready to install.** Both native Release builds, linkage,
+isolated SQLite/Keychain startup and strict signed-package verification pass. It
+adds an optional device-wide Face ID/Touch ID/passcode gate. The phone remains
+unreachable; direct USB reconnection and Trust confirmation with both devices
+unlocked are pending. See [the build-6 release record](personal-ios-build6.md) for
+exact source, checksum, validation and outstanding physical checks.
+
+**Build 5 remains separately signed and verified.** Both native Release builds,
 linkage and isolated simulator SQLite/Keychain startup pass. Installation could
 not begin because CoreDevice could not find the iPhone; reconnection and unlock
 are pending. See [the build-5 release record](personal-ios-build5.md) for its exact

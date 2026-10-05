@@ -2,16 +2,19 @@
 
 Everclose's personal web release is deployed at everclosecrm.com. Personal iOS build 4 is signed and installed on TIE Fighter; the actual receipt and installed-app metadata confirm it. Both native Release binaries, linkage verification and isolated first launch with SQLite/Keychain initialization pass in [run 37278926485](https://github.com/Temaki-AI/relationship-manager/actions/runs/37278926485). Exact source, hash, installation evidence and remaining checks are in the [build-4 release record](personal-ios-build4.md). After the owner reported the phone unlocked again, a fresh launch at 10:56 UTC succeeded as process 9346 and a separate stability check passed. Owner confirmation of the UI and contacts remains pending.
 
-**Build 5 is signed and ready to install**, with native schema 15 and default-off
-Gmail context storage. Both native Release jobs and isolated SQLite/Keychain startup
-pass in run 37306709947; all 868 root tests and the focused transport/profile checks
-pass. CoreDevice could not find the phone during installation (error 1011), so the
-owner has been asked to connect it by USB and unlock it. Reuse the verified package
-and source recorded in [the build-5 record](personal-ios-build5.md); a documentation
-commit does not require rebuilding or resigning this package. The immediate next
-step is installation, exact-bundle metadata verification and launch/stability after
-the owner confirms reconnection. Private database copying and switching the shared
-Simulator still require the pending explicit permissions.
+**Build 6 is signed and ready to install**, adding an optional device-wide
+Face ID/Touch ID/passcode gate to schema 15 and the default-off Gmail cache. Both
+native Release jobs and isolated SQLite/Keychain startup pass in run 37321546205.
+The current source passes 878 root tests, 398 D1 tests with 11 documented skips,
+17 native package checks and 157 native data/sync regressions. Source, checksum,
+first-launch screen and strict signature checks pass. The phone remains unreachable;
+macOS's USB inventory did not detect an iPhone. Reuse the exact package recorded
+in [the build-6 record](personal-ios-build6.md) after direct USB reconnection and
+Trust confirmation with both devices unlocked. A documentation commit does not
+require rebuilding or resigning it. Verify installation, exact bundle/build metadata
+and launch/stability before claiming physical delivery. The earlier signed
+[build 5](personal-ios-build5.md) remains separately preserved. Private database
+copying and switching the shared Simulator still require the pending explicit permissions.
 
 ## Delivered personal iOS implementation
 
@@ -141,14 +144,24 @@ claimed.
 
 ## Device lock and OAuth setup follow-up
 
-The build-6 source candidate adds an optional device-wide authentication gate in
+The signed build 6 adds an optional device-wide authentication gate in
 Account & sync. Twelve new controller scenarios, seventeen mobile package tests,
 all 157 existing native data/sync regressions, native/root types and lint, and the
 Hermes export pass. It uses the already configured Face ID/Keychain modules,
 preserves account caches/drafts and has verified-device recovery for an unreadable
-policy. No mobile or cloud schema migration is added. Native compile/startup and
-physical editor/snapshot/Face ID checks remain required for this new source; it is
-not included in the signed build-5 package. See [native device lock](native-app-lock.md).
+policy. No mobile or cloud schema migration is added. Both native Release jobs and
+isolated SQLite/Keychain startup pass in run 37321546205; source/checksum and strict
+signed-package checks pass. Physical installation and editor/snapshot/Face ID checks
+remain required. See [native device lock](native-app-lock.md) and the
+[build-6 release record](personal-ios-build6.md).
+
+The current source at `52dbdd07ccc8bc5dcb0a22e359221b037094b874` passes 878 root
+tests with no skips and 398 D1 tests with 11 documented skips in run 37321546195.
+Cloud build/browser checks and lint pass; general validation then fails at the
+existing dependency-audit gate. The phone connection check at delivery still has
+no tunnel/developer services and the cached 10:57 UTC last connection. macOS USB
+inventory did not detect an iPhone. No build-6 installation was attempted against
+that unavailable connection.
 
 The preceding Gmail scheduling source at `b996d75122adcb6fca90acda0c55663b902e99ec`
 passes both native Release jobs and isolated simulator startup in run 37316101486.

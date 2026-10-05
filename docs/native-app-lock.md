@@ -1,4 +1,4 @@
-# Native device lock — build-6 source candidate
+# Native device lock — signed build 6
 
 Account & sync now offers an optional device-wide lock for the journal. It starts
 off and requires a fresh system authentication before enabling or disabling.
@@ -41,11 +41,14 @@ found a removed React Native style constant and a Node strip-only constructor sy
 both were corrected. The React compiler also rejected an effect-based mount latch;
 the latch now belongs to the external controller and validation passes.
 
-Build 5 remains the separate signed package with its recorded source/checksum.
-Build 6 is a new source candidate and requires its own native compile, isolated
-startup and device checks. No build-6 package is signed or installed yet. The phone
-remains unreachable, and the browser reported the Mac locked. Unlock both devices
-and reconnect directly by USB before delivery.
+Build 6 now passes both native Release jobs, linkage and isolated SQLite/Keychain
+startup in run 37321546205. Its first-launch screenshot renders the Google welcome
+screen. The downloaded source tree/checksum and signed package were verified;
+strict signature verification passes. The [build-6 release record](personal-ios-build6.md)
+contains the exact source and package hash. It is not installed yet: the phone
+remains unreachable and macOS's USB inventory did not detect an iPhone. Unlock
+both devices and reconnect directly by USB before delivery. Physical authentication,
+native-editor masking, snapshot timing and accessibility checks remain pending.
 
 The adapter follows [Expo 57 LocalAuthentication](https://docs.expo.dev/versions/v57.0.0/sdk/local-authentication/)
 and [SecureStore](https://docs.expo.dev/versions/v57.0.0/sdk/securestore/). Both modules
