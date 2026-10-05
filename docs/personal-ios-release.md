@@ -56,6 +56,12 @@ notes, interactions, plans and reminders use the existing account and durable
 offline storage. After a successful sync, edits queue while offline and resume
 when the app reconnects. Held changes are available in Sync review.
 
+If the welcome screen appears, choose **Continue with Google**, use the same
+account as everclosecrm.com and approve this phone in the browser. Return to
+Everclose, open **Account & sync** and choose **Sync now**. Then open **People**
+and check that the existing relationships appear. The most recent launch check
+was blocked by the locked phone, so this confirmation remains outstanding.
+
 To update a person's photo, open their profile and choose **Edit contact photo**.
 Choose an image, review the small preview and explicitly save it. Removal also
 requires saving. Drafts and queued changes survive reopening; uncertain uploads
@@ -63,7 +69,7 @@ retry the same operation and changed cloud photos require explicit review.
 
 The previous verified build contained 12 contacts. Its database was preserved
 exactly through the withdrawn build's rollback. A fresh database comparison after
-the build-3 upgrade is unverified: automatic approval review rejected copying the
+the build-3 and build-4 upgrades is unverified: automatic approval review rejected copying the
 personal contact database, and explicit permission for a private local verification
 copy is pending. Installation success is separate from data-continuity evidence.
 

@@ -57,6 +57,12 @@ iPhone and open Everclose. Confirm that your contacts appear after signing in an
 syncing. Build 3 previously launched successfully and remained running, but that
 does not establish build-4 UI or data verification.
 
+A fresh launch check on 5 October at 08:47 UTC was also refused by Apple's
+device tools because the phone was locked. Its private receipt is
+`apps/mobile/build/releases/phone-verification/build4-final-launch.json`.
+The signed IPA checksum was rechecked and still matches the value above.
+This check did not read or copy the phone database.
+
 Physical account/data, photo selection, Calendar permission/editor journeys,
 phone/web round trips, closed-app reminders and broader accessibility remain
 unverified. The optional private database copy was rejected by automatic approval
