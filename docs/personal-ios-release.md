@@ -1,11 +1,16 @@
 # Everclose personal iOS release — 5 October 2026
 
-The last verified personal iPhone build is restored on TIE Fighter. Its 12 contacts,
-notes, account binding and sync cursor are preserved. The new photo-picker build 2
-was withdrawn after its native startup test found a framework incompatibility.
-The original signed package remains available as
-`apps/mobile/build/releases/Everclose-1.0.0-ios-photos.ipa`, SHA-256
-`561c66beb55b2c14a0eaf43012b7d49ef79b905e97da5899a6850017edf026c9`.
+Build 3 is signed and installed on TIE Fighter. The actual installation receipt
+reports success. The matching device and simulator builds, native linkage check,
+and isolated simulator first launch with SQLite/Keychain initialization all pass
+in [run 37263450401](https://github.com/Temaki-AI/relationship-manager/actions/runs/37263450401).
+The first-launch screenshot renders the real Google sign-in welcome screen.
+
+The signed package is `apps/mobile/build/releases/Everclose-1.0.0-ios-build3.ipa`,
+SHA-256 `ab6922a9f9756bfc3d3f7314647d6ae1446e1d6677577e8e63dbd21ffff8c90f`.
+Native and JavaScript source are `a5b5a8eec2a303f554413f55bbef49802d5263b6`;
+the CI merge source is `69dc05c26e5c58f909e61de4e8df051a0bb9502c`, with its
+identical source tree verified before signing. API origin is `https://everclosecrm.com`.
 
 ## Replacement build 3
 
@@ -26,18 +31,41 @@ as ABI-invalid evidence.
 The replacement uses Expo's documented `buildFromSource` option for all iOS
 modules, so they compile against the installed Core sources. A new linkage gate
 rejects incompatible Expo frameworks before artifact upload/signing; it rejects
-the actual failed build. The replacement must pass native startup/SQLite/Keychain
-verification before installation. Exact replacement binary hashes and data
-continuity will be recorded here after those checks succeed.
+the actual failed build. Build 3 passed native startup/SQLite/Keychain verification
+before installation. The local signing helper now applies the same linkage gate.
+
+## Use the installed app
+
+Open Everclose on the iPhone. Today, People, profiles, relationship history,
+notes, interactions, plans and reminders use the existing account and durable
+offline storage. After a successful sync, edits queue while offline and resume
+when the app reconnects. Held changes are available in Sync review.
+
+To update a person's photo, open their profile and choose **Edit contact photo**.
+Choose an image, review the small preview and explicitly save it. Removal also
+requires saving. Drafts and queued changes survive reopening; uncertain uploads
+retry the same operation and changed cloud photos require explicit review.
+
+The previous verified build contained 12 contacts. Its database was preserved
+exactly through the withdrawn build's rollback. A fresh database comparison after
+the build-3 upgrade is unverified: automatic approval review rejected copying the
+personal contact database, and explicit permission for a private local verification
+copy is pending. Installation success is separate from data-continuity evidence.
 
 ## Remaining release checks
 
-Physical photo selection/rendering, phone-edit/web round trips, Calendar permissions
+Physical post-upgrade launch/data visibility, photo selection/rendering,
+phone-edit/web round trips, Calendar permissions
 and editor actions, closed-app reminder delivery and broader accessibility remain
 unverified. The shared local Simulator is in use by another project and switching
 it awaits the existing permission request. Google Contacts/Calendar provider
 clients and vault configuration, Gmail, Sign in with Apple and TestFlight/App Store
 work remain part of the complete integration/public-release plan.
+
+Both native CI jobs and the cloud validation job pass. The general validation jobs
+still fail; the recorded dependency-audit findings must be resolved before public
+release. This is a personal development installation, not a TestFlight or App Store
+release, and does not complete the full integrated beta.
 
 Development signing keys stay local. The existing profile covers four registered
 devices and expires 25 July 2027. Phone snapshots, signed packages and actual

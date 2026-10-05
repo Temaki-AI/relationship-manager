@@ -266,8 +266,9 @@ remain open. Upgrade 13 to 14 preserves existing data, queues, source links and 
 ### Installed photo-editor build
 
 The photo-picker build 2 was withdrawn after a precompiled framework mismatch.
-The verified phone build is restored; replacement build 3 compiles iOS modules
-from matching sources and requires linkage/startup checks before installation. Open a person and choose **Edit contact photo** to
+Build 3 is signed and installed. It compiles iOS modules from matching sources;
+both Release builds, linkage verification and isolated SQLite/Keychain startup
+pass in run 37263450401. Open a person and choose **Edit contact photo** to
 select a photo, preview the small copy, and explicitly save or remove it. Drafts
 and queued images remain on the phone offline. Unconfirmed requests retry
 unchanged; a changed cloud photo requires review. The API is deployed, all 796

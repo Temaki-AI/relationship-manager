@@ -13,6 +13,7 @@ import plistlib
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -30,6 +31,7 @@ def main():
     info = plistlib.loads((args.app / "Info.plist").read_bytes())
     if info.get("CFBundleIdentifier") != "com.fernandoamaral.bonds" or info.get("DTPlatformName") != "iphoneos":
         parser.error("Choose the Everclose device app, not the simulator app.")
+    run(sys.executable, str(pathlib.Path(__file__).with_name('verify-ios-linkage.py')), str(args.app))
     if args.output.exists():
         parser.error("The output already exists. Choose a new filename.")
     decoded = subprocess.run(["security", "cms", "-D", "-i", str(args.profile)], check=True, capture_output=True)
