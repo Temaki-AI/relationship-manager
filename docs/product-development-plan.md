@@ -320,13 +320,15 @@ The main operating cost drivers are Cloudflare database/storage/queue usage, log
 ## Decisions to confirm as work is scheduled
 
 The Gmail source implementation now has a dedicated metadata-only consent purpose,
-encrypted credential lifecycle and explicit mailbox-label preview, with D1-tested
-ownership/recovery/revocation fences and preservation of prior records in migration
-45. This is a consent/preview milestone: real client configuration, durable message
-staging, reviewed matching and web/iPhone relationship context remain required.
+encrypted credential lifecycle, explicit mailbox-label preview and reviewed metadata
+downloads. Migrations 45/46 preserve prior data and add a private, bounded source
+cache. Full/incremental staging, atomic publication, owner/recovery/revocation fences
+and desktop/mobile cached review pass their synthetic checks. Real client
+configuration, reviewed matching, recurring downloads and web/iPhone relationship
+context remain required. Local D1 has migration 46.
 Production still has migration 44; personal iOS build 4 is signed and installed,
-with native startup verified and physical UI/data confirmation pending the
-owner unlocking the phone. See [Gmail implementation](gmail.md) and the
+with native startup and physical process launch/stability verified. Physical
+UI/data confirmation remains pending. See [Gmail implementation](gmail.md) and the
 [personal iOS release record](personal-ios-release.md).
 
 The provider and audience choices are confirmed: Google Contacts, Gmail, Google Calendar, iPhone Contacts and LinkedIn, for personal use first and a public release later. Use the personal-beta defaults above for planning, then adjust them from actual usage. Set the operating budget and service limits before activating recurring provider jobs or opening public registration. The proposed native stack remains Expo/React Native; a full SwiftUI rewrite, Android, direct iCloud access and team sharing are separate scope decisions. Broad email-content ingestion, autonomous outreach, sales campaigns and universal social-history synchronization are outside the initial release.

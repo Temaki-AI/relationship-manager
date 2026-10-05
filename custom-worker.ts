@@ -9,6 +9,7 @@ import { cleanupStaleCloudSnapshotArtifacts } from './lib/cloud/snapshot-cleanup
 import { maintainProviderConnections } from './lib/cloud/provider-connections';
 import { processGoogleContactsMessage, reconcileGoogleContactsDownloads } from './lib/cloud/google-contact-downloads';
 import { processCalendarEventMessage, reconcileCalendarEventDownloads } from './lib/cloud/google-event-jobs';
+import { pruneGmailCache } from './lib/cloud/google-gmail-downloads';
 import type { ProviderEnvironment } from './lib/cloud/google-provider';
 import { processCloudRestoreMessage, reconcileStalledCloudRestoreJobs,
   type RecoveryQueueDelivery } from './lib/cloud/large-recovery-queue';
@@ -29,8 +30,9 @@ const worker = {
       maintainProviderConnections(env.DB, { ...process.env, ...env } as unknown as ProviderEnvironment),
       reconcileGoogleContactsDownloads(env.DB, env.GOOGLE_CONTACTS_QUEUE, { ...process.env, ...env }),
       reconcileCalendarEventDownloads(env.DB, env.GOOGLE_CALENDAR_QUEUE, { ...process.env, ...env }),
+      pruneGmailCache(env.DB),
     ]);
-    const [cleanup, emails, birthdays, backupCleanup, snapshotCleanup, restoreReconciliation, automaticBackups, providerMaintenance, contactsDownloads, calendarDownloads] = results;
+    const [cleanup, emails, birthdays, backupCleanup, snapshotCleanup, restoreReconciliation, automaticBackups, providerMaintenance, contactsDownloads, calendarDownloads, gmailRetention] = results;
     if (cleanup.status === 'fulfilled') console.info('cloud.export.retention', cleanup.value);
     if (emails.status === 'fulfilled') console.info('cloud.reminder.email', emails.value);
     if (birthdays.status === 'fulfilled') console.info('cloud.birthday.email', birthdays.value);
@@ -49,6 +51,7 @@ const worker = {
       || providerMaintenance.status === 'rejected'
       || contactsDownloads.status === 'rejected'
       || calendarDownloads.status === 'rejected'
+      || gmailRetention.status === 'rejected'
       || (cleanup.status === 'fulfilled' && cleanup.value.failed)
       || (backupCleanup.status === 'fulfilled' && backupCleanup.value.failed)
       || (snapshotCleanup.status === 'fulfilled' && snapshotCleanup.value.failed)

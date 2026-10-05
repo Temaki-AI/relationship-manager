@@ -49,16 +49,18 @@ before compilation or app launch. Preparation now allows 180 seconds for that
 cold start inside a five-minute setup step. Its fresh retry passes. All simulator
 checks use isolated GitHub runners; the shared local Simulator is untouched.
 
-## Final phone check
+## Phone launch verification
 
-The build-4 launch request was refused because TIE Fighter is locked. This is
-separate from its successful installation and simulator startup. Unlock the
-iPhone and open Everclose. Confirm that your contacts appear after signing in and
-syncing. Build 3 previously launched successfully and remained running, but that
-does not establish build-4 UI or data verification.
+After the owner unlocked TIE Fighter, build 4 launched successfully as process
+8278. A separate process check confirmed that it remained running. The private
+receipts are `phone-verification/build4-unlocked-launch.json` and
+`phone-verification/build4-unlocked-stability.json` in the ignored release directory.
+These checks read no screen or contact database. The owner confirmation that
+People shows the existing contacts remains pending.
 
 A fresh launch check on 5 October at 08:47 UTC was also refused by Apple's
-device tools because the phone was locked. Its private receipt is
+device tools because the phone was locked, before the successful unlocked check.
+Its private receipt is
 `apps/mobile/build/releases/phone-verification/build4-final-launch.json`.
 The signed IPA checksum was rechecked and still matches the value above.
 This check did not read or copy the phone database.
@@ -75,7 +77,8 @@ receipts, diagnostics and verification JSON are private in the ignored build
 directory. Mobile development dependencies have been restored after clearing
 reproducible build output to recover disk space.
 
-The unfinished Gmail metadata-download work is preserved in the named Git stash
-`3473e7443855718e3aaee489d4ce1aa739add78e`. Apply that stash deliberately when
-resuming Gmail work. It is not part of this iOS release, and the checkout's local
-cloud migration remains 45; production remains 44.
+At installation, the unfinished Gmail metadata-download work was preserved in
+Git stash `3473e7443855718e3aaee489d4ce1aa739add78e` and local D1 had migration 45.
+That work has since been restored and extended, with local D1 upgraded to 46;
+do not apply the stash again to the current checkout. It is not part of this signed
+iOS release. Production remains at migration 44.

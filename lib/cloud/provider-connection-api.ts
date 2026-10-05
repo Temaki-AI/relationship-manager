@@ -17,6 +17,8 @@ import { advanceOwnedCalendar, discardUnsentOwnedCalendar, reviewOwnedCalendar, 
 
 import { reviewPlanPublication, preparePlanPublication, advancePlanPublication, discardPlanPublication } from './calendar-plan-publications';
 import { previewGmailMailbox, reviewGmailConnection } from './google-gmail-connection';
+import { advanceGmailDownload, cancelGmailDownload, reviewGmailMessages, saveGmailChoices, startGmailDownload } from './google-gmail-downloads';
+import { GmailChoicesError } from '@/packages/domain/src/gmail';
 
 async function objectBody(request: Request, maximumBytes = 4096) {
   const body = await readJsonBody(request, { maximumBytes });
@@ -34,6 +36,18 @@ export async function handleProviderConnections(request: Request, actor: Connect
   try {
     if (path.length === 1 && request.method === 'GET') return Response.json(await listProviderConnections(env.DB, actor, environment), { headers: { 'Cache-Control': 'no-store' } });
     if (path.join('/') === 'connections/google/authorize' && request.method === 'POST') return Response.json(await beginGoogleConnection(env.DB, actor, environment, await objectBody(request), request.headers.get('origin')));
+    if (path.length >= 4 && path[2] === 'gmail') {
+      const url = new URL(request.url);
+      if (path.length === 4 && path[3] === 'messages' && request.method === 'GET') return Response.json(await reviewGmailMessages(env.DB, actor, path[1], url.searchParams), { headers: { 'Cache-Control': 'no-store' } });
+      if (url.search) throw new ProviderConnectionError('Use the current Gmail download without query parameters.', 400);
+      if (request.headers.get('origin') !== new URL(environment.BETTER_AUTH_URL || '').origin) throw new ProviderConnectionError('Manage Gmail from this Everclose app.', 403);
+      const body = await objectBody(request, 16384);
+      const result = path.length === 4 && path[3] === 'settings' && request.method === 'PATCH' ? await saveGmailChoices(env.DB, actor, environment, path[1], body)
+        : path.length === 4 && path[3] === 'downloads' && request.method === 'POST' ? await startGmailDownload(env.DB, actor, environment, path[1], body)
+          : path.length === 6 && path[3] === 'downloads' && path[5] === 'step' && request.method === 'POST' && Object.keys(body).length === 0 ? await advanceGmailDownload(env.DB, actor, environment, path[1], path[4])
+            : path.length === 5 && path[3] === 'downloads' && request.method === 'DELETE' && Object.keys(body).length === 0 ? await cancelGmailDownload(env.DB, actor, path[1], path[4]) : null;
+      return result ? Response.json(result, { headers: { 'Cache-Control': 'no-store' } }) : Response.json({ error: 'Gmail download route not found.' }, { status: 404, headers: { 'Cache-Control': 'no-store' } });
+    }
     if (path.length === 3 && path[2] === 'gmail') {
       if (new URL(request.url).search) throw new ProviderConnectionError('Use the current Gmail connection without query parameters.', 400);
       if (request.method === 'GET') return Response.json(await reviewGmailConnection(env.DB, actor, path[1]), { headers: { 'Cache-Control': 'no-store' } });
@@ -106,7 +120,7 @@ export async function handleProviderConnections(request: Request, actor: Connect
     return Response.json({ error: 'Connection route not found.' }, { status: 404 });
   } catch (error) {
     if (callback) return new Response(null, { status: 303, headers: { Location: callbackPage + '?result=failed', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
-    if (error instanceof ContactMethodError || error instanceof ContactRevisionError) return Response.json({ error: error.message }, { status: 400 });
+    if (error instanceof ContactMethodError || error instanceof ContactRevisionError || error instanceof GmailChoicesError) return Response.json({ error: error.message }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
     if (error instanceof ProviderConnectionError || error instanceof RequestBodyError || error instanceof ProviderSourceError || error instanceof IdempotencyError) return Response.json({ error: error.message }, { status: error.status, headers: { 'Cache-Control': 'no-store', ...(error.status === 503 ? { 'Retry-After': '2' } : {}) } });
     if (/PROVIDER_LINK_LIMIT|CONTACT_SYNC_LIMIT/u.test(String(error))) return Response.json({ error: 'This person has reached the saved-source size limit. Choose fewer fields or unlink an unused source.', }, { status: 413 });
     const recovery = recoveryErrorResponse(error); if (recovery) return recovery;

@@ -54,6 +54,7 @@ const exactPaths = new Set([
 ]);
 
 export function getCloudApiRewrite(pathname: string): string | null {
+  const gmailPath = /^\/api\/connections\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/gmail\/(?:settings|messages|downloads(?:\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?:\/step)?)?)$/u.test(pathname);
   const resourcePath = /^\/api\/(?:interactions|plans|reminders|groups)\/\d+$/u.test(pathname);
   const devicePath = /^\/api\/v1\/devices\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(pathname);
   const photoPath = /^\/api\/v1\/contact-photos\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(pathname);
@@ -65,7 +66,7 @@ export function getCloudApiRewrite(pathname: string): string | null {
   const importPath = /^\/api\/import\/jobs\/[0-9a-f-]{36}(?:\/source)?$/iu.test(pathname);
   const exportPath = /^\/api\/export\/jobs\/[0-9a-f-]{36}(?:\/download)?$/iu.test(pathname);
   const largeRecoveryPath = /^\/api\/settings\/large-recovery\/[0-9a-f-]{36}(?:\/(?:step|apply|rollback|pause|resume|cancel))?$/iu.test(pathname);
-  if (exactPaths.has(pathname) || photoPath || eventPath || connectionPath || devicePath || resourcePath || contactPath || sourcePath || backupPath || importPath || exportPath || largeRecoveryPath) {
+  if (exactPaths.has(pathname) || gmailPath || photoPath || eventPath || connectionPath || devicePath || resourcePath || contactPath || sourcePath || backupPath || importPath || exportPath || largeRecoveryPath) {
     return `/api/cloud${pathname.slice('/api'.length)}`;
   }
   return null;

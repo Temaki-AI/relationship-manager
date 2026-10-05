@@ -269,8 +269,8 @@ The photo-picker build 2 was withdrawn after a precompiled framework mismatch.
 Build 4 is signed and installed. It compiles iOS modules from matching sources;
 both Release builds, linkage verification and isolated SQLite/Keychain startup
 pass in run 37278926485. It also recovers database/account startup errors without
-resetting saved data. The final phone launch request was refused because the
-phone is locked; unlock it and open Everclose to confirm the UI and contacts.
+resetting saved data. After the owner unlocked the phone, physical launch and
+process-stability checks passed. Confirmation of the UI and contacts is pending.
 Open a person and choose **Edit contact photo** to
 select a photo, preview the small copy, and explicitly save or remove it. Drafts
 and queued images remain on the phone offline. Unconfirmed requests retry

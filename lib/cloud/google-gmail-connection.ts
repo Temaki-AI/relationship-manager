@@ -3,13 +3,16 @@ import { googleConnectionAccess, providerWriteGuard, requireGoogleReconnection, 
 import { GoogleGmailError, googleGmailLabels, googleGmailProfile } from './google-gmail';
 import type { ProviderEnvironment, ProviderFetch } from './google-provider';
 import { ProviderConnectionError } from './provider-vault';
-import { removeGuard } from './recovery-storage';
+import { maintenanceGuard, removeGuard } from './recovery-storage';
+import { reviewGmailSource } from './google-gmail-downloads';
+import type { GmailSourceReview } from '@/packages/domain/src/gmail';
 
 type DB = CloudflareEnv['DB'];
 type Connection = { id: string; email: string; display_name: string; status: string; revision: number; authorization_revision: number; dataset_epoch: string; refresh_expires_at: number | null };
 export type GmailConnectionReview = {
   epoch: string; can_preview: boolean;
   connection: { id: string; email: string; display_name: string; status: string; revision: number; authorization_revision: number };
+  source?: GmailSourceReview | null;
 };
 async function connection(db: DB, actor: ConnectionActor, id: string) {
   await requireProviderOwner(db, actor);
@@ -26,8 +29,19 @@ export async function reviewGmailConnection(db: DB, actor: ConnectionActor, id: 
   if (!state) throw new ProviderConnectionError('Workspace maintenance is in progress.', 423);
   const status = row.status === 'connected' && row.dataset_epoch !== state.epoch ? 'dataset_review_required'
     : row.status === 'connected' && row.refresh_expires_at !== null && row.refresh_expires_at <= Date.now() ? 'reconnect_required' : row.status;
-  return { epoch: state.epoch, can_preview: status === 'connected' && state.paused === 0 && state.lifecycle === 'active',
-    connection: { id: row.id, email: row.email, display_name: row.display_name, status, revision: row.revision, authorization_revision: row.authorization_revision } };
+  const canPreview = status === 'connected' && state.paused === 0 && state.lifecycle === 'active';
+  const source = canPreview ? await reviewGmailSource(db, actor, id) : null, guard = crypto.randomUUID();
+  await db.batch([maintenanceGuard(db, guard, `EXISTS(SELECT 1 FROM provider_connections c
+    JOIN workspace_sync_state s ON s.workspace_id = c.workspace_id JOIN workspaces w ON w.id = c.workspace_id
+    JOIN workspace_members m ON m.workspace_id = c.workspace_id AND m.user_id = c.user_id
+    WHERE c.id = ? AND c.workspace_id = ? AND c.user_id = ? AND c.purpose = 'gmail' AND m.role = 'owner'
+      AND c.status = ? AND c.revision = ? AND c.authorization_revision = ? AND c.dataset_epoch = ? AND c.refresh_expires_at IS ?
+      AND s.epoch = ? AND s.paused = ? AND w.lifecycle = ?)`,
+    [id, actor.workspaceId, actor.userId, row.status, row.revision, row.authorization_revision, row.dataset_epoch, row.refresh_expires_at,
+      state.epoch, state.paused, state.lifecycle]), removeGuard(db, guard)]);
+  return { epoch: state.epoch, can_preview: canPreview,
+    connection: { id: row.id, email: row.email, display_name: row.display_name, status, revision: row.revision, authorization_revision: row.authorization_revision },
+    source };
 }
 /** Explicit read-only label preview. No message import, source snapshot or CRM write. */
 export async function previewGmailMailbox(db: DB, actor: ConnectionActor, environment: ProviderEnvironment, id: string, body: Record<string, unknown>, fetcher: ProviderFetch = fetch) {

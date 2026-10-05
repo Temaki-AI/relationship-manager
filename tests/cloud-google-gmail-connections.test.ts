@@ -139,7 +139,8 @@ test('explicit mailbox preview exposes only label identities and does not alter 
     assert.equal((await api(h, 'connections/' + connection.id + '/gmail', { method: 'POST', body: { oversized: 'x'.repeat(5000) }, headers: { Origin: environment.BETTER_AUTH_URL } })).status, 413);
     const path = '/api/connections/' + connection.id + '/gmail';
     assert.equal(getCloudApiRewrite(path), path.replace('/api/', '/api/cloud/'));
-    assert.equal(getCloudApiRewrite(path + '/messages'), null); assert.equal(getCloudApiRewrite('/api/connections/not-a-uuid/gmail'), null);
+    assert.equal(getCloudApiRewrite(path + '/messages'), (path + '/messages').replace('/api/', '/api/cloud/'));
+    assert.equal(getCloudApiRewrite(path + '/attachments'), null); assert.equal(getCloudApiRewrite('/api/connections/not-a-uuid/gmail'), null);
   } finally { await h.close(); }
 });
 

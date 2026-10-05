@@ -1,14 +1,12 @@
 import { ProviderConnectionError } from './provider-vault';
 import type { ProviderFetch } from './google-provider';
+import type { GmailMetadata } from '@/packages/domain/src/gmail';
+export type { GmailMetadata } from '@/packages/domain/src/gmail';
 
 export const GOOGLE_GMAIL_METADATA_SCOPE = 'https://www.googleapis.com/auth/gmail.metadata';
 const ORIGIN = 'https://gmail.googleapis.com/gmail/v1/users/me/';
 const HEADERS = ['From', 'To', 'Cc', 'Bcc', 'Message-ID', 'In-Reply-To', 'List-ID', 'Precedence', 'Auto-Submitted'] as const;
 type Header = Lowercase<typeof HEADERS[number]> | 'subject';
-export type GmailMetadata = {
-  id: string; threadId: string; historyId: string; receivedAt: number;
-  labelIds: string[]; headers: Partial<Record<Header, string[]>>;
-};
 export type GmailHistoryChange = {
   historyId: string; messageId: string; threadId: string;
   kind: 'message_added' | 'message_deleted' | 'labels_added' | 'labels_removed';

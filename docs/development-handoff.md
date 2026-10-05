@@ -1,6 +1,6 @@
 # Development handoff — 5 October 2026
 
-Everclose's personal web release is deployed at everclosecrm.com. Personal iOS build 4 is signed and installed on TIE Fighter; the actual receipt and installed-app metadata confirm it. Both native Release binaries, linkage verification and isolated first launch with SQLite/Keychain initialization pass in [run 37278926485](https://github.com/Temaki-AI/relationship-manager/actions/runs/37278926485). Exact source, hash, installation evidence and remaining checks are in the [build-4 release record](personal-ios-build4.md). The final phone launch request was refused because the phone is locked; the owner needs to unlock it and open Everclose to confirm the UI and contacts.
+Everclose's personal web release is deployed at everclosecrm.com. Personal iOS build 4 is signed and installed on TIE Fighter; the actual receipt and installed-app metadata confirm it. Both native Release binaries, linkage verification and isolated first launch with SQLite/Keychain initialization pass in [run 37278926485](https://github.com/Temaki-AI/relationship-manager/actions/runs/37278926485). Exact source, hash, installation evidence and remaining checks are in the [build-4 release record](personal-ios-build4.md). After the owner unlocked the phone, build 4 launched as process 8278 and remained running. Owner confirmation of the UI and contacts remains pending.
 
 ## Delivered personal iOS implementation
 
@@ -14,7 +14,7 @@ Everclose's personal web release is deployed at everclosecrm.com. Personal iOS b
 The photo API is deployed in Worker `f300697b-8aa5-46c8-b556-fc00144725d4`.
 Readiness is healthy; an unauthenticated photo POST returns 401. No photo schema
 migration is introduced: mobile remains schema 14, production remains migration 44
-and local cloud development remains migration 45.
+and local cloud development now has migration 46.
 
 ## Verification
 
@@ -37,7 +37,7 @@ The preceding phone database was preserved exactly through rollback, including
 all 12 contacts and original tables/fields. A fresh post-upgrade database comparison
 is unverified: automatic approval review rejected the private contact-database
 copy, and explicit authorization is pending. Build 3's process launch and stability
-passed; build 4's launch request was refused because the phone is locked. Physical
+passed; build 4's launch and process-stability checks now pass after the owner unlocked it. Physical
 build-4 UI/data, photo
 selection/rendering, phone-edit/web round trips, closed-app reminder delivery,
 Calendar permission/editor journeys and broader accessibility remain unverified.
@@ -55,12 +55,12 @@ local Simulator belongs to another active project; permission to switch it remai
 pending. The installed personal build and successful isolated CI simulator do not
 complete the integrated personal beta or public release.
 
-The unfinished Gmail download work is preserved in Git stash
-`3473e7443855718e3aaee489d4ce1aa739add78e`, with the message
-“Gmail metadata downloads WIP preserved while closing the personal iOS release”.
-The checkout matches the released source; apply the stash deliberately to resume
-that work. No migration 46 or Gmail message download is deployed. Mobile
-dependencies were restored after recovering space from reproducible build output.
+The saved Gmail stash `3473e7443855718e3aaee489d4ce1aa739add78e` has been restored
+and extended into the current download implementation; do not apply it again to
+this checkout. It remains as a historical backup. Migration 46 is applied to local
+D1 only. No Gmail download or migration 45/46 is deployed to production. Mobile
+dependencies are present; the signed phone binary remains its separately verified
+build-4 source.
 
 ## References
 
@@ -87,14 +87,14 @@ limits. Both patched-dependency native Release builds and isolated first launch
 also pass in [run 37267403749](https://github.com/Temaki-AI/relationship-manager/actions/runs/37267403749).
 The installed build 3 retains its separately recorded source and signing evidence.
 
-The [Gmail metadata implementation](gmail.md) now includes separate owner consent,
-dedicated client validation, encrypted grant lifecycle and an explicit read-only
-mailbox-label preview. Eight consent/lifecycle journeys pass against isolated D1,
-and migration 45 preserves every existing table and field. Root TypeScript/lint,
-all 814 root tests, standalone/Cloudflare builds and all 16 targeted desktop/mobile
-browser journeys pass. Migration 45 is applied only to isolated local D1.
-Mailbox labels are temporary;
-message staging, reviewed matching, web/native relationship context and real-account
-OAuth remain required. No production Gmail read or deployment is implied. The
-source requires migration 45 before a future deploy; live production still has
-migration 44, and mobile remains schema 14.
+The [Gmail metadata implementation](gmail.md) now includes reviewed labels/aliases,
+default-off subjects, bounded retention, durable full/incremental downloads,
+atomic publication and generation-pinned cached review. All 839 root tests,
+TypeScript/lint, standalone/Cloudflare builds and 12 desktop/mobile Gmail browser
+journeys pass. The 24 consent/download/migration checks cover 22 disposable real-D1
+journeys and two prior-data SQLite preservation tests. Download UI accessibility,
+viewport and rendered mobile review pass. The next engineering work is current and
+later-created contact matching, separate web/native correspondence context and
+consented recurring jobs. Real clients/vault and a controlled mailbox pilot remain
+required. Readiness requires migrations 45 and 46 before any future source deploy;
+live production still has migration 44, local D1 has 46, and mobile remains schema 14.

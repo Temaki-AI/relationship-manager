@@ -5,8 +5,9 @@ receipt and installed-app metadata confirm success. Both native Release builds,
 linkage verification, isolated simulator startup, SQLite and Keychain checks pass
 in [run 37278926485](https://github.com/Temaki-AI/relationship-manager/actions/runs/37278926485).
 The [build-4 release record](personal-ios-build4.md) contains its exact source,
-package hash and checks. The final physical launch request was refused because
-the iPhone is locked; unlock it and open Everclose to confirm your contacts.
+package hash and checks. After the owner unlocked the phone, the physical launch
+and process-stability checks passed. Confirmation that People shows the existing
+contacts remains pending.
 
 ## Previous build 3
 
@@ -59,8 +60,8 @@ when the app reconnects. Held changes are available in Sync review.
 If the welcome screen appears, choose **Continue with Google**, use the same
 account as everclosecrm.com and approve this phone in the browser. Return to
 Everclose, open **Account & sync** and choose **Sync now**. Then open **People**
-and check that the existing relationships appear. The most recent launch check
-was blocked by the locked phone, so this confirmation remains outstanding.
+and check that the existing relationships appear. Physical process launch now
+passes; this UI/data confirmation remains outstanding.
 
 To update a person's photo, open their profile and choose **Edit contact photo**.
 Choose an image, review the small preview and explicitly save it. Removal also
@@ -75,7 +76,7 @@ copy is pending. Installation success is separate from data-continuity evidence.
 
 ## Remaining release checks
 
-Physical post-upgrade launch/data visibility, photo selection/rendering,
+Physical post-upgrade data visibility, photo selection/rendering,
 phone-edit/web round trips, Calendar permissions
 and editor actions, closed-app reminder delivery and broader accessibility remain
 unverified. The shared local Simulator is in use by another project and switching

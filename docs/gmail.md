@@ -1,21 +1,25 @@
 # Gmail context implementation
 
-The source implementation now includes separate owner consent, an encrypted
-credential lifecycle and an explicit, read-only mailbox-label preview. The
-metadata transport has seven provider-boundary fixture tests; eight consent and
-lifecycle journeys also pass against isolated real D1, alongside a migration
-preservation check. Real OAuth clients are not configured or verified, and no
-production Gmail grant or mailbox read has occurred. Durable message staging,
-reviewed matching and web/iPhone relationship context remain unfinished.
+The source implementation now includes separate owner consent, encrypted grants,
+reviewed label/alias/retention choices, durable full and incremental metadata
+downloads and paged review of the published cache. Interrupted or invalid reads
+keep the previous generation until a complete replacement commits. Real OAuth
+clients are not configured or verified, and no production Gmail grant, mailbox
+read or deployment has occurred. Reviewed contact matching, relationship context,
+recurring downloads and native Gmail context remain unfinished.
 
-The complete 814-test root suite, root TypeScript/lint, standalone build and
-Cloudflare build pass. Migration 45 is applied to the isolated local D1 database;
-production remains at migration 44.
-All 16 targeted desktop/mobile browser journeys pass, including the existing
-Contacts/Calendar flows, explicit Gmail consent/preview, label search/paging,
-discard on reload and changed-authorization handling. The preview passes the
-automated WCAG checks and fits the mobile viewport. These are isolated fixtures,
-not evidence of a production mailbox or native Gmail context.
+The complete **839-test root suite**, root TypeScript/lint, standalone build and
+Cloudflare build pass. The 24 consent/download/migration checks pass with the D1
+runtime: 22 use disposable real D1 and two compare prior SQLite tables/fields
+through migrations 45 and 46. All **12 desktop/mobile Gmail browser journeys**
+pass, including explicit choices, reload/resume, frozen start retries, pagination,
+changed-authorization suppression and confirmation before replacing settings.
+The download review passes automated WCAG and viewport checks; its rendered mobile
+screen was inspected. These are synthetic fixtures, not a real mailbox pilot.
+
+Migration 46 is applied only to isolated local D1; production remains at migration
+44. The installed personal iOS build remains build 4 with mobile schema 14. Its
+physical launch and process-stability checks pass; Gmail context is not in that app.
 
 ## Configure and preview an account
 
@@ -28,11 +32,11 @@ The implementation rejects sharing client IDs with login, Contacts, Calendar
 reading or Calendar publishing. Use a separate Cloud project when independent
 revocation is required; clients in one project can be revoked together.
 
-Apply migration `0045_google_gmail_consent.sql` before deploying this source.
-It changes only the permitted consent-purpose insert guards; the preservation
-test compares every existing table and field after applying the genuine prior
-migrations. Production remains at migration 44 until this change is deployed.
-Mobile schema stays 14, and the installed iOS build is unaffected.
+Apply `0045_google_gmail_consent.sql` and `0046_google_gmail_downloads.sql` in
+order before deploying this source. Migration 45 permits the dedicated consent
+purpose. Migration 46 adds empty operational cache tables and privacy guards;
+it preserves prior tables, fields and provider grants. Readiness requires 46.
+Production remains at migration 44, and mobile schema stays 14.
 
 Open `/connections/google/gmail` in the signed-in owner's cloud workspace. Consent
 requests only `openid`, `email`, `profile` and `gmail.metadata`, with offline access,
@@ -51,6 +55,43 @@ results. Disconnect or a changed grant suppresses in-flight private results;
 provider permission loss requires reconnection. A new preview requires the
 current epoch and authorization revision.
 
+## Review choices and download metadata
+
+Select 1–20 labels from the explicit mailbox preview, add up to twenty own aliases,
+choose 1–90 past days and a 100–10,000 message scan limit. Subjects start disabled
+and require a separate checkbox. The primary mailbox is always excluded from
+participants; aliases keep their dots and plus tags. Save validates the current
+provider labels and the opening owner/epoch/authorization/settings revisions.
+An identical save is idempotent. Changed choices require confirmation and purge
+the private cache and unfinished runs; canonical people, notes and interactions
+remain untouched. The existing-people/review-inbox preference is saved for the
+forthcoming matching/context layer; it does not filter this owner's raw source review.
+
+Start a full metadata scan explicitly, then choose **Continue download**. Each
+action advances at most ten persisted steps; leaving stops additional requests.
+Reload reads the saved run rather than automatically reading Gmail. Uncertain
+starts retry the same operation/body; completed/cancelled requests remain
+idempotent. After a complete full scan, **Refresh changes** uses the exact saved
+history checkpoint. Expired history asks for a new reviewed full scan and retains
+the previous cache. [Google synchronization guidance](https://developers.google.com/workspace/gmail/api/guides/sync).
+
+Each step uses an expiring lease and rechecks the owner, workspace, epoch, grant,
+settings, base generation and run revision after provider reads. Page-token cycles,
+oversized history, malformed input and downloads older than an hour cannot publish.
+Retries honor a bounded provider delay. New arrivals during a scan are reread before
+the checkpoint advances. A complete publication swaps the generation and checkpoint
+in one D1 transaction; a failed publication can retry its durable step. A late cancel
+cannot erase a completed cache. Reauthorization, disconnect, changed settings,
+owner loss or recovery purges private projections and fences late replies.
+
+**Show downloaded metadata** reads the published cache only. Pages contain up to
+50 messages, are pinned to a generation, and use a date/message cursor; a replaced
+generation requires a fresh first page. The UI checks authorization again before
+displaying a reply and discards displayed metadata on reload. No labels, messages
+or aliases are written to browser storage. The scheduled privacy job expires old
+messages and abandoned staging without making provider reads. Raw Gmail caches
+are excluded from portable/cloud CRM recovery snapshots.
+
 ## Provider boundary
 
 `lib/cloud/google-gmail.ts` uses only authenticated GET requests against the fixed
@@ -68,10 +109,21 @@ limit cannot be reported as complete coverage of that window.
 
 Message reads request `format=metadata` and an explicit header allowlist. Returned
 bodies, snippets, parts, attachments and unrequested headers are discarded. Subject
-headers are requested/returned only when the caller explicitly opts in; a future
-settings/storage decision must remain default-off. Transport headers are temporary
+headers are requested/returned only with the saved default-off subject choice.
+Transport headers are temporary
 input for participant parsing, not a canonical stored activity record.
 [Metadata reads](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/get).
+
+The bounded participant parser accepts explicit address lists, quoted display
+names, comments and groups. Unsupported quoted local parts, domain literals,
+malformed dot atoms or structural ambiguity are marked incomplete; addresses are
+never guessed into contact matches. It retains one message with distinct participant
+roles, removes own aliases and filters bulk/automated traffic when headers provide
+that evidence. Incoming/outgoing direction needs a complete, unambiguous sender
+and appropriate recipient/Sent evidence; other messages remain uncertain. Stored
+facts contain no raw headers, display names, bodies, snippets or attachments.
+Nested SQL guards reject private extra fields, duplicate participants/roles, own
+addresses and subjects without consent.
 
 History reads retain added/deleted messages and label changes, with uint64 IDs
 kept as exact strings. Generic duplicate message projections are omitted. History
@@ -84,10 +136,9 @@ permission failures, malformed data and bounded retry delays remain distinct.
 ## Remaining complete integration
 
 1. Configure the dedicated clients/vault in an isolated pilot environment and validate actual consent, expiry, reconnection and Google's project-wide revocation behavior.
-2. Persist explicit labels, account aliases, existing-people/review-inbox mode, bounded history/scan limits and default-off subject retention. Show filtering and incomplete-coverage limits before connecting.
-3. Stage full/incremental metadata with durable page leases/checkpoints, atomic publication, restore/account fences and bounded repair. Preserve old context during interrupted or invalid reads.
-4. Parse participants, remove self aliases and classify bulk/automated traffic from evidence. Keep one source message with multiple participants, stable provider IDs and explicitly reviewed contact matches. Creating a person later reruns matching over the retained authorized window.
-5. Deliver web/iPhone context and reviewed activity behavior without silently creating people, claiming a sent reply or changing private relationship notes. Complete disconnect/retention, recurring refresh and real-account tests.
+2. Match retained participants to current contact methods with explicit ambiguity/exclusion review, respecting the saved existing-people/review-inbox mode. Creating or editing a person must rerun matching over the authorized retained window.
+3. Deliver separate web/iPhone correspondence context and reviewed activity behavior, preserving private relationship notes and one underlying message identity across participants/accounts.
+4. Add consented recurring download jobs with bounded delivery/recovery, then validate real-account renewal, history repair, privacy retention and disconnect behavior.
 
 The metadata scope is restricted. Public server-backed use requires the applicable
 Google verification/security process; a personal-pilot exception does not establish

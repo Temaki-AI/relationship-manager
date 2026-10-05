@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getResponseErrorMessage } from '@/lib/utils';
 import type { GmailConnectionReview } from '@/lib/cloud/google-gmail-connection';
+import { GoogleGmailDownloads } from './google-gmail-downloads';
 
 type Preview = { email: string; labels: Array<{ id: string; name: string; type: 'system' | 'user' }> };
 export function GoogleGmailMailbox({ connectionId }: { connectionId: string }) {
@@ -14,6 +15,7 @@ function Mailbox({ connectionId }: { connectionId: string }) {
   const [data, setData] = useState<GmailConnectionReview | null>(null), [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null), [loading, setLoading] = useState(true), [pending, setPending] = useState(false);
   const [search, setSearch] = useState(''), [limit, setLimit] = useState(50);
+  const [selectedLabels, setSelectedLabels] = useState<string[]>([]), [downloadPending, setDownloadPending] = useState(false);
   const alive = useRef(false), sequence = useRef(0), busy = useRef(false);
   const read = useCallback(async () => {
     const response = await fetch('/api/connections/' + connectionId + '/gmail', { cache: 'no-store' });
@@ -31,8 +33,17 @@ function Mailbox({ connectionId }: { connectionId: string }) {
     } finally { if (alive.current && sequence.current === request) setLoading(false); }
   }, [read]);
   useEffect(() => { alive.current = true; void refresh(); return () => { alive.current = false; }; }, [refresh]);
+  const savedLabels = JSON.stringify(data?.can_preview ? data.source?.choices.label_ids ?? [] : []);
+  useEffect(() => { setSelectedLabels(JSON.parse(savedLabels)); }, [savedLabels, data?.epoch, data?.connection.authorization_revision]);
+  const updateReview = useCallback((fresh: GmailConnectionReview) => {
+    setData((previous) => {
+      if (!fresh.can_preview || fresh.epoch !== previous?.epoch || fresh.connection.authorization_revision !== previous?.connection.authorization_revision) setPreview(null);
+      return fresh;
+    });
+  }, []);
+  const unavailable = useCallback(() => { setData(null); setPreview(null); setError('The Gmail account could not be verified. Refresh it before continuing.'); }, []);
   async function loadLabels() {
-    if (!data?.can_preview || busy.current) return;
+    if (!data?.can_preview || busy.current || downloadPending) return;
     busy.current = true; const request = ++sequence.current, opening = data;
     setPending(true); setError(null); setPreview(null);
     try {
@@ -69,8 +80,8 @@ function Mailbox({ connectionId }: { connectionId: string }) {
         {!data.can_preview && <p className="mt-3 text-sm">This connection needs review, reconnection or completion of workspace recovery before a new preview.</p>}
       </div>}
       <div className="flex flex-wrap gap-3">
-        <Button className="min-h-11" disabled={!data?.can_preview || pending} onClick={() => void loadLabels()}>{pending ? 'Reading mailbox labels…' : 'Preview mailbox labels'}</Button>
-        <Button className="min-h-11" variant="outline" disabled={pending} onClick={() => void refresh()}>Refresh account</Button>
+        <Button className="min-h-11" disabled={!data?.can_preview || pending || downloadPending} onClick={() => void loadLabels()}>{pending ? 'Reading mailbox labels…' : 'Preview mailbox labels'}</Button>
+        <Button className="min-h-11" variant="outline" disabled={pending || downloadPending} onClick={() => void refresh()}>Refresh account</Button>
       </div>
     </>}
     {preview && <section aria-labelledby="gmail-labels-heading" className="space-y-3">
@@ -80,8 +91,13 @@ function Mailbox({ connectionId }: { connectionId: string }) {
         <Input id="gmail-label-search" value={search} maxLength={200} onChange={(event) => { setSearch(event.target.value); setLimit(50); }} /></div>
       {labels.length === 0 ? <p>No matching labels.</p> : <ul className="space-y-2">{labels.slice(0, limit).map((label) => <li key={label.id} className="min-w-0 rounded-lg border p-3">
         <p className="break-words font-medium">{label.name}</p><p className="text-sm text-muted-foreground">{label.type === 'system' ? 'Gmail label' : 'Your label'}</p>
+        {!['SPAM', 'TRASH', 'DRAFT'].includes(label.id) && <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" aria-label={'Use label ' + label.name} checked={selectedLabels.includes(label.id)}
+          disabled={pending || downloadPending || !selectedLabels.includes(label.id) && selectedLabels.length >= 20}
+          onChange={(event) => setSelectedLabels((ids) => event.target.checked ? [...ids, label.id] : ids.filter((id) => id !== label.id))} />Use for metadata downloads</label>}
       </li>)}</ul>}
       {labels.length > limit && <Button className="min-h-11" variant="outline" onClick={() => setLimit(limit + 50)}>Show more labels</Button>}
     </section>}
+    {data?.can_preview && <GoogleGmailDownloads key={data.epoch + ':' + data.connection.authorization_revision} review={data} labelIds={selectedLabels}
+      setLabelIds={setSelectedLabels} onReview={updateReview} onPending={setDownloadPending} labelPreviewPending={pending} onUnavailable={unavailable} />}
   </div>;
 }

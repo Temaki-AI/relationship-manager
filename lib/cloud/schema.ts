@@ -392,6 +392,41 @@ export const providerEventPages = sqliteTable('provider_event_pages', {
   tokenHash: text('token_hash').notNull(),
 }, (table) => [primaryKey({ columns: [table.runId, table.tokenHash] })]);
 
+// Gmail checkpoints and projections are a consented operational source cache.
+// Canonical people, notes and confirmed activities are stored separately.
+export const providerGmailResources = sqliteTable('provider_gmail_resources', {
+  connectionId: text('connection_id').primaryKey().references(() => providerConnections.id, { onDelete: 'cascade' }),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  datasetEpoch: text('dataset_epoch').notNull(), authorizationRevision: integer('authorization_revision').notNull(),
+  settingsRevision: integer('settings_revision').notNull().default(1), choices: text('choices').notNull(), activeGeneration: text('active_generation'),
+  checkpoint: text('checkpoint'), coverage: text('coverage').notNull().default('none'), windowStart: integer('window_start'), windowEnd: integer('window_end'), lastDownloadedAt: text('last_downloaded_at'),
+});
+export const providerGmailRuns = sqliteTable('provider_gmail_runs', {
+  id: text('id').primaryKey(), connectionId: text('connection_id').notNull().references(() => providerGmailResources.connectionId, { onDelete: 'cascade' }),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  datasetEpoch: text('dataset_epoch').notNull(), authorizationRevision: integer('authorization_revision').notNull(), settingsRevision: integer('settings_revision').notNull(),
+  fingerprint: text('fingerprint').notNull(), generation: text('generation').notNull(), baseGeneration: text('base_generation'), mode: text('mode').notNull(),
+  phase: text('phase').notNull().default('profile'), windowStart: integer('window_start').notNull(), windowEnd: integer('window_end').notNull(),
+  historyStart: text('history_start'), historyCheckpoint: text('history_checkpoint'), labelPosition: integer('label_position').notNull().default(0), nextPage: text('next_page'),
+  pages: integer('pages').notNull().default(0), processed: integer('processed').notNull().default(0), limited: integer('limited').notNull().default(0),
+  status: text('status').notNull().default('active'), revision: integer('revision').notNull().default(1), leaseToken: text('lease_token'), leaseUntil: integer('lease_until'),
+  failures: integer('failures').notNull().default(0), retryAt: integer('retry_at').notNull().default(0), issue: text('issue'), createdAt: text('created_at').notNull(), updatedAt: text('updated_at').notNull(),
+}, (table) => [uniqueIndex('provider_gmail_one_active_run').on(table.connectionId).where(sql`${table.status} = 'active'`),
+  uniqueIndex('provider_gmail_run_generation').on(table.connectionId, table.generation), index('provider_gmail_runs_owner').on(table.workspaceId, table.userId, table.connectionId, table.createdAt)]);
+export const providerGmailPending = sqliteTable('provider_gmail_pending', {
+  runId: text('run_id').notNull().references(() => providerGmailRuns.id, { onDelete: 'cascade' }), messageId: text('message_id').notNull(), phase: text('phase').notNull(), done: integer('done').notNull().default(0),
+}, (table) => [primaryKey({ columns: [table.runId, table.phase, table.messageId] })]);
+export const providerGmailIndex = sqliteTable('provider_gmail_index', {
+  connectionId: text('connection_id').notNull(), generation: text('generation').notNull(), messageId: text('message_id').notNull(), receivedAt: integer('received_at').notNull(), observedAt: integer('observed_at').notNull(), facts: text('facts').notNull(),
+}, (table) => [primaryKey({ columns: [table.connectionId, table.generation, table.messageId] }),
+  foreignKey({ columns: [table.connectionId, table.generation], foreignColumns: [providerGmailRuns.connectionId, providerGmailRuns.generation] }).onDelete('cascade'),
+  index('provider_gmail_index_date').on(table.connectionId, table.generation, table.receivedAt, table.messageId)]);
+export const providerGmailPages = sqliteTable('provider_gmail_pages', {
+  runId: text('run_id').notNull().references(() => providerGmailRuns.id, { onDelete: 'cascade' }), phase: text('phase').notNull(), tokenHash: text('token_hash').notNull(),
+}, (table) => [primaryKey({ columns: [table.runId, table.phase, table.tokenHash] })]);
+
 // An outbound calendar create has no provider idempotency key. Keep its frozen
 // request and attempted marker across reauthorization/recovery for read-only repair.
 export const providerOwnedCalendars = sqliteTable('provider_owned_calendars', {
@@ -1048,6 +1083,11 @@ export const schema = {
   providerEventRuns,
   providerEventIndex,
   providerEventPages,
+  providerGmailResources,
+  providerGmailRuns,
+  providerGmailPending,
+  providerGmailIndex,
+  providerGmailPages,
   providerOwnedCalendars,
   providerContactResources,
   providerContactRuns,

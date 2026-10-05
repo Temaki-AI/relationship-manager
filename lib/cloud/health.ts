@@ -1,6 +1,6 @@
 import type { D1Database } from '@cloudflare/workers-types';
 
-export const CLOUD_READINESS_MIGRATION = '0045_google_gmail_consent.sql';
+export const CLOUD_READINESS_MIGRATION = '0046_google_gmail_downloads.sql';
 
 export async function getCloudReadinessReport(
   db: Pick<D1Database, 'prepare'>,
