@@ -11,7 +11,15 @@ Native TypeScript, lint, five native package tests and the production iOS/Hermes
 export pass. Six focused startup tests cover retry, account-switch races, locked
 identity storage, newer schemas, ownership failures and preservation of saved
 contacts/outbox entries. Root TypeScript and lint for the changed tests pass.
-The full iOS behavior suite and fresh device/simulator builds are in progress.
+All 152 iOS behavior tests pass, as do the nine targeted Gmail consent/D1 tests
+after repairing their row comparison to exclude query timing. The production
+service is healthy and unauthenticated version-4 phone sync returns 401.
+
+The first fresh simulator job timed out in Apple's `simctl create` after 60 seconds,
+before compilation or application launch. Preparation now allows 180 seconds for
+that cold start inside a five-minute setup step. It still uses a fresh isolated
+GitHub runner, with no access to the shared local Simulator. Device compilation
+and the simulator retry remain in progress.
 
 Build 3 remains the installed release until build 4 passes native linkage and
 isolated first-launch verification and is signed with the existing local profile.

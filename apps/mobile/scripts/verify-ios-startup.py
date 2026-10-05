@@ -43,7 +43,7 @@ def main():
     if args.mode == 'prepare':
         device = command('Create isolated Everclose smoke device', ['xcrun', 'simctl', 'create',
             'Everclose-smoke', 'com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro',
-            'com.apple.CoreSimulator.SimRuntime.iOS-26-4'], 60, True).stdout.strip()
+            'com.apple.CoreSimulator.SimRuntime.iOS-26-4'], 180, True).stdout.strip()
         if not re.fullmatch(UUID_PATTERN, device):
             raise RuntimeError('Apple did not return a simulator identity.')
         command('Start first-boot migration before compilation', ['xcrun', 'simctl', 'boot', device], 60, True)
