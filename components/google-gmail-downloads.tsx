@@ -158,7 +158,7 @@ export function GoogleGmailDownloads({ review, labelIds, setLabelIds, onReview, 
       <Button className="h-auto min-h-11 whitespace-normal" disabled={pending} onClick={reviewChoices}>Save download choices</Button>
     </fieldset>
     {confirmation && <div className="space-y-3 rounded-lg border p-3" role="group" aria-label="Confirm changed Gmail choices">
-      <p>Changing these choices removes the saved Gmail metadata and any unfinished download. Your people, notes and confirmed interactions stay intact. A new full scan will be required.</p>
+      <p>Changing these choices removes the saved Gmail metadata, reviewed correspondence choices and any unfinished download. Your people, notes and confirmed interactions stay intact. A new full scan will be required.</p>
       <p className="break-words text-sm">{confirmation.label_ids.join(', ')} · {confirmation.past_days} days · up to {confirmation.scan_limit} messages · subjects {confirmation.retain_subject ? 'retained' : 'excluded'}.</p>
       <div className="flex flex-wrap gap-2"><Button className="h-auto min-h-11 whitespace-normal" disabled={pending} onClick={() => save(confirmation)}>Replace download choices</Button><Button className="min-h-11" variant="outline" disabled={pending} onClick={() => setConfirmation(null)}>Keep current choices</Button></div>
     </div>}
@@ -170,12 +170,12 @@ export function GoogleGmailDownloads({ review, labelIds, setLabelIds, onReview, 
       {current && current.retry_at > Date.now() && <p className="text-sm">Retry after {new Date(current.retry_at).toLocaleTimeString()}.</p>}
       {dirty && <p className="text-sm">Save or revert the changed choices before starting another download.</p>}
       <div className="flex flex-wrap gap-2">
-        {active ? <><Button className="min-h-11" disabled={pending || current.retry_at > Date.now()} onClick={advance}>{pending ? 'Downloading…' : 'Continue download'}</Button>
-          <Button className="min-h-11" variant="outline" disabled={pending} onClick={() => void run(async () => { await request('/downloads/' + current.id, 'DELETE', {}); return () => {}; })}>Cancel download</Button></> : <>
+        {active ? <><Button className="min-h-11" disabled={pending || labelPreviewPending || current.retry_at > Date.now()} onClick={advance}>{pending ? 'Downloading…' : 'Continue download'}</Button>
+          <Button className="min-h-11" variant="outline" disabled={pending || labelPreviewPending} onClick={() => void run(async () => { await request('/downloads/' + current.id, 'DELETE', {}); return () => {}; })}>Cancel download</Button></> : <>
           <Button className="h-auto min-h-11 whitespace-normal" disabled={pending || confirmation !== null || labelPreviewPending || dirty && !starting} onClick={() => start('full')}>{starting ? 'Retry starting download' : 'Start full metadata scan'}</Button>
           <Button className="min-h-11" variant="outline" disabled={disabled || dirty || starting || !source.generation} onClick={() => start('incremental')}>Refresh changes</Button>
         </>}
-        <Button className="min-h-11" variant="outline" disabled={pending || !source.generation} onClick={() => messages()}>Show downloaded metadata</Button>
+        <Button className="min-h-11" variant="outline" disabled={pending || labelPreviewPending || !source.generation} onClick={() => messages()}>Show downloaded metadata</Button>
       </div>
     </div>}
     {page && <section aria-labelledby="gmail-message-review-heading" className="space-y-3 border-t pt-4">

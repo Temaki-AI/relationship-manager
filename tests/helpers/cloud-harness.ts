@@ -237,6 +237,8 @@ export async function createCloudHarness() {
     googleGmail: load(path.join(root, 'lib/cloud/google-gmail.ts')) as typeof import('../../lib/cloud/google-gmail'),
     gmailConnection: load(path.join(root, 'lib/cloud/google-gmail-connection.ts')) as typeof import('../../lib/cloud/google-gmail-connection'),
     gmailDownloads: load(path.join(root, 'lib/cloud/google-gmail-downloads.ts')) as typeof import('../../lib/cloud/google-gmail-downloads'),
+    gmailDirectory: load(path.join(root, 'lib/cloud/gmail-contact-directory.ts')) as typeof import('../../lib/cloud/gmail-contact-directory'),
+    gmailMatching: load(path.join(root, 'lib/cloud/google-gmail-matching.ts')) as typeof import('../../lib/cloud/google-gmail-matching'),
     googleEvents: load(path.join(root, 'lib/cloud/google-calendar-events.ts')) as typeof import('../../lib/cloud/google-calendar-events'),
     eventDownloads: load(path.join(root, 'lib/cloud/google-event-downloads.ts')) as typeof import('../../lib/cloud/google-event-downloads'),
     eventJobs: load(path.join(root, 'lib/cloud/google-event-jobs.ts')) as typeof import('../../lib/cloud/google-event-jobs'),

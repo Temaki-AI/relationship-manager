@@ -427,6 +427,35 @@ export const providerGmailPages = sqliteTable('provider_gmail_pages', {
   runId: text('run_id').notNull().references(() => providerGmailRuns.id, { onDelete: 'cascade' }), phase: text('phase').notNull(), tokenHash: text('token_hash').notNull(),
 }, (table) => [primaryKey({ columns: [table.runId, table.phase, table.tokenHash] })]);
 
+export const gmailContactDirectory = sqliteTable('gmail_contact_directory', {
+  workspaceId: text('workspace_id').primaryKey().references(() => workspaces.id, { onDelete: 'cascade' }),
+  revision: integer('revision').notNull().default(0), cursorId: integer('cursor_id').notNull().default(0),
+  bootstrapped: integer('bootstrapped').notNull().default(0), progressRevision: integer('progress_revision').notNull().default(0),
+});
+export const gmailContactDirectoryPending = sqliteTable('gmail_contact_directory_pending', {
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }), contactPublicId: text('contact_public_id').notNull(),
+}, (table) => [primaryKey({ columns: [table.workspaceId, table.contactPublicId] })]);
+export const gmailContactDirectoryEntries = sqliteTable('gmail_contact_directory_entries', {
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }), email: text('email').notNull(), contactPublicId: text('contact_public_id').notNull(),
+}, (table) => [primaryKey({ columns: [table.workspaceId, table.email, table.contactPublicId] }), index('gmail_contact_directory_person').on(table.workspaceId, table.contactPublicId)]);
+export const providerGmailParticipants = sqliteTable('provider_gmail_participants', {
+  connectionId: text('connection_id').notNull(), generation: text('generation').notNull(), messageId: text('message_id').notNull(),
+  email: text('email').notNull(), roles: text('roles').notNull(), receivedAt: integer('received_at').notNull(),
+}, (table) => [primaryKey({ columns: [table.connectionId, table.generation, table.messageId, table.email] }),
+  foreignKey({ columns: [table.connectionId, table.generation, table.messageId], foreignColumns: [providerGmailIndex.connectionId, providerGmailIndex.generation, providerGmailIndex.messageId] }).onDelete('cascade'),
+  index('provider_gmail_participants_email').on(table.connectionId, table.generation, table.email, table.receivedAt, table.messageId)]);
+export const providerGmailMatching = sqliteTable('provider_gmail_matching', {
+  connectionId: text('connection_id').primaryKey().references(() => providerGmailResources.connectionId, { onDelete: 'cascade' }), revision: integer('revision').notNull().default(0),
+});
+export const providerGmailMatchRules = sqliteTable('provider_gmail_match_rules', {
+  connectionId: text('connection_id').notNull().references(() => providerGmailMatching.connectionId, { onDelete: 'cascade' }), email: text('email').notNull(),
+  action: text('action').notNull(), targetPublicId: text('target_public_id'), candidateBasis: text('candidate_basis').notNull(),
+}, (table) => [primaryKey({ columns: [table.connectionId, table.email] }), index('provider_gmail_match_rules_person').on(table.connectionId, table.targetPublicId, table.email)]);
+export const providerGmailMatchReceipts = sqliteTable('provider_gmail_match_receipts', {
+  connectionId: text('connection_id').notNull().references(() => providerGmailMatching.connectionId, { onDelete: 'cascade' }), operationId: text('operation_id').notNull(),
+  fingerprint: text('fingerprint').notNull(), revision: integer('revision').notNull(), action: text('action').notNull(), email: text('email').notNull(), targetPublicId: text('target_public_id'),
+}, (table) => [primaryKey({ columns: [table.connectionId, table.operationId] })]);
+
 // An outbound calendar create has no provider idempotency key. Keep its frozen
 // request and attempted marker across reauthorization/recovery for read-only repair.
 export const providerOwnedCalendars = sqliteTable('provider_owned_calendars', {
@@ -1088,6 +1117,13 @@ export const schema = {
   providerGmailPending,
   providerGmailIndex,
   providerGmailPages,
+  gmailContactDirectory,
+  gmailContactDirectoryPending,
+  gmailContactDirectoryEntries,
+  providerGmailParticipants,
+  providerGmailMatching,
+  providerGmailMatchRules,
+  providerGmailMatchReceipts,
   providerOwnedCalendars,
   providerContactResources,
   providerContactRuns,

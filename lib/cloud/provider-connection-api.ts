@@ -19,6 +19,7 @@ import { reviewPlanPublication, preparePlanPublication, advancePlanPublication, 
 import { previewGmailMailbox, reviewGmailConnection } from './google-gmail-connection';
 import { advanceGmailDownload, cancelGmailDownload, reviewGmailMessages, saveGmailChoices, startGmailDownload } from './google-gmail-downloads';
 import { GmailChoicesError } from '@/packages/domain/src/gmail';
+import { decideGmailMatch, prepareGmailMatching, reviewGmailMatches, reviewGmailPersonContext } from './google-gmail-matching';
 
 async function objectBody(request: Request, maximumBytes = 4096) {
   const body = await readJsonBody(request, { maximumBytes });
@@ -39,10 +40,14 @@ export async function handleProviderConnections(request: Request, actor: Connect
     if (path.length >= 4 && path[2] === 'gmail') {
       const url = new URL(request.url);
       if (path.length === 4 && path[3] === 'messages' && request.method === 'GET') return Response.json(await reviewGmailMessages(env.DB, actor, path[1], url.searchParams), { headers: { 'Cache-Control': 'no-store' } });
+      if (path.length === 4 && path[3] === 'matches' && request.method === 'GET') return Response.json(await reviewGmailMatches(env.DB, actor, path[1], url.searchParams), { headers: { 'Cache-Control': 'no-store' } });
+      if (path.length === 5 && path[3] === 'people' && request.method === 'GET') return Response.json(await reviewGmailPersonContext(env.DB, actor, path[1], path[4], url.searchParams), { headers: { 'Cache-Control': 'no-store' } });
       if (url.search) throw new ProviderConnectionError('Use the current Gmail download without query parameters.', 400);
       if (request.headers.get('origin') !== new URL(environment.BETTER_AUTH_URL || '').origin) throw new ProviderConnectionError('Manage Gmail from this Everclose app.', 403);
       const body = await objectBody(request, 16384);
-      const result = path.length === 4 && path[3] === 'settings' && request.method === 'PATCH' ? await saveGmailChoices(env.DB, actor, environment, path[1], body)
+      const result = path.length === 4 && path[3] === 'matches' && request.method === 'POST' ? await decideGmailMatch(env.DB, actor, path[1], body)
+        : path.length === 5 && path[3] === 'matches' && path[4] === 'directory' && request.method === 'POST' && Object.keys(body).length === 0 ? await prepareGmailMatching(env.DB, actor, path[1])
+        : path.length === 4 && path[3] === 'settings' && request.method === 'PATCH' ? await saveGmailChoices(env.DB, actor, environment, path[1], body)
         : path.length === 4 && path[3] === 'downloads' && request.method === 'POST' ? await startGmailDownload(env.DB, actor, environment, path[1], body)
           : path.length === 6 && path[3] === 'downloads' && path[5] === 'step' && request.method === 'POST' && Object.keys(body).length === 0 ? await advanceGmailDownload(env.DB, actor, environment, path[1], path[4])
             : path.length === 5 && path[3] === 'downloads' && request.method === 'DELETE' && Object.keys(body).length === 0 ? await cancelGmailDownload(env.DB, actor, path[1], path[4]) : null;

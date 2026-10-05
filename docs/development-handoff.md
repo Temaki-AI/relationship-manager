@@ -14,7 +14,7 @@ Everclose's personal web release is deployed at everclosecrm.com. Personal iOS b
 The photo API is deployed in Worker `f300697b-8aa5-46c8-b556-fc00144725d4`.
 Readiness is healthy; an unauthenticated photo POST returns 401. No photo schema
 migration is introduced: mobile remains schema 14, production remains migration 44
-and local cloud development now has migration 46.
+and local cloud development now has migration 47.
 
 ## Verification
 
@@ -57,8 +57,8 @@ complete the integrated personal beta or public release.
 
 The saved Gmail stash `3473e7443855718e3aaee489d4ce1aa739add78e` has been restored
 and extended into the current download implementation; do not apply it again to
-this checkout. It remains as a historical backup. Migration 46 is applied to local
-D1 only. No Gmail download or migration 45/46 is deployed to production. Mobile
+this checkout. It remains as a historical backup. Migration 47 is applied to local
+D1 only. No Gmail download/matching or migration 45–47 is deployed to production. Mobile
 dependencies are present; the signed phone binary remains its separately verified
 build-4 source.
 
@@ -87,14 +87,16 @@ limits. Both patched-dependency native Release builds and isolated first launch
 also pass in [run 37267403749](https://github.com/Temaki-AI/relationship-manager/actions/runs/37267403749).
 The installed build 3 retains its separately recorded source and signing evidence.
 
-The [Gmail metadata implementation](gmail.md) now includes reviewed labels/aliases,
-default-off subjects, bounded retention, durable full/incremental downloads,
-atomic publication and generation-pinned cached review. All 839 root tests,
-TypeScript/lint, standalone/Cloudflare builds and 12 desktop/mobile Gmail browser
-journeys pass. The 24 consent/download/migration checks cover 22 disposable real-D1
-journeys and two prior-data SQLite preservation tests. Download UI accessibility,
-viewport and rendered mobile review pass. The next engineering work is current and
-later-created contact matching, separate web/native correspondence context and
-consented recurring jobs. Real clients/vault and a controlled mailbox pilot remain
-required. Readiness requires migrations 45 and 46 before any future source deploy;
-live production still has migration 44, local D1 has 46, and mobile remains schema 14.
+The [Gmail implementation](gmail.md) now includes reviewed labels/aliases, default-off
+subjects, bounded retention, durable full/incremental downloads, atomic publication,
+reviewed matching and per-person web metadata context. Existing/later-created
+contacts match exact retained email methods without another provider read. Shared
+addresses, exclusions, changed identities, merges and exact review retries are
+covered. All 853 root tests and 20 desktop/mobile Gmail browser journeys pass, with
+TypeScript/lint and standalone/Cloudflare builds. The 38 focused checks include
+34 disposable D1 tests, three prior-data SQLite migration checks and pure matching
+rules. Mobile rendering, WCAG and viewport checks pass. General profile/native
+correspondence, cross-account/activity review and consented recurring jobs remain
+engineering work. Real clients/vault and a controlled mailbox pilot remain required.
+Readiness requires migrations 45–47 before any source deploy; production was last
+verified at migration 44, local D1 has 47, and mobile remains schema 14.

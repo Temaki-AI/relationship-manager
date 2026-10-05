@@ -42,6 +42,8 @@ function owner(c: Access, actor: ConnectionActor) {
       AND w.lifecycle = 'active' AND m.role = 'owner' AND (c.refresh_expires_at IS NULL OR c.refresh_expires_at > ?))`,
   values: [c.id, actor.workspaceId, actor.userId, c.dataset_epoch, c.authorization_revision, Date.now()] };
 }
+// Matching shares the same owner/grant boundary without requesting provider data.
+export { access as gmailSourceAccess, owner as gmailSourceOwner };
 export async function reviewGmailSource(db: DB, actor: ConnectionActor, id: string): Promise<GmailSourceReview | null> {
   const c = await access(db, actor, id), r = await resource(db, id);
   if (!r) return null;
@@ -262,5 +264,18 @@ export async function pruneGmailCache(db: DB, now = Date.now()) {
     db.prepare("DELETE FROM provider_gmail_pages WHERE run_id IN(SELECT id FROM provider_gmail_runs WHERE status = 'failed' AND issue = 'download_expired')"),
     db.prepare(`DELETE FROM provider_gmail_runs WHERE status != 'active' AND updated_at < ? AND NOT EXISTS(SELECT 1 FROM provider_gmail_resources r
       WHERE r.connection_id = provider_gmail_runs.connection_id AND r.active_generation = provider_gmail_runs.generation)`).bind(new Date(now - 7 * 86400000).toISOString()),
+    db.prepare(`UPDATE provider_gmail_matching SET revision=revision+1 WHERE
+      EXISTS(SELECT 1 FROM provider_gmail_match_rules rule WHERE rule.connection_id=provider_gmail_matching.connection_id
+        AND NOT EXISTS(SELECT 1 FROM provider_gmail_participants p JOIN provider_gmail_resources r ON r.connection_id=p.connection_id
+          WHERE p.connection_id=rule.connection_id AND p.generation=r.active_generation AND p.email=rule.email))
+      OR EXISTS(SELECT 1 FROM provider_gmail_match_receipts receipt WHERE receipt.connection_id=provider_gmail_matching.connection_id
+        AND NOT EXISTS(SELECT 1 FROM provider_gmail_participants p JOIN provider_gmail_resources r ON r.connection_id=p.connection_id
+          WHERE p.connection_id=receipt.connection_id AND p.generation=r.active_generation AND p.email=receipt.email))`),
+    db.prepare(`DELETE FROM provider_gmail_match_rules WHERE NOT EXISTS(SELECT 1 FROM provider_gmail_participants p
+      JOIN provider_gmail_resources r ON r.connection_id=p.connection_id WHERE p.connection_id=provider_gmail_match_rules.connection_id
+        AND p.generation=r.active_generation AND p.email=provider_gmail_match_rules.email)`),
+    db.prepare(`DELETE FROM provider_gmail_match_receipts WHERE NOT EXISTS(SELECT 1 FROM provider_gmail_participants p
+      JOIN provider_gmail_resources r ON r.connection_id=p.connection_id WHERE p.connection_id=provider_gmail_match_receipts.connection_id
+        AND p.generation=r.active_generation AND p.email=provider_gmail_match_receipts.email)`),
   ]);
 }

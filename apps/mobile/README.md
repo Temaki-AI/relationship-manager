@@ -280,3 +280,13 @@ The compiled manifest includes the photo explanation and no camera/microphone
 usage keys. See the personal iOS release record for exact binary/hash evidence
 and remaining physical-device and TestFlight checks. The exact current package
 and source are recorded in [the build-4 release record](../../docs/personal-ios-build4.md).
+
+### Gmail integration status
+
+Gmail downloads and reviewed correspondence matching now have a tested cloud/web
+implementation, including existing and later-created people, shared addresses,
+exclusions and separate per-person metadata. Local D1 is at migration 47; these
+changes are not deployed to production or included in personal iOS build 4.
+Native offline Gmail transport/schema/cards, recurring jobs and the real-account
+pilot remain required. Keep frozen version-4 requests unchanged when adding the
+new transport. See [Gmail implementation](../../docs/gmail.md).
