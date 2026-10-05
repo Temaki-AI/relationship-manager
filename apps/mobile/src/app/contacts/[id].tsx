@@ -31,7 +31,7 @@ import { formatDateTime, formatRelativeDate } from '@/lib/format';
 import { fonts, palette } from '@/theme';
 import { useNativeSync } from '@/native/sync';
 import { useContactPhoto } from '@/native/contact-photo';
-import { readContactMethods, contactMethodHref } from '../../../../../packages/domain/src/contact-methods';
+import { readContactMethods, contactMethodHref, displayContactMethodLabel } from '../../../../../packages/domain/src/contact-methods';
 import { readContactSources, readSourceFacts, SOURCE_FIELD_LABELS } from '../../../../../packages/domain/src/contact-sources';
 import { readProviderSources, readProviderFacts } from '../../../../../packages/domain/src/provider-sources';
 
@@ -165,8 +165,8 @@ function ContactDetail({ id }: { id: string }) {
           </Surface>
         )}
         {readContactMethods(contact.contact_methods).filter((method) => !method.preferred || method.kind === 'profile').map((method) => <Pressable key={method.id} accessibilityRole="link"
-          accessibilityLabel={`Open ${method.label ?? method.kind}: ${method.value}`} onPress={() => { void Linking.openURL(contactMethodHref(method)).catch(() => Alert.alert('Unable to open this method', 'Check that an app is available for this link.')); }}>
-          <Surface style={styles.detailsCard}><DetailRow label={`${method.label ?? method.kind}${method.preferred ? ' · preferred' : ''}`} value={method.value} /></Surface>
+          accessibilityLabel={`Open ${displayContactMethodLabel(method.label) ?? method.kind}: ${method.value}`} onPress={() => { void Linking.openURL(contactMethodHref(method)).catch(() => Alert.alert('Unable to open this method', 'Check that an app is available for this link.')); }}>
+          <Surface style={styles.detailsCard}><DetailRow label={`${displayContactMethodLabel(method.label) ?? method.kind}${method.preferred ? ' · preferred' : ''}`} value={method.value} /></Surface>
         </Pressable>)}
         <DeviceSavedSources contactId={contact.id} />
         {readContactSources(contact.source_links).map((source) => <Surface key={source.public_id} style={styles.detailsCard}>
@@ -179,7 +179,7 @@ function ContactDetail({ id }: { id: string }) {
           <Eyebrow>Google Contacts · saved source</Eyebrow>
           <DetailRow label="Account" value={source.account_email} />
           {facts.name && <DetailRow label="Source name" value={facts.name} />}
-          {facts.emails.concat(facts.phones).map((method, index) => <DetailRow key={index} label={method.label || 'Contact method'} value={method.value} />)}
+          {facts.emails.concat(facts.phones).map((method, index) => <DetailRow key={index} label={displayContactMethodLabel(method.label) || 'Contact method'} value={method.value} />)}
           {facts.company && <DetailRow label="Company" value={facts.company} />}
           {facts.title && <DetailRow label="Title" value={facts.title} />}
           {facts.location && <DetailRow label="Location" value={facts.location} />}

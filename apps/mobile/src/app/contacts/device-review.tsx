@@ -8,7 +8,7 @@ import { PersonPicker } from '@/components/person-picker';
 import { deviceContactReview, deviceImportContactRevision, saveDeviceContactReview, unlinkDeviceContact } from '@/data/device-contacts';
 import { fonts, palette } from '@/theme';
 import { ProviderSourceError } from '../../../../../packages/domain/src/provider-sources';
-import { ContactMethodError } from '../../../../../packages/domain/src/contact-methods';
+import { ContactMethodError, displayContactMethodLabel } from '../../../../../packages/domain/src/contact-methods';
 import { useNativeAccount } from '@/native/account';
 type Review = Awaited<ReturnType<typeof deviceContactReview>>;
 export default function DeviceContactReviewScreen() {
@@ -83,7 +83,7 @@ export default function DeviceContactReviewScreen() {
           </Surface>
           <Surface><Text style={styles.heading}>Fields to use</Text>
             {review.target && review.facts.name && <Choice label={`Use the device name: ${review.facts.name}`} checked={useName} disabled={busy || !targetLoaded} onPress={() => setUseName(!useName)} />}
-            {(['emails', 'phones'] as const).map((kind) => <View key={kind} style={styles.fields}><Text style={styles.heading}>{kind === 'emails' ? 'Email addresses' : 'Phone numbers'}</Text>{review.facts[kind].map((method, index) => <Choice key={index} label={method.value + (method.label ? ` (${method.label})` : '')} checked={(kind === 'emails' ? emails : phones).includes(index)} disabled={busy} onPress={() => toggle(index, kind === 'emails' ? emails : phones, kind === 'emails' ? setEmails : setPhones)} />)}{!review.facts[kind].length && <Text style={styles.body}>None provided.</Text>}</View>)}
+            {(['emails', 'phones'] as const).map((kind) => <View key={kind} style={styles.fields}><Text style={styles.heading}>{kind === 'emails' ? 'Email addresses' : 'Phone numbers'}</Text>{review.facts[kind].map((method, index) => <Choice key={index} label={method.value + (method.label ? ` (${displayContactMethodLabel(method.label)})` : '')} checked={(kind === 'emails' ? emails : phones).includes(index)} disabled={busy} onPress={() => toggle(index, kind === 'emails' ? emails : phones, kind === 'emails' ? setEmails : setPhones)} />)}{!review.facts[kind].length && <Text style={styles.body}>None provided.</Text>}</View>)}
           </Surface>
           <Surface><Text style={styles.heading}>Saved source details</Text>
             {review.link?.shared ? <Text style={styles.body}>This source already syncs with your account. Unlink it explicitly to remove shared source details.</Text>

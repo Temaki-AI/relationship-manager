@@ -2,10 +2,22 @@
 
 Everclose's personal web release is deployed at everclosecrm.com. Personal iOS build 4 is signed and installed on TIE Fighter; the actual receipt and installed-app metadata confirm it. Both native Release binaries, linkage verification and isolated first launch with SQLite/Keychain initialization pass in [run 37278926485](https://github.com/Temaki-AI/relationship-manager/actions/runs/37278926485). Exact source, hash, installation evidence and remaining checks are in the [build-4 release record](personal-ios-build4.md). After the owner reported the phone unlocked again, a fresh launch at 10:56 UTC succeeded as process 9346 and a separate stability check passed. Owner confirmation of the UI and contacts remains pending.
 
-**Build 6 is running in a dedicated local iPhone simulator and is signed for the phone**, adding an optional device-wide
+**Build 7 is running in the dedicated Everclose Build 7 simulator and is signed for the phone.**
+The unmodified compiled release passes six separate native journeys: offline
+contacts/drafts/plans/reminders with restarts, first notification permission,
+visible delivery while closed, hosted-login navigation/cancellation, actual
+Contacts create/attach/unlink and denial with unchanged saved data. Both corrected
+native CI Release jobs and the complete offline gate pass in run 37353387558.
+The clean user-ready simulator has zero contacts; synthetic data stays on the
+separate, shut-down QA device. [The build-7 record](personal-ios-build7.md) preserves
+exact source, artifacts, checksums and open account/physical/release checks.
+The Contacts display issue found during QA has a follow-up source fix with
+separate validation; do not attribute it to the earlier compiled artifact.
+
+The preceding **build 6** added an optional device-wide
 Face ID/Touch ID/passcode gate to schema 15 and the default-off Gmail cache. Both
 native Release jobs and isolated SQLite/Keychain startup pass in run 37321546205.
-The current source passes 878 root tests, 398 D1 tests with 11 documented skips,
+That build-6 source passed 878 root tests, 398 D1 tests with 11 documented skips,
 17 native package checks and 157 native data/sync regressions. Source, checksum,
 first-launch screen and strict signature checks pass. The phone remains unreachable;
 macOS's USB inventory did not detect an iPhone. Reuse the exact package recorded

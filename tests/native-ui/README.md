@@ -90,6 +90,31 @@ native Select All and exact value checks rather than relying on Command-A, which
 did not reliably select the date field. The original CI run's failing input step
 remains recorded; a passing local harness does not change that CI conclusion.
 
+`DeviceContactsTests` uses the real iOS Contacts framework and system picker on a
+dedicated, synthetic-only QA simulator. Run `testReviewedCreateAttachRestartAndUnlink`
+first on a fresh Everclose local-only cache. The separate test host requires both
+`--contacts-fixture` and `EVERCLOSE_SYNTHETIC_CONTACTS_QA=1`, refuses physical devices,
+and creates or verifies only two exact synthetic records. Grant Contacts access to
+the helper only; Everclose must receive its permission through the actual OS UI.
+iOS 26 calls full access **Share All <count> Contacts**. The journey creates a
+person first and attaches a reviewed source, then creates another person from a
+different reviewed source. It waits for confirmed unlink before restarting.
+
+After the first journey, revoke Contacts permission for Everclose on that exact
+QA simulator and run `testDeniedContactsKeepsSavedRelationship` separately. Its
+helper uses `--verify-contacts-fixture` to check existing fields and labels without
+creating records, updating a receipt or requesting broader access. Compare the
+synthetic CRM tables before and after denial. Never seed, reset or retime an owner
+cache or use a physical address book. Limited-access behavior remains a separate
+check. A later `testSavedContactLabelsAreReadableWithoutRewritingOriginals` checks
+the display fix against the retained synthetic data; it needs the updated app.
+
+Automatic per-keystroke screenshots are disabled; explicit screenshots and
+accessibility hierarchies remain. Failed XCTest runs can still collect large OS
+diagnostics. Reserve enough disk space, keep the failure log/compact summary, and
+stop the failed runner before cleaning an incomplete generated result bundle.
+Passing results and release archives must remain available.
+
 Execution evidence and the remaining physical checks are recorded in the
 [build-6 release record](../../docs/personal-ios-build6.md) and
 [build-7 source/release record](../../docs/personal-ios-build7.md).

@@ -8,7 +8,7 @@ import { changeDevicePolicy, devicePolicyReview } from '@/data/device-contact-re
 import { runDeviceContactReads } from '@/native/device-contact-sync';
 import { useNativeSync } from '@/native/sync';
 import { fonts, palette } from '@/theme';
-import { readContactMethods } from '../../../../../packages/domain/src/contact-methods';
+import { readContactMethods, displayContactMethodLabel } from '../../../../../packages/domain/src/contact-methods';
 import { readDeviceContactFacts } from '../../../../../packages/domain/src/device-contact-facts';
 import { observeDeviceMethod } from '../../../../../packages/domain/src/device-contact-rules';
 import { ProviderSourceError } from '../../../../../packages/domain/src/provider-sources';
@@ -75,13 +75,13 @@ export default function DevicePolicyScreen() {
       </Surface>
       {review.fields.methods.map((rule) => { const method = methods.find((item) => item.id === rule.id), observation = observeDeviceMethod(rule, facts), index = slots[rule.id] ?? observation.index;
         const sourceSlots = rule.kind === 'email' ? facts.emails : facts.phones, sourceSlot = index === null ? null : sourceSlots[index];
-        return <Surface key={rule.id}><Text style={styles.heading}>{method?.label || rule.kind}</Text><Text style={styles.body}>Person: {method?.value || 'Removed from person'}</Text>
+        return <Surface key={rule.id}><Text style={styles.heading}>{displayContactMethodLabel(method?.label) || rule.kind}</Text><Text style={styles.body}>Person: {method?.value || 'Removed from person'}</Text>
           <Text style={styles.body}>iPhone: {sourceSlot?.value || 'Missing or ambiguous'}</Text>
           <Choice label={`Follow this ${rule.kind} from iPhone`} checked={(modes[rule.id] ?? rule.mode) === 'follow'} disabled={busy || !method || !sourceSlot} onPress={() => setModes((previous) => ({ ...previous, [rule.id]: previous[rule.id] === 'follow' ? 'keep' : 'follow' }))} />
           {(rule.overridden || method?.value !== rule.last_applied) && <Text style={styles.body}>Your correction is kept until you explicitly reset this value.</Text>}
           <Choice label="Use the displayed iPhone value now" checked={resets.includes(rule.id)} disabled={busy || !method || !sourceSlot} onPress={() => toggleReset(rule.id)} />
           {(observation.issue || slots[rule.id] !== undefined) && method && <View style={styles.slots}><Text style={styles.body}>Choose the exact iPhone field to review:</Text>
-            {sourceSlots.map((slot, slotIndex) => <Choice key={slotIndex} label={`${slot.label || rule.kind}: ${slot.value}`} checked={slots[rule.id] === slotIndex} disabled={busy} onPress={() => { setSlots((previous) => ({ ...previous, [rule.id]: slotIndex })); setResets((previous) => previous.includes(rule.id) ? previous : [...previous, rule.id]); }} />)}
+            {sourceSlots.map((slot, slotIndex) => <Choice key={slotIndex} label={`${displayContactMethodLabel(slot.label) || rule.kind}: ${slot.value}`} checked={slots[rule.id] === slotIndex} disabled={busy} onPress={() => { setSlots((previous) => ({ ...previous, [rule.id]: slotIndex })); setResets((previous) => previous.includes(rule.id) ? previous : [...previous, rule.id]); }} />)}
           </View>}
           {rule.issue && <Text style={styles.body}>Source field needs review: {rule.issue}.</Text>}
         </Surface>;

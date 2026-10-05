@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UnsavedChangesGuard } from '@/components/ui/unsaved-changes-guard';
-import { MAX_CONTACT_METHODS, readContactMethods, normalizeUserContactMethods, type ContactMethod, type ContactMethodKind } from '@/packages/domain/src/contact-methods';
+import { MAX_CONTACT_METHODS, readContactMethods, normalizeUserContactMethods, displayContactMethodLabel, type ContactMethod, type ContactMethodKind } from '@/packages/domain/src/contact-methods';
 import { getResponseErrorMessage } from '@/lib/utils';
 
 type Editor = { name: string; revision: string; original: string; draft: ContactMethod[] };
@@ -52,7 +52,7 @@ export default function ContactMethodsPage() {
         <legend className="px-1 font-medium">{method.kind === 'profile' ? 'Profile link' : method.kind === 'phone' ? 'Phone number' : 'Email address'}</legend>
         <Label htmlFor={`value-${method.id}`}>Value</Label><Input id={`value-${method.id}`} value={method.value} type={method.kind === 'email' ? 'email' : method.kind === 'profile' ? 'url' : 'tel'}
           required maxLength={method.kind === 'profile' ? 2048 : method.kind === 'email' ? 320 : 100} onChange={(event) => update(method.id, { value: event.target.value })} />
-        <Label htmlFor={`label-${method.id}`}>Label</Label><Input id={`label-${method.id}`} placeholder="Personal, work…" maxLength={80} value={method.label ?? ''} onChange={(event) => update(method.id, { label: event.target.value })} />
+        <Label htmlFor={`label-${method.id}`}>Label</Label><Input id={`label-${method.id}`} placeholder="Personal, work…" maxLength={80} value={displayContactMethodLabel(method.label) ?? ''} onChange={(event) => update(method.id, { label: event.target.value })} />
         {method.kind === 'phone' && <><Label htmlFor={`country-${method.id}`}>Country code, if known</Label><Input id={`country-${method.id}`} placeholder="PT" maxLength={2} value={method.country ?? ''} onChange={(event) => update(method.id, { country: event.target.value.toUpperCase() })} />
           <p className="text-sm text-muted-foreground">Use an international number starting with + for reliable matching. Local numbers keep their country context.</p></>}
         <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={method.preferred} onChange={(event) => update(method.id, { preferred: event.target.checked })} />Preferred {method.kind}</label>

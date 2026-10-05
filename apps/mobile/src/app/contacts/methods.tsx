@@ -7,7 +7,7 @@ import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, S
 import { ActionButton, Surface } from '@/components/design-system';
 import { getContactForEditing, type ContactEditBase } from '@/data/contacts';
 import { updateContactMethods } from '@/data/contact-methods';
-import { readContactMethods, type ContactMethod, type ContactMethodKind } from '../../../../../packages/domain/src/contact-methods';
+import { readContactMethods, displayContactMethodLabel, type ContactMethod, type ContactMethodKind } from '../../../../../packages/domain/src/contact-methods';
 import { fonts, palette } from '@/theme';
 
 type Editor = { base: ContactEditBase; draft: ContactMethod[]; initial: string };
@@ -47,15 +47,15 @@ export default function ContactMethodsScreen() {
       {!editor && !error && <ActivityIndicator color={palette.primary} />}
       {editor?.draft.map((method) => <Surface key={method.id} style={styles.card}>
         <Text style={styles.label}>{method.kind === 'profile' ? 'Profile link' : method.kind === 'phone' ? 'Phone number' : 'Email address'}</Text>
-        <TextInput accessibilityLabel={`${method.label ?? method.kind} value`} value={method.value} onChangeText={(value) => update(method.id, { value })}
+        <TextInput accessibilityLabel={`${displayContactMethodLabel(method.label) ?? method.kind} value`} value={method.value} onChangeText={(value) => update(method.id, { value })}
           editable={!saving} autoCapitalize="none" keyboardType={method.kind === 'email' ? 'email-address' : method.kind === 'phone' ? 'phone-pad' : 'url'}
           maxLength={method.kind === 'profile' ? 2048 : method.kind === 'email' ? 320 : 100} style={styles.input} />
-        <Text style={styles.label}>Label</Text><TextInput accessibilityLabel={`${method.kind} label`} value={method.label ?? ''} placeholder="Personal, work…" editable={!saving}
+        <Text style={styles.label}>Label</Text><TextInput accessibilityLabel={`${method.kind} label`} value={displayContactMethodLabel(method.label) ?? ''} placeholder="Personal, work…" editable={!saving}
           maxLength={80} onChangeText={(label) => update(method.id, { label })} style={styles.input} />
         {method.kind === 'phone' && <><Text style={styles.label}>Country code, if known</Text><TextInput accessibilityLabel="Phone country code" value={method.country ?? ''} placeholder="PT"
           maxLength={2} autoCapitalize="characters" editable={!saving} onChangeText={(country) => update(method.id, { country })} style={styles.input} />
           <Text style={styles.body}>International numbers starting with + are easier to match. Local numbers keep their country context.</Text></>}
-        <View style={styles.preference}><Text style={styles.label}>Preferred {method.kind}</Text><Switch accessibilityLabel={`Preferred ${method.label ?? method.kind}`} disabled={saving}
+        <View style={styles.preference}><Text style={styles.label}>Preferred {method.kind}</Text><Switch accessibilityLabel={`Preferred ${displayContactMethodLabel(method.label) ?? method.kind}`} disabled={saving}
           value={method.preferred} onValueChange={(preferred) => update(method.id, { preferred })} /></View>
         <Text style={styles.body}>{method.source === 'legacy' ? 'From existing data' : 'User supplied'}{method.source === 'legacy' && (method.user_override || method.value !== JSON.parse(editor.initial).find((item: ContactMethod) => item.id === method.id)?.value) ? ' · value edited' : ''}</Text>
         {method.source_value !== null && <Text style={styles.body}>Original value: {method.source_value}</Text>}

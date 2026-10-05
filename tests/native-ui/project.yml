@@ -15,9 +15,12 @@ targets:
     type: application
     platform: iOS
     sources: TestHost
+    dependencies:
+      - sdk: Contacts.framework
     settings:
       base:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_NSContactsUsageDescription: Create only synthetic Contacts fixtures in a dedicated Everclose QA simulator.
   NativeJourneys:
     type: bundle.ui-testing
     platform: iOS
@@ -34,5 +37,5 @@ schemes:
       targets:
         - name: NativeJourneys
           parallelizable: false
-      captureScreenshotsAutomatically: true
+      captureScreenshotsAutomatically: false
       deleteScreenshotsWhenEachTestSucceeds: false

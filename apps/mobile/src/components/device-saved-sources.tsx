@@ -9,6 +9,7 @@ import { pickDeviceContact } from '@/native/device-contacts';
 import { useNativeSync } from '@/native/sync';
 import { fonts, palette } from '@/theme';
 import { readDeviceContactFacts } from '../../../../packages/domain/src/device-contact-facts';
+import { displayContactMethodLabel } from '../../../../packages/domain/src/contact-methods';
 import { readAppliedProviderFields, ProviderSourceError } from '../../../../packages/domain/src/provider-sources';
 import { DeviceContactAccess } from './device-contact-access';
 import { useNativeAccount } from '@/native/account';
@@ -44,7 +45,7 @@ export function DeviceSavedSources({ contactId }: { contactId: string }) {
     {sources.map((source) => { const original = readDeviceContactFacts(source.original_facts), facts = readDeviceContactFacts(source.observed_facts), audit = readAppliedProviderFields(source.applied_fields);
       return <Surface key={source.id}><Eyebrow>{source.shared ? 'iPhone Contacts · shared source' : 'iPhone Contacts · saved locally'}</Eyebrow><Text style={styles.heading}>{facts.name || 'Unnamed device contact'}</Text>
         <Text style={styles.body}>Last saved observation: {new Date(source.observed_at).toLocaleString()}</Text>
-        {facts.emails.concat(facts.phones).map((method, index) => <Text key={index} style={styles.body}>{method.value}{method.label ? ` (${method.label})` : ''}</Text>)}
+        {facts.emails.concat(facts.phones).map((method, index) => <Text key={index} style={styles.body}>{method.value}{method.label ? ` (${displayContactMethodLabel(method.label)})` : ''}</Text>)}
         {source.original_facts !== source.observed_facts && <><Text style={styles.heading}>Original details</Text><Text style={styles.body}>{original.name || 'Unnamed contact'}</Text>{original.emails.concat(original.phones).map((method, index) => <Text key={index} style={styles.body}>{method.value}</Text>)}</>}
         <Text style={styles.heading}>Fields accepted</Text>{audit.name && <Text style={styles.body}>Name: {audit.name}</Text>}{audit.methods.map((item) => <Text key={item.method.id} style={styles.body}>{item.method.kind}: {item.method.value}</Text>)}
         {!audit.name && !audit.methods.length && <Text style={styles.body}>Source details only.</Text>}

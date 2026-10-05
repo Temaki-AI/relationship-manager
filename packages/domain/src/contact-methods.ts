@@ -9,6 +9,16 @@ export type ContactMethod = {
 };
 export type ContactMethodDraft = Pick<ContactMethod, 'id' | 'kind' | 'value' | 'label' | 'country' | 'preferred'>;
 export class ContactMethodError extends Error {}
+const APPLE_METHOD_LABELS = new Map([
+  ['_$!<Home>!$_', 'Home'], ['_$!<Work>!$_', 'Work'], ['_$!<Other>!$_', 'Other'],
+  ['_$!<Mobile>!$_', 'Mobile'], ['_$!<iPhone>!$_', 'iPhone'], ['_$!<Main>!$_', 'Main'],
+  ['_$!<HomeFAX>!$_', 'Home fax'], ['_$!<WorkFAX>!$_', 'Work fax'],
+  ['_$!<OtherFAX>!$_', 'Other fax'], ['_$!<Pager>!$_', 'Pager'],
+]);
+/** Presentation only: keep original source labels and custom labels unchanged. */
+export function displayContactMethodLabel(label: string | null | undefined): string | null {
+  return label == null ? null : APPLE_METHOD_LABELS.get(label) ?? label;
+}
 function fail(message: string): never { throw new ContactMethodError(message); }
 function object(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === 'object' && !Array.isArray(value); }
 function text(value: unknown, limit: number, label: string, optional = false): string | null {
@@ -129,5 +139,5 @@ export function reviewContactMethodsPatch(previous: unknown, proposed: unknown, 
   return normalizeUserContactMethods([...result.values()], current);
 }
 export function describeContactMethods(value: unknown) {
-  return readContactMethods(value).map((item) => `${item.label ?? item.kind}: ${item.value}${item.preferred ? ' (preferred)' : ''}`).join('\n') || '(none)';
+  return readContactMethods(value).map((item) => `${displayContactMethodLabel(item.label) ?? item.kind}: ${item.value}${item.preferred ? ' (preferred)' : ''}`).join('\n') || '(none)';
 }

@@ -3,14 +3,17 @@
 Build 7 (version 1.0.0) is installed and running in the local **Everclose Build 7**
 iPhone 17 Pro / iOS 26.2 simulator. The actual compiled Release app passes the
 native offline journey, hosted Google-login navigation, first-use notification
-permission and visible reminder delivery while the app is closed. The user-ready
+permission, visible reminder delivery while the app is closed, and actual iOS
+Contacts create/attach/unlink and permission-denial flows. The user-ready
 simulator has zero contacts and opens the Google welcome screen; the synthetic QA
 fixture stays on a separate, now shut-down simulator.
 
 Compiled application source: `e0965517348e6e979cea5ec2d54be541c7355bd9`.
 Native CI run: [37340714930](https://github.com/Temaki-AI/relationship-manager/actions/runs/37340714930).
 Artifact merge commit: `d43fe34fa642a33c4658d68e127322540dd768bc`.
-The final harness/documentation changes do not change this application source.
+The corrected harness/documentation commit `e1d9e92` does not change this
+application source. A later contact-label display fix is described separately
+below; its source checks do not establish delivery in this downloaded artifact.
 
 ## Reminder behavior
 
@@ -60,7 +63,7 @@ reminder checks and three phone/cloud conflict/retry/completion journeys pass;
 the cloud journeys also pass against disposable Workerd/D1. Six new notification
 regressions exercise guarded refresh retries, account changes and late receipts.
 
-The [native UI harness](../tests/native-ui/README.md) passes these four independent
+The [native UI harness](../tests/native-ui/README.md) passes these six independent
 tests against the unmodified downloaded build-7 artifact. Each has one passing
 test, zero failures and zero skips:
 
@@ -70,6 +73,26 @@ test, zero failures and zero skips:
 | First notification permission and immediate saved receipt | 38.659 s | `build7-release-first-notification.xcresult` |
 | Visible OS reminder with Everclose not running | 46.189 s | `build7-release-closed-notification-attempt2.xcresult` |
 | Hosted Google page and cancellation back to welcome | 10.806 s | `build7-release-hosted-sign-in.xcresult` |
+| Actual Contacts picker, reviewed attach/create, restart and confirmed unlink | 110.685 s | `build7-release-contacts-attempt4.xcresult` |
+| Revoked Contacts access preserves saved data and verifies unchanged native source fixtures | 21.518 s | `build7-release-contacts-denied.xcresult` |
+
+The Contacts test uses only two synthetic records on the separate QA simulator.
+Everclose obtains permission through the normal iOS 26 **Share All 8 Contacts**
+screen and chooses each record in the real system picker. Reviewed fields preserve
+the existing preferred email and private notes; a deliberately unselected phone
+is excluded, only two reviewed CRM people exist, and source details remain private
+with no source upload. Confirmed unlink survives restart and retains accepted
+methods. The native framework verifies both original address-book fixtures remain
+unchanged. A read-only SQLite digest is identical before and after permission
+denial across contact/source/policy/preview and sync-queue tables. Limited Contacts
+access and physical-device behavior remain unverified.
+
+Inspection of the actual Contacts screenshot exposed the standard Apple label
+`_$!<Work>!$_` on the profile. The follow-up source fix displays recognized standard
+labels as readable English in native profile/review/policy/editor and web profile/
+editor/source views. It preserves raw stored/source labels and custom labels,
+including when an unrelated method is edited. Source regression checks and a new
+native display test track this separately from the six release results above.
 
 The closed-app notification screenshot was inspected. The empty user-ready cache
 also passes read-only schema-15 and SQLite integrity checks, and the launched
@@ -81,10 +104,19 @@ CI run 37340714930 is **not green**: its native offline gate failed because the
 old XCTest Command-A input replacement did not select the native date field.
 The corrected harness uses the native Select All menu, keeps inputs above the
 keyboard, verifies exact text and accepts the empty field's placeholder. That
-harness passes locally against the same compiled artifact. Its CI rerun is
-pending; the workflow allows 600 seconds for the full journey without skipping
-assertions. The earlier general CI dependency-audit issue remains separately
-documented in [dependency-security.md](dependency-security.md).
+harness passes locally against the same compiled artifact. The corrected native
+CI run [37353387558](https://github.com/Temaki-AI/relationship-manager/actions/runs/37353387558)
+now succeeds for source `e1d9e92`: both Release jobs, linkage/startup and the entire
+offline journey pass. Its native UI test takes 371.766 seconds with zero failures
+or skips. The workflow allows 600 seconds without skipping assertions. The
+installed artifact's application source is unchanged by that harness/documentation
+commit. General CI [37353387544](https://github.com/Temaki-AI/relationship-manager/actions/runs/37353387544)
+passes 892 root cases and the separate Cloudflare build/browser job, but its
+validation job is cancelled at the 25-minute limit while healthy D1 cases are
+still advancing. Its complete D1 suite and later gates did not finish. The updated
+validation allowance is 60 minutes; assertions, skips and audit thresholds are
+unchanged. The complete rerun and the earlier dependency-audit issue remain open,
+separately documented in [dependency-security.md](dependency-security.md).
 
 ## Packages and next checks
 

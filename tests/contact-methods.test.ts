@@ -2,11 +2,30 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import Database from 'better-sqlite3';
 import { readFileSync, readdirSync } from 'node:fs';
-import { contactMethodIdentity, readContactMethods, normalizeUserContactMethods, replacePrimaryContactMethods, reviewContactMethodsPatch } from '../packages/domain/src/contact-methods.ts';
+import { contactMethodIdentity, readContactMethods, normalizeUserContactMethods, replacePrimaryContactMethods, reviewContactMethodsPatch, displayContactMethodLabel, describeContactMethods } from '../packages/domain/src/contact-methods.ts';
 import { initializeDatabase } from '../lib/database-initialization.ts';
 import { createCloudHarness } from './helpers/cloud-harness.ts';
 import { readPushResultV3 } from '../packages/domain/src/sync-v3-client.ts';
 const method = (value: string, kind = 'email', preferred = true) => ({ id: crypto.randomUUID(), kind, value, label: 'Work', country: null, preferred });
+
+test('Apple contact labels display clearly while source and unsaved editor labels retain their exact values', () => {
+  assert.equal(displayContactMethodLabel('_$!<Work>!$_'), 'Work');
+  assert.equal(displayContactMethodLabel('_$!<Home>!$_'), 'Home');
+  assert.equal(displayContactMethodLabel('_$!<Mobile>!$_'), 'Mobile');
+  assert.equal(displayContactMethodLabel('_$!<iPhone>!$_'), 'iPhone');
+  assert.equal(displayContactMethodLabel('_$!<WorkFAX>!$_'), 'Work fax');
+  for (const custom of ['Work', 'Office — Lisboa', '_$!<My custom label>!$_', 'prefix _$!<Work>!$_', '', 'constructor']) {
+    assert.equal(displayContactMethodLabel(custom), custom);
+  }
+  assert.equal(displayContactMethodLabel(null), null);
+  assert.equal(displayContactMethodLabel(undefined), null);
+  const stored = normalizeUserContactMethods([{ ...method('source@example.invalid'), label: '_$!<Work>!$_' }]);
+  const editorDraft = readContactMethods(stored);
+  assert.equal(displayContactMethodLabel(editorDraft[0].label), 'Work');
+  assert.equal(editorDraft[0].label, '_$!<Work>!$_');
+  assert.equal(describeContactMethods(stored), 'Work: source@example.invalid (preferred)');
+  assert.equal(normalizeUserContactMethods(editorDraft, stored), stored, 'Displaying a label must not silently rewrite it on save');
+});
 
 test('method normalization preserves raw values and country context, rejects unsafe links, and inherits provenance only from guarded original data', () => {
   const email = method('Ána@Example.test'), phone = { ...method('912 345 678', 'phone'), country: 'PT' };

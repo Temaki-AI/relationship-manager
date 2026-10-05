@@ -58,7 +58,7 @@ import { useToast } from '@/components/ui/toast';
 import { MentionText } from '@/components/ui/mention-text';
 import { MentionInput } from '@/components/ui/mention-input';
 import { LoadError } from '@/components/ui/load-error';
-import { contactMethodHref, readContactMethods } from '@/packages/domain/src/contact-methods';
+import { contactMethodHref, readContactMethods, displayContactMethodLabel } from '@/packages/domain/src/contact-methods';
 import { PersonCalendarContext } from '@/components/person-calendar-context';
 import { PersonGmailContext } from '@/components/person-gmail-context';
 
@@ -1117,7 +1117,7 @@ export default function ContactDetail() {
                   target={method.kind === 'profile' ? '_blank' : undefined} rel={method.kind === 'profile' ? 'noreferrer noopener' : undefined}
                   className="flex min-h-11 max-w-full items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:text-primary">
                   {method.kind === 'email' ? <Mail className="h-4 w-4 shrink-0" /> : method.kind === 'phone' ? <Phone className="h-4 w-4 shrink-0" /> : <Globe className="h-4 w-4 shrink-0" />}
-                  <span className="min-w-0 break-all">{method.label && <span className="font-medium">{method.label}: </span>}{method.value}{method.country ? ` (${method.country})` : ''}</span>
+                  <span className="min-w-0 break-all">{method.label && <span className="font-medium">{displayContactMethodLabel(method.label)}: </span>}{method.value}{method.country ? ` (${method.country})` : ''}</span>
                 </a>)}
               </div>}
               {Object.keys(socialLinks).length > 0 && (

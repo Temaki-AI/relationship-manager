@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { readDeviceSources, type DeviceSource } from '@/packages/domain/src/device-sources';
 import { readDeviceContactFacts } from '@/packages/domain/src/device-contact-facts';
+import { displayContactMethodLabel } from '@/packages/domain/src/contact-methods';
 import { readAppliedProviderFields } from '@/packages/domain/src/provider-sources';
 import { isSyncUuid } from '@/packages/domain/src/sync';
 import { getResponseErrorMessage } from '@/lib/utils';
@@ -11,7 +12,7 @@ import { getResponseErrorMessage } from '@/lib/utils';
 function Facts({ value }: { value: string }) {
   const facts = readDeviceContactFacts(value);
   return <div className="space-y-1 text-sm"><p className="break-words">{facts.name || 'Name not provided'}</p>
-    {facts.emails.concat(facts.phones).map((method, index) => <p key={index} className="break-all">{method.value}{method.label ? ` (${method.label})` : ''}</p>)}
+    {facts.emails.concat(facts.phones).map((method, index) => <p key={index} className="break-all">{method.value}{method.label ? ` (${displayContactMethodLabel(method.label)})` : ''}</p>)}
   </div>;
 }
 export function DeviceSavedSources({ contactId }: { contactId: string }) {
