@@ -1,4 +1,5 @@
 const exactPaths = new Set([
+  '/api/v1/today-snoozes',
   '/api/v1/sync/bootstrap',
   '/api/v1/sync/pull',
   '/api/v1/sync/push',

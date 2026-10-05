@@ -30,12 +30,12 @@ export async function handleCloudTodaySnooze(request: Request, workspaceId: stri
     const saved = await DB.prepare(`INSERT INTO daily_snoozes
       (id, workspace_id, contact_id, reminder_id, until_date, created_at, updated_at)
       SELECT ?, ?, ?, ?, ?, ?, ? WHERE
-        EXISTS (SELECT 1 FROM daily_snoozes WHERE workspace_id = ? AND id = ?)
+        EXISTS (SELECT 1 FROM daily_snoozes WHERE workspace_id = ? AND id = ? AND until_date > ?)
         OR (SELECT COUNT(*) FROM daily_snoozes WHERE workspace_id = ? AND until_date > ?) < ?
       ON CONFLICT(workspace_id, id) DO UPDATE SET until_date = excluded.until_date, updated_at = excluded.updated_at
       RETURNING id, contact_id, reminder_id, until_date`)
       .bind(body.id, workspaceId, source.contact_id, source.reminder_id, until, timestamp, timestamp,
-        workspaceId, body.id, workspaceId, dateInTimeZone(now, timeZone)!, MAX_ACTIVE_TODAY_SNOOZES)
+        workspaceId, body.id, dateInTimeZone(now, timeZone)!, workspaceId, dateInTimeZone(now, timeZone)!, MAX_ACTIVE_TODAY_SNOOZES)
       .first();
     if (!saved) return Response.json({ error: 'Too many snoozed prompts. Bring one back before snoozing another.' }, { status: 409 });
     return Response.json({ snooze: saved });

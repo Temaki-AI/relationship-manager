@@ -230,7 +230,7 @@ export async function createCloudHarness() {
   const cleanupExpiredExports = exportJobsApi.cleanupExpiredExportJobs as (
     db: typeof db, bucket: typeof assets, now?: Date
   ) => Promise<{ attempted: number; removed: number; pending: number; failed: number }>;
-  return { db, assets, faults, call, emailEnv, queueMessages, deadLetterMessages,
+  return { cloudRoute: (request: Request, context: { params: Promise<{ path: string[] }> }) => (load(path.join(root, 'app/api/cloud/[...path]/route.ts'))[request.method] as (request: Request, context: { params: Promise<{ path: string[] }> }) => Promise<Response>)(request, context), middleware: (request: unknown) => (load(path.join(root, 'middleware.ts')).middleware as (request: unknown) => Promise<Response>)(request), todaySnoozeSync: load(path.join(root, 'lib/cloud/today-snooze-sync-api.ts')) as typeof import('../../lib/cloud/today-snooze-sync-api.ts'), db, assets, faults, call, emailEnv, queueMessages, deadLetterMessages,
     providers: load(path.join(root, 'lib/cloud/provider-connections.ts')) as typeof import('../../lib/cloud/provider-connections'),
     googleCalendarResources: load(path.join(root, 'lib/cloud/google-calendar-resources.ts')) as typeof import('../../lib/cloud/google-calendar-resources'),
     googleCalendars: load(path.join(root, 'lib/cloud/google-calendars.ts')) as typeof import('../../lib/cloud/google-calendars'),

@@ -31,7 +31,7 @@ test('Google-mode middleware permits only the native sync/session candidates and
   const previous = process.env.AUTH_MODE; process.env.AUTH_MODE = 'google';
   const credential = `Bearer everclose_device_${randomBytes(32).toString('base64url')}`;
   try {
-    for (const suffix of ['sync/bootstrap', 'sync/pull', 'sync/push', 'devices/session', 'calendar-event-links/push']) {
+    for (const suffix of ['today-snoozes', 'sync/bootstrap', 'sync/pull', 'sync/push', 'devices/session', 'calendar-event-links/push']) {
       const response = await middleware(new NextRequest(`https://everclosecrm.com/api/v1/${suffix}`, { headers: { Authorization: credential } }));
       assert.equal(response.status, 200);
       assert.equal(response.headers.get('x-middleware-rewrite'), `https://everclosecrm.com/api/cloud/v1/${suffix}`);
