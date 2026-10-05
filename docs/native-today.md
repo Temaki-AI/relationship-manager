@@ -160,13 +160,14 @@ and the `build8-shared-prompts-actions` / `build8-shared-prompts-largest-text`
 result bundles under `apps/mobile/build/native-ui/`. The QA simulator retains
 schema 16, normal text size and its four synthetic people, and is shut down.
 
-Clean build 9 runs on the user-ready simulator; build 8 remains installed on the
-phone. The shared server endpoint is now deployed in Worker `370949af-afef-44e2-8578-900625e1ce0d`, from isolated source `d741d51` over the production-compatible `039c12b` baseline.
+Final clean build 9 runs on the phone and user-ready simulator. The shared server
+endpoint is deployed in Worker `370949af-afef-44e2-8578-900625e1ce0d`, from isolated
+source `d741d51` over the production-compatible `039c12b` baseline.
 Production remains migration 44, while this branch contains separate undeployed
 Gmail migrations 45–48; deploying the entire branch would change unrelated
 readiness/queue requirements. The limited candidate passes 793 full root tests, 24 selected D1 checks, three additional D1 HTTP/authorization journeys, lint, the complete Cloudflare build and the deployment dry run. Live readiness/login remain healthy; an invented phone token reaches the exact route and is rejected as an invalid session, while extra paths remain closed. No migration or Gmail binding was added, and no owner preference round trip is claimed.
 
-Latest general CI `37374856861` passes cloud validation but fails at the existing
+Latest completed general CI `37385220851` passes cloud validation but fails at the existing
 `npm audit --audit-level=moderate` gate. This is an actual audit failure, distinct
 from earlier unavailable-runner cancellations. No audit threshold was weakened;
 public release remains gated by dependency remediation and the account/physical
@@ -192,10 +193,27 @@ navigation exists in the final screenshot/hierarchy, but the helper attempts to
 scroll before controls are hittable and reports no foreground scroll view.
 The original failed log and result bundle are preserved. The test now waits for
 foreground, interactive navigation after restart, with a bounded failure deadline
-and every persistence assertion retained. A full isolated rerun is in progress;
-the failed CI run is not green. Phone installation waits for that result.
+and every persistence assertion retained. Original CI 37380356652 remains failed;
+unsuccessful local diagnostics are separately recorded. Final CI 37385220932
+passes both binaries, real startup and the complete offline journey in 331.439
+seconds, with one test and zero failures/skips. That final candidate `c9cbca3`
+(identical CI merge `ab976b4`) upgrades the phone in place from build 8 to 9;
+installed metadata, launch and later process stability are verified. The final
+signed IPA SHA-256 is
+`ffbe4eeaf0967a6510a041a3847ece273280cab39e344e998ad4d83018e61146`.
 
-The unmodified compiled build 9 separately passes local prompt persistence/Bring
+That final `c9cbca3` artifact also passes local prompt persistence, Cancel, restart
+and reason-specific Bring back in **65.949 seconds**, and the largest-text picker
+in **36.574 seconds**. Each reports one test, zero failures and zero skips. The
+inspected screenshot shows Tomorrow, In a week, In 30 days and persistent Cancel,
+all reachable and at least 44 points tall. All 23 synthetic data tables and the
+installation identity remain unchanged, SQLite integrity passes, and no history
+or shared intents are added. The two preceding failed prompt runs remain preserved;
+the corrected harness waits for enabled controls, scrolls toward a target above
+or below the viewport and resumes only its own interrupted birthday choice.
+Normal text size is restored and the synthetic QA simulator is shut down.
+
+The earlier unmodified candidate at `1d03668` separately passes prompt persistence/Bring
 back in 42.907 seconds and largest-text reachability in 32.537 seconds, with zero
 failures/skips. The picker screenshot was inspected. All 23 existing synthetic
 data tables and installation identity remain unchanged. The user-ready simulator

@@ -24,13 +24,20 @@ final class PromptTests: XCTestCase {
     private func scrollTo(_ element: XCUIElement) {
         for _ in 0..<12 {
             if element.isHittable { return }
-            journal.scrollViews.allElementsBoundByIndex.last(where: { $0.isHittable && $0.frame.height > 200 })?.swipeUp()
+            guard let scroll = journal.scrollViews.allElementsBoundByAccessibilityElement.last(where: { $0.isHittable && $0.frame.height > 200 }) else { return }
+            if element.exists && element.frame.midY < scroll.frame.minY { scroll.swipeDown() }
+            else { scroll.swipeUp() }
         }
     }
     private func tap(_ label: String) {
         let button = journal.buttons[label].firstMatch
         XCTAssertTrue(button.waitForExistence(timeout: 15), "Missing button: \(label)")
-        scrollTo(button); XCTAssertTrue(button.isHittable, "Unreachable button: \(label)"); button.tap()
+        scrollTo(button)
+        // A preceding SQLite save can update the list before its busy state
+        // clears. Hittable controls still need to be enabled before tapping.
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true AND isEnabled == true"), object: button)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed, "Button is not ready: \(label)")
+        button.tap()
     }
     private func gone(_ element: XCUIElement) {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
@@ -43,6 +50,11 @@ final class PromptTests: XCTestCase {
     }
 
     func testPromptChoicesSurviveRestartAndBringBackOnlyTheirReason() {
+        // Resume only this test's own choice after an interrupted prior run.
+        if !birthdayReason.exists {
+            expandSnoozes(); tap("Bring back birthday prompt for \(birthdayPerson)")
+            XCTAssertTrue(birthdayReason.waitForExistence(timeout: 15))
+        }
         tap("Snooze birthday prompt for \(birthdayPerson)")
         XCTAssertTrue(journal.staticTexts["Snooze birthday prompt"].waitForExistence(timeout: 5))
         tap("Cancel")

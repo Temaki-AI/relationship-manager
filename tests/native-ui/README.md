@@ -16,7 +16,7 @@ Run from the repository root, using the runtime installed on this computer:
 ```sh
 (
 set -e
-everclose_qa_app="$PWD/apps/mobile/build/releases/build7-ci-simulator/extracted/Everclose.app"
+everclose_qa_app="$PWD/apps/mobile/build/releases/build9-ci-c9-simulator/Everclose.app"
 everclose_qa_runtime=com.apple.CoreSimulator.SimRuntime.iOS-26-2
 everclose_qa_output="$PWD/apps/mobile/build/native-ui/$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$everclose_qa_output"
@@ -131,5 +131,15 @@ the previous size afterward. The Log/Reach out/Snooze pickers scroll with a fixe
 Cancel footer; the offline harness now selects the preset as a normal button.
 Use `-collect-test-diagnostics never` for these targeted checks to avoid large OS
 sysdiagnoses; explicit screenshots and accessibility attachments remain enabled.
-[Native Today](../../docs/native-today.md) distinguishes the verified JavaScript
-preview from the pending clean build-8 compilation and physical delivery.
+[Native Today](../../docs/native-today.md) distinguishes earlier JavaScript previews
+from the delivered clean build-9 artifact.
+
+`PromptTests` checks shared Today choices against the retained synthetic local-only
+QA cache. It requires the separately prepared birthday/check-in fixtures; never
+run it on an owner cache. The helper waits for hittable, enabled controls and
+scrolls toward targets above or below the viewport. An interrupted run can resume
+only its own saved birthday choice before checking Cancel, persistence through
+restart and reason-specific Bring back. Run the largest-text check separately,
+then restore the prior text size and compare all cached tables and installation
+identity. The final compiled build-9 checks and their preserved failed predecessors
+are recorded in [the release record](../../docs/personal-ios-build9.md).

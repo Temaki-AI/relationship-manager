@@ -928,3 +928,36 @@ build 8 remains installed. Live endpoint deployment is pending and must avoid
 unrelated undeployed Gmail migrations/queue requirements. See Native Today for
 source, hashes and private evidence locations. General CI's latest failure is the
 unchanged dependency-audit gate; public/account/physical pilots remain open.
+
+### Clean build-9 delivery and shared server rollout — 6 October 2026
+
+- Final source `c9cbca3` and CI merge `ab976b4` have identical trees. Native CI
+  [37385220932](https://github.com/Temaki-AI/relationship-manager/actions/runs/37385220932)
+  passes both Release builds, linkage, real SQLite/Keychain startup and the full
+  offline contact/draft/plan/history/reminder journey in 331.439 seconds, with
+  one test and zero failures/skips. The earlier failed CI and local diagnostic
+  results are preserved separately.
+- The strictly verified signed 1.0.0/build-9 package upgrades TIE Fighter in place
+  from build 8. Installation, fresh version metadata, launch and subsequent
+  process stability pass. The same compiled release runs on the user-ready
+  simulator; its welcome was inspected and all 23 data tables and installation
+  identity are unchanged. No personal database was copied or reset.
+- Final-artifact prompt persistence/Cancel/restart/reason-specific Bring back
+  passes in 65.949 seconds; largest-text choices pass in 36.574 seconds. Each has
+  zero failures/skips. The inspected picker keeps all three choices and persistent
+  Cancel reachable at 44 points or larger. All 23 synthetic tables and installation
+  identity remain unchanged, SQLite integrity passes, and QA is restored and shut
+  down. The closeout changes only documentation and the tested Swift harness;
+  compiled app/domain sources remain unchanged.
+- Shared Today preferences are live in migration-44-compatible Worker
+  `370949af-afef-44e2-8578-900625e1ce0d`, from limited source `d741d51`. That isolated
+  rollout passes 793 full tests, 24 selected D1 checks and three additional actual
+  middleware/dispatcher journeys. Live login/readiness are healthy, invalid phone
+  sessions and extra paths are rejected, and no production migration or Gmail
+  binding was added. The server worktree is archived and recoverable.
+- Latest completed general CI 37385220851 passes cloud validation but fails the
+  unchanged dependency-audit gate. Owner build-9 data visibility/new phone-web
+  round trips, provider/physical privacy/accessibility pilots, Gmail deployment
+  and TestFlight/public release remain open. The personal delivery is complete;
+  the broader development plan remains incomplete. See
+  [the build-9 record](personal-ios-build9.md) for exact packages and private receipts.
