@@ -58,6 +58,17 @@ receipts are `phone-verification/build4-unlocked-launch.json` and
 These checks read no screen or contact database. The owner confirmation that
 People shows the existing contacts remains pending.
 
+A later process check and direct launch attempt on 5 October could not reach the
+phone and returned CoreDeviceError 4. Their separate private receipts are
+`phone-verification/build4-current-process.json` and
+`phone-verification/build4-current-launch.json`. This does not establish a new
+app failure or replace the earlier successful installation and launch evidence.
+The latest native validation also passes both device and simulator jobs in
+[run 37290218241](https://github.com/Temaki-AI/relationship-manager/actions/runs/37290218241).
+Cloud validation passes in
+[run 37290218253](https://github.com/Temaki-AI/relationship-manager/actions/runs/37290218253);
+its general validation fails at the dependency-audit step.
+
 A fresh launch check on 5 October at 08:47 UTC was also refused by Apple's
 device tools because the phone was locked, before the successful unlocked check.
 Its private receipt is
