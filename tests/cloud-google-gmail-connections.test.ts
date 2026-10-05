@@ -123,13 +123,13 @@ test('reauthorization preserves Gmail identity while Contacts and Calendar canno
 test('explicit mailbox preview exposes only label identities and does not alter CRM rows or persist private metadata', async () => {
   const h = await setup(); try {
     await h.call('contacts', { method: 'POST', body: { name: 'Kept person', notes: 'Kept note' } });
-    const { connection } = await connect(h), original = await h.db.prepare('SELECT * FROM contacts').all();
+    const { connection } = await connect(h), original = (await h.db.prepare('SELECT * FROM contacts').all()).results;
     const provider = google(), review = await h.gmailConnection.reviewGmailConnection(h.db, actor, connection.id);
     assert.equal(review.can_preview, true); assert.equal(provider.calls.length, 0);
     const labels = await preview(h, connection.id, provider);
     assert.deepEqual(labels, { email: 'owner@example.test', labels: [{ id: 'INBOX', name: 'Inbox', type: 'system' }, { id: 'Label_1', name: 'Friends · relações', type: 'user' }] });
     assert.equal(provider.calls.length, 2); assert.equal(JSON.stringify(labels).includes('historyId'), false);
-    assert.deepEqual(await h.db.prepare('SELECT * FROM contacts').all(), original);
+    assert.deepEqual((await h.db.prepare('SELECT * FROM contacts').all()).results, original);
     await assert.rejects(h.gmailConnection.previewGmailMailbox(h.db, actor, environment, connection.id, { expected_epoch: review.epoch, expected_authorization_revision: 0 }, provider.fetcher), /changed/);
     await assert.rejects(h.gmailConnection.previewGmailMailbox(h.db, actor, environment, connection.id, { expected_epoch: review.epoch, expected_authorization_revision: 1, import: true }, provider.fetcher), /changed/);
     assert.equal(provider.calls.length, 2);
