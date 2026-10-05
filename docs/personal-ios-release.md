@@ -9,6 +9,13 @@ package hash and checks. After the owner unlocked the phone, the physical launch
 and process-stability checks passed. Confirmation that People shows the existing
 contacts remains pending.
 
+**Build 5 is now signed and ready to install.** Both native Release builds,
+linkage and isolated simulator SQLite/Keychain startup pass. Installation could
+not begin because CoreDevice could not find the iPhone; reconnection and unlock
+are pending. See [the build-5 release record](personal-ios-build5.md) for its exact
+source, package checksum and validation. It adds default-off reviewed Gmail
+metadata storage; the matching Gmail server deployment remains separate work.
+
 ## Previous build 3
 
 Build 3 was signed and installed on TIE Fighter. The actual installation receipt

@@ -294,7 +294,9 @@ unchanged. This source is not in the installed schema-14 build 4; a matching
 server deployment/native release and the real-account pilot remain required.
 The build-5 candidate passes all 868 root tests, 15 D1/mobile SQLite transport
 checks, native TypeScript/lint, five package tests and production Hermes export.
-Native device compilation and isolated simulator startup are pending; follow
-[the build-5 record](../../docs/personal-ios-build5.md) for delivery evidence.
+Both native Release builds, linkage and isolated simulator SQLite/Keychain startup
+pass in run 37306709947. Build 5 is signed and verified; installation awaits
+iPhone reconnection/unlock. Follow [the build-5 record](../../docs/personal-ios-build5.md)
+for exact package/source and delivery evidence.
 Recurring jobs and reviewed activity behavior are also unfinished.
 See [Gmail implementation](../../docs/gmail.md).

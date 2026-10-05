@@ -2,6 +2,17 @@
 
 Everclose's personal web release is deployed at everclosecrm.com. Personal iOS build 4 is signed and installed on TIE Fighter; the actual receipt and installed-app metadata confirm it. Both native Release binaries, linkage verification and isolated first launch with SQLite/Keychain initialization pass in [run 37278926485](https://github.com/Temaki-AI/relationship-manager/actions/runs/37278926485). Exact source, hash, installation evidence and remaining checks are in the [build-4 release record](personal-ios-build4.md). After the owner reported the phone unlocked again, a fresh launch at 10:56 UTC succeeded as process 9346 and a separate stability check passed. Owner confirmation of the UI and contacts remains pending.
 
+**Build 5 is signed and ready to install**, with native schema 15 and default-off
+Gmail context storage. Both native Release jobs and isolated SQLite/Keychain startup
+pass in run 37306709947; all 868 root tests and the focused transport/profile checks
+pass. CoreDevice could not find the phone during installation (error 1011), so the
+owner has been asked to connect it by USB and unlock it. Reuse the verified package
+and source recorded in [the build-5 record](personal-ios-build5.md); a documentation
+commit does not require rebuilding or resigning this package. The immediate next
+step is installation, exact-bundle metadata verification and launch/stability after
+the owner confirms reconnection. Private database copying and switching the shared
+Simulator still require the pending explicit permissions.
+
 ## Delivered personal iOS implementation
 
 - Real Google account sign-in and account-isolated synchronization with the hosted CRM; existing 12-contact workspace was verified on the preceding installed build.
@@ -13,10 +24,10 @@ Everclose's personal web release is deployed at everclosecrm.com. Personal iOS b
 
 The photo API is deployed in Worker `f300697b-8aa5-46c8-b556-fc00144725d4`.
 Readiness is healthy; an unauthenticated photo POST returns 401. No photo schema
-migration is introduced: mobile remains schema 14, production remains migration 44
+migration is introduced by photos: installed build 4 remains schema 14, production remains migration 44
 and local cloud development now has migration 47.
 
-## Verification
+## Installed build-4 verification
 
 All **820 root tests**, **152 native behavior tests**, five native package tests, five native-picker fixtures,
 native/root TypeScript and lint checks, release export and cloud build pass.
@@ -47,7 +58,7 @@ Calendar permission/editor journeys and broader accessibility remain unverified.
 1. Configure separate Google Contacts/Calendar clients and credential vault, then verify real consent, recurring reconciliation and publishing. Google endpoint tests use fixtures; account sign-in does not establish data-integration readiness.
 2. Complete the real iPhone Contacts/Calendar and offline-to-web pilot, including reminder delivery, accessibility, timezone/identity changes and recovery.
 3. Resolve shared Google/EventKit publication identity and cross-provider duplicate prevention. Offline local guards alone cannot guarantee a global reservation.
-4. Implement Gmail context. LinkedIn currently supports reviewed profile URLs/export imports; continuous LinkedIn account synchronization is unavailable.
+4. Complete the real Gmail client/vault/pilot, reviewed activity and recurring jobs. Download/matching and web/native context now have tested source implementations. LinkedIn currently supports reviewed profile URLs/export imports; continuous LinkedIn account synchronization is unavailable.
 5. Complete Sign in with Apple/account management, dependency security, public provider approvals, TestFlight/App Store distribution, operational checks and the daily-use pilot.
 
 Local development OAuth still needs its own configured credentials. The shared
@@ -101,8 +112,10 @@ schema-15 default-off offline cache and owner/session/catalog/identity fences.
 All 868 root tests, 15 focused D1/mobile SQLite transport tests and eight
 desktop/mobile profile/Calendar journeys pass. Root/native TypeScript and lint,
 five native package tests, the production Hermes export and standalone/Cloudflare
-builds pass. The native configuration now requests build 5; its compiled release
-validation is pending. This source is not in installed build 4.
+builds pass. Both native build-5 Release jobs and isolated SQLite/Keychain startup
+pass in run 37306709947. Build 5 is signed and verified; installation awaits phone
+reconnection/unlock after CoreDevice error 1011. Its exact source/package evidence
+is in [the build-5 record](personal-ios-build5.md). This source is not in installed build 4.
 Cross-account/activity review and consented recurring jobs remain engineering work.
 Real clients/vault and a controlled mailbox pilot remain required.
 Readiness requires migrations 45–47 before any source deploy; production was last
