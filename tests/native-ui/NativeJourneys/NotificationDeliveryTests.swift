@@ -59,12 +59,23 @@ final class NotificationDeliveryTests: XCTestCase {
     func testObserveClosedAppDelivery() {
         continueAfterFailure = false
         XCUIDevice.shared.press(.home)
-        XCTAssertNotEqual(journal.state, .runningForeground)
+        XCTAssertEqual(journal.state, .notRunning)
         let system = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let notification = system.descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS %@", "Everclose reminder")).firstMatch
         XCTAssertTrue(notification.waitForExistence(timeout: 60), "The scheduled reminder did not appear with Everclose closed")
-        XCTAssertNotEqual(journal.state, .runningForeground)
+        // Show the delivered notification in Notification Center so the result
+        // includes a visible OS receipt, even if a transient banner has ended.
+        let top = system.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.005))
+        let lower = system.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.65))
+        top.press(forDuration: 0.05, thenDragTo: lower)
+        let visible = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: notification)
+        XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 5), .completed, "The delivered notification was not visible")
+        XCTAssertEqual(journal.state, .notRunning)
+        let hierarchy = XCTAttachment(string: system.debugDescription)
+        hierarchy.name = "Delivered notification accessibility hierarchy"
+        hierarchy.lifetime = .keepAlways
+        add(hierarchy)
         let screenshot = XCTAttachment(screenshot: system.screenshot())
         screenshot.name = "Everclose local notification with the app closed"
         screenshot.lifetime = .keepAlways

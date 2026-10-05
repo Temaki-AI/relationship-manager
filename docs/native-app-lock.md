@@ -1,4 +1,4 @@
-# Native device lock — signed build 6
+# Native device lock — simulator build 7
 
 Account & sync now offers an optional device-wide lock for the journal. It starts
 off and requires a fresh system authentication before enabling or disabling.
@@ -51,6 +51,13 @@ starts off. It is not physically installed yet: the phone remains unreachable an
 macOS's USB inventory did not detect an iPhone. USB reconnection is needed only for
 the later physical delivery. Physical authentication,
 native-editor masking, snapshot timing and accessibility checks remain pending.
+
+Build 7 now supersedes build 6 on the user-ready local simulator. Its complete
+native offline journey again verifies the default-off setting after app restarts;
+the Release binary and local development signature are verified. See the
+[build-7 release record](personal-ios-build7.md). Physical authentication and privacy
+checks remain pending; the simulator result does not establish biometric behavior
+on the owner's phone.
 
 The adapter follows [Expo 57 LocalAuthentication](https://docs.expo.dev/versions/v57.0.0/sdk/local-authentication/)
 and [SecureStore](https://docs.expo.dev/versions/v57.0.0/sdk/securestore/). Both modules

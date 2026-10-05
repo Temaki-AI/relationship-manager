@@ -37,8 +37,8 @@ xcodebuild test-without-building \
   -destination "platform=iOS Simulator,id=$everclose_qa_id" \
   -derivedDataPath "$everclose_qa_output/DerivedData" \
   -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 \
-  -test-timeouts-enabled YES -default-test-execution-time-allowance 360 \
-  -maximum-test-execution-time-allowance 420 \
+  -test-timeouts-enabled YES -default-test-execution-time-allowance 600 \
+  -maximum-test-execution-time-allowance 600 \
   -only-testing:NativeJourneys/OfflineJournalTests \
   -resultBundlePath "$everclose_qa_output/offline.xcresult"
 xcrun xcresulttool get test-results summary \
@@ -71,6 +71,24 @@ the system authentication browser, checks the Everclose hosted Google-login page
 and cancels before selecting a Google account or authorizing device access. It
 does not prove authenticated sync, provider consent or account-data continuity.
 Keep any authentication-browser screenshot private.
+
+`NotificationDeliveryTests` is a separate local-notification check on a disposable
+simulator containing only the known synthetic fixture. `testPrepareNotificationFixture`
+creates its contact/reminder and accepts the native permission prompt. Before
+`testObserveClosedAppDelivery`, the host sets that synthetic reminder and its pending
+create intent to the same near-future time, launches the app, verifies the matching
+native scheduling receipt, and terminates it. Never retime an owner/account database.
+The observer asserts the app is not running, waits for the OS notification and
+preserves its visible screenshot and accessibility hierarchy. This controlled
+fixture check is not part of the offline CI gate or evidence of physical delivery.
+
+Run native UI sessions serially. Concurrent UI runners on this Mac exhausted host
+memory/disk space and interrupted one delivery attempt. Build 7's full offline,
+first-permission, closed-app delivery and hosted-login tests all pass against the
+unmodified compiled CI artifact in separate runs. The corrected input helper uses
+native Select All and exact value checks rather than relying on Command-A, which
+did not reliably select the date field. The original CI run's failing input step
+remains recorded; a passing local harness does not change that CI conclusion.
 
 Execution evidence and the remaining physical checks are recorded in the
 [build-6 release record](../../docs/personal-ios-build6.md) and

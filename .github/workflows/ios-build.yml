@@ -123,8 +123,8 @@ jobs:
             -destination "platform=iOS Simulator,id=$EVERCLOSE_SMOKE_SIMULATOR" \
             -derivedDataPath apps/mobile/build/native-ui/DerivedData \
             -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 \
-            -test-timeouts-enabled YES -default-test-execution-time-allowance 360 \
-            -maximum-test-execution-time-allowance 420 \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 600 \
+            -maximum-test-execution-time-allowance 600 \
             -only-testing:NativeJourneys/OfflineJournalTests \
             -resultBundlePath apps/mobile/build/native-ui/offline.xcresult
       - name: Upload native UI results

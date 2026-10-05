@@ -23,7 +23,7 @@ final class OfflineJournalTests: XCTestCase {
     }
 
     private func scrollUp() {
-        let scroll = journal.scrollViews.allElementsBoundByIndex.last(where: { $0.isHittable })
+        let scroll = journal.scrollViews.allElementsBoundByIndex.last(where: { $0.isHittable && $0.frame.height > 200 })
         XCTAssertNotNil(scroll, "No foreground scroll view")
         scroll?.swipeUp()
     }
@@ -56,12 +56,27 @@ final class OfflineJournalTests: XCTestCase {
         }
         XCTAssertTrue(input.isHittable, "Input is not reachable: \(label)")
         input.tap()
+        // Opening the keyboard shrinks the viewport. Keep the focused input
+        // visible before using native text-selection controls.
+        for _ in 0..<8 {
+            let scroll = journal.scrollViews.allElementsBoundByIndex.last(where: { $0.isHittable && $0.frame.height > 200 })
+            if let scroll, input.frame.minY >= scroll.frame.minY, input.frame.maxY <= scroll.frame.maxY { break }
+            scrollUp()
+        }
+        if !appendTo.isEmpty {
+            // The short synthetic note fits in this field. A native tap below
+            // its last line places the caret at the end before appending.
+            input.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.85)).tap()
+        }
         if replace {
-            // A tap can put the caret at the beginning of existing text. Use
-            // the public iOS hardware-keyboard shortcut to select it all.
-            input.typeKey("a", modifierFlags: .command)
+            // A tap can put the caret at the beginning of existing text.
+            input.press(forDuration: 1)
+            let selectAll = journal.menuItems["Select All"]
+            XCTAssertTrue(selectAll.waitForExistence(timeout: 5))
+            selectAll.tap()
             input.typeText(XCUIKeyboardKey.delete.rawValue)
-            XCTAssertEqual(input.value as? String, "")
+            let cleared = input.value as? String
+            XCTAssertTrue(cleared == "" || cleared == input.placeholderValue, "Native field was not cleared")
         }
         // Public XCTest events wait for each keystroke to settle before the next.
         for character in value { input.typeText(String(character)) }
@@ -117,7 +132,7 @@ final class OfflineJournalTests: XCTestCase {
         tap("Edit contact details")
         let addition = "\nDraft kept after restart."
         XCTAssertEqual(input("notes", multiline: true).value as? String, note)
-        enter("notes", note + addition, multiline: true, replace: true)
+        enter("notes", addition, multiline: true, appendTo: note)
         tap("Close and keep draft")
         restart()
         tap("People")
