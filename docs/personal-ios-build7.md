@@ -17,6 +17,15 @@ Completing a reminder now reports an alert-cancellation failure truthfully rathe
 than saying the durable completion was unchanged. Both reminder action targets
 are at least 44 points tall. Leaving the screen suppresses late action alerts.
 
+The actual build-6 simulator exposed a first-use notification race: allowing iOS
+permission while the automatic reminder refresh ran saved the reminder but left
+its alert unconfirmed until restart. Build 7 now retries a refresh only after
+checking the exact persisted future time, original person and active reminder.
+An account switch, including switching away and back, invalidates the request;
+completion or removal cancels any late receipt. The retry is bounded and does not
+weaken the existing scheduler generation fence. Native delivery verification of
+this correction is pending.
+
 Version remains 1.0.0, native schema remains 15 and the frozen version-4 sync
 contract remains unchanged. No native dependency, Google grant, cloud schema or
 production deployment is introduced. Build 6 remains the last locally installed

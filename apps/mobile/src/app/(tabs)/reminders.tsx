@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, BrandLockup, StatusPill } from '@/components/design-system';
-import { completeReminder, listOpenReminders, snoozeReminder, saveReminderNotification, type ReminderRecord } from '@/data/reminders';
+import { completeReminder, listOpenReminders, snoozeReminder, isReminderNotificationCurrent, saveReminderNotification, type ReminderRecord } from '@/data/reminders';
 import { getReminderPresetDate, REMINDER_PRESETS, type ReminderPresetId } from '@/domain/reminder';
 import { useNativeAccount } from '@/native/account';
 import { accountScope } from '../../../../../packages/domain/src/devices';
@@ -72,7 +72,8 @@ export default function RemindersScreen() {
         await cancelReminderNotification(previousNotificationId);
         const notification = await scheduleReminderNotification({ accountScope: accountScope(account),
           reminderId: reminder.id, reminderTitle: reminder.title, contactId: reminder.contact_id,
-          contactName: reminder.contact_name, remindAt: new Date(reminder.remind_at) });
+          contactName: reminder.contact_name, remindAt: new Date(reminder.remind_at),
+          isCurrent: () => isReminderNotificationCurrent(db, reminder) });
         notificationId = notification.id;
         if (!await saveReminderNotification(db, reminder, notificationId)) await cancelReminderNotification(notificationId);
         if (notification.permission === 'denied') tell('Reminder moved without an alert',

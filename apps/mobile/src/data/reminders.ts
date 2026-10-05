@@ -161,6 +161,13 @@ export async function snoozeReminder(db: SQLiteDatabase, shown: ReminderRecord, 
   return result!;
 }
 
+export async function isReminderNotificationCurrent(db: SQLiteDatabase, reminder: ReminderRecord): Promise<boolean> {
+  return !!await db.getFirstAsync(`SELECT r.id FROM reminders r JOIN contacts c ON c.id = r.contact_id
+    WHERE r.id = ? AND r.contact_id = ? AND r.remind_at = ? AND r.completed_at IS NULL
+    AND r.deleted_at IS NULL AND c.deleted_at IS NULL AND julianday(r.remind_at) > julianday('now')`,
+    reminder.id, reminder.contact_id, reminder.remind_at);
+}
+
 export async function saveReminderNotification(db: SQLiteDatabase, reminder: ReminderRecord, notificationId: string | null): Promise<boolean> {
   const result = await db.runAsync(`UPDATE reminders SET notification_id = ? WHERE id = ? AND remind_at = ?
     AND completed_at IS NULL AND deleted_at IS NULL

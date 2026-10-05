@@ -56,8 +56,12 @@ final class OfflineJournalTests: XCTestCase {
         }
         XCTAssertTrue(input.isHittable, "Input is not reachable: \(label)")
         input.tap()
-        if replace, let old = input.value as? String {
-            for _ in old { input.typeText(XCUIKeyboardKey.delete.rawValue) }
+        if replace {
+            // A tap can put the caret at the beginning of existing text. Use
+            // the public iOS hardware-keyboard shortcut to select it all.
+            input.typeKey("a", modifierFlags: .command)
+            input.typeText(XCUIKeyboardKey.delete.rawValue)
+            XCTAssertEqual(input.value as? String, "")
         }
         // Public XCTest events wait for each keystroke to settle before the next.
         for character in value { input.typeText(String(character)) }
@@ -108,7 +112,8 @@ final class OfflineJournalTests: XCTestCase {
 
         tap("Edit contact details")
         let addition = "\nDraft kept after restart."
-        enter("notes", addition, multiline: true, appendTo: note)
+        XCTAssertEqual(input("notes", multiline: true).value as? String, note)
+        enter("notes", note + addition, multiline: true, replace: true)
         tap("Close and keep draft")
         restart()
         tap("People")

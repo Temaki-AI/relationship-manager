@@ -9,6 +9,27 @@ const account: NativeAccount = { origin: 'https://everclosecrm.com', userId: 'sn
   expiresAt: '2030-01-01T00:00:00Z', token: 'evd_' + 'a'.repeat(43) };
 const future = (days: number) => new Date(Date.now() + days * 86_400_000);
 
+test('notification retries require the exact future time, original person and an open active reminder', async () => {
+  const phone = await createMobileHarness(account);
+  try {
+    const person = await phone.contacts.createContact(phone.db, { name: 'Person' });
+    const reminder = await phone.reminders.createReminder(phone.db, { contactId: person.id, title: 'Catch up', remindAt: future(1) }, null);
+    assert.equal(await phone.reminders.isReminderNotificationCurrent(phone.db, reminder), true);
+    assert.equal(await phone.reminders.isReminderNotificationCurrent(phone.db, { ...reminder, contact_id: crypto.randomUUID() }), false);
+    const moved = await phone.reminders.snoozeReminder(phone.db, reminder, future(3));
+    assert.equal(await phone.reminders.isReminderNotificationCurrent(phone.db, reminder), false);
+    assert.equal(await phone.reminders.isReminderNotificationCurrent(phone.db, moved.reminder), true);
+    phone.sqlite.prepare('UPDATE contacts SET deleted_at = ? WHERE id = ?').run(new Date().toISOString(), person.id);
+    assert.equal(await phone.reminders.isReminderNotificationCurrent(phone.db, moved.reminder), false);
+    phone.sqlite.prepare('UPDATE contacts SET deleted_at = NULL WHERE id = ?').run(person.id);
+    await phone.reminders.completeReminder(phone.db, reminder.id);
+    assert.equal(await phone.reminders.isReminderNotificationCurrent(phone.db, moved.reminder), false);
+    const overdue = await phone.reminders.createReminder(phone.db, { contactId: person.id, title: 'Due', remindAt: future(1) }, null);
+    phone.sqlite.prepare('UPDATE reminders SET remind_at = ? WHERE id = ?').run('2000-01-01T00:00:00.000Z', overdue.id);
+    assert.equal(await phone.reminders.isReminderNotificationCurrent(phone.db, { ...overdue, remind_at: '2000-01-01T00:00:00.000Z' }), false);
+  } finally { phone.close(); }
+});
+
 test('snooze survives restart with its original sync base, clears only the old scheduling receipt and creates no history', async () => {
   const phone = await createMobileHarness(account);
   try {

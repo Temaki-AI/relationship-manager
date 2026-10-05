@@ -18,7 +18,7 @@ import {
 import { ActionButton, Eyebrow } from '@/components/design-system';
 import { PersonPicker } from '@/components/person-picker';
 import { getContact } from '@/data/contacts';
-import { createReminder, saveReminderNotification } from '@/data/reminders';
+import { createReminder, isReminderNotificationCurrent, saveReminderNotification } from '@/data/reminders';
 import { journalDraftKey, reminderForm } from '@/data/journal-drafts';
 import { useJournalForm } from '@/native/journal-form';
 import {
@@ -109,6 +109,7 @@ function ReminderEditor({ draftKey, initialContactId }: { draftKey: string; init
         contactName: reminder.contact_name,
         remindAt: new Date(reminder.remind_at),
         reminderId: reminder.id,
+        isCurrent: () => isReminderNotificationCurrent(db, reminder),
       });
       notificationId = notification.id;
       if (!await saveReminderNotification(db, reminder, notificationId)) await cancelReminderNotification(notificationId);
