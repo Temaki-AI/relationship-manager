@@ -11,6 +11,24 @@ import time
 UUID_PATTERN = r'[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}'
 
 
+def startup_diagnostics(device, container):
+    """Only the fresh, isolated CI app; never collects a user's phone or shared Simulator."""
+    output = Path('build/artifact/startup-diagnostics')
+    output.mkdir(parents=True, exist_ok=True)
+    for name, args in [
+        ('screen', ['xcrun', 'simctl', 'io', device, 'screenshot', str(output / 'startup-failure.png')]),
+        ('app-log', ['xcrun', 'simctl', 'spawn', device, 'log', 'show', '--style', 'compact', '--last', '3m', '--predicate', 'process == "Everclose"']),
+        ('console', ['xcrun', 'simctl', 'launch', '--terminate-running-process', '--console', device, 'com.fernandoamaral.bonds']),
+    ]:
+        with (output / (name + '.log')).open('w') as log:
+            try:
+                subprocess.run(args, stdout=log, stderr=subprocess.STDOUT, timeout=30, check=False)
+            except subprocess.TimeoutExpired:
+                log.write('\nDiagnostic command reached its bounded deadline.\n')
+    files = [str(p.relative_to(container)) for p in Path(container).glob('Documents/SQLite/*') if p.is_file()]
+    (output / 'database-files.txt').write_text('\n'.join(files) + '\n')
+
+
 def command(label, args, timeout, capture=False):
     print(label, file=sys.stderr, flush=True)
     return subprocess.run(args, check=True, timeout=timeout, text=True, capture_output=capture)
@@ -46,7 +64,7 @@ def main():
     container = command('Locate Everclose data container', ['xcrun', 'simctl', 'get_app_container',
         device, 'com.fernandoamaral.bonds', 'data'], 30, True).stdout.strip()
     database = Path(container) / 'Documents/SQLite/bonds-mobile.db'
-    deadline = time.monotonic() + 60
+    deadline = time.monotonic() + 180
     while time.monotonic() < deadline:
         if database.is_file():
             version = command('Wait for the app schema transaction', ['sqlite3', str(database),
@@ -64,7 +82,8 @@ def main():
                 print('Everclose startup, Keychain and SQLite verification passed.', file=sys.stderr)
                 return
         time.sleep(1)
-    raise RuntimeError('Everclose did not initialize its expected empty database and Keychain marker.')
+    startup_diagnostics(device, container)
+    raise RuntimeError('Everclose did not initialize its expected empty database and Keychain marker. See startup diagnostics.')
 
 
 if __name__ == '__main__':

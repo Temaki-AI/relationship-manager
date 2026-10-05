@@ -13,7 +13,7 @@ LinkedIn support uses URLs and export files. It does not continuously synchroniz
 
 ## Verification completed
 
-The last complete regression run passed **783/783 root tests**. Root TypeScript,
+The last complete regression run passed **796/796 root tests**. Root TypeScript,
 targeted root lint and native TypeScript/lint checks passed, as did native unit
 tests and the final Hermes release bundle. Google Calendar publishing/setup passed
 **18 desktop/mobile browser journeys** using fixtures. Disposable Worker/D1 checks
@@ -70,3 +70,16 @@ The next bounded milestone should be a real authenticated staging journey: sign 
 - [Google Calendar](google-calendar.md)
 - [Apple Calendar](apple-calendar.md)
 - [LinkedIn imports](linkedin-import.md)
+
+## iPhone photo editor — 5 October
+
+Photo selection, saved previews, offline drafts and a separate durable upload
+outbox are implemented. The API is live in Worker
+`f300697b-8aa5-46c8-b556-fc00144725d4`; production readiness reports healthy and
+an unauthenticated POST returns 401. The 15 complete photo journeys pass against
+D1, and five native-picker fixture tests cover cancellation, late account changes,
+large inputs, reencoding and app-only cleanup. All 796 root tests pass.
+No schema migration is introduced. The fresh device binary from run 37260071983 is signed and installed as build 2.
+Every original phone table and field is preserved, including all 12 contacts.
+Its private verification record and the personal iOS release document record the
+actual source/hash/install evidence. Simulator compilation passed, but the database startup deadline failed. A focused rerun with console/screenshot diagnostics is underway.

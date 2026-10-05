@@ -1,18 +1,18 @@
 # Everclose personal iOS release — 5 October 2026
 
-Everclose 1.0.0 (build 1) has been compiled as native iOS binaries and installed
+Everclose 1.0.0 (build 2) has been compiled as native iOS binaries and installed
 on the owner's paired iPhone, **TIE Fighter** (iPhone 13, iOS 18.6.2). The bundle
 identifier remains `com.fernandoamaral.bonds` and the sign-in callback remains
 `bonds://auth`, preserving the existing account/storage protocol.
 
 ## Build and installation evidence
 
-- [Native release build](https://github.com/Temaki-AI/relationship-manager/actions/runs/37227031535)
-  compiled both arm64 simulator and device apps using Xcode 26.4.1, including the
-  custom Swift/EventKit module. The build runs native TypeScript, unit tests and lint.
-- Native source commit: `cbe2caf9064411f019c9d05263fd10826874d281`.
-  The initial CI merge commit has the same source-tree hash. The final embedded
-  JavaScript comes from `1e113b63e618636701b715828a79995c990c4414`.
+- [Native release build](https://github.com/Temaki-AI/relationship-manager/actions/runs/37260071983)
+  compiled the arm64 device app using Xcode 26.4.1, including photo selection,
+  image manipulation and the custom Swift/EventKit module. The build runs native TypeScript, unit tests and lint.
+- Native source commit: `039c12b0044227de6c92511e5f335d977e2c2ce7`.
+  CI merge commit `d5d2763086a350751f484f57c7a8738ca98693e8` has the same source-tree hash. The final embedded
+  JavaScript comes from `0e5b20f8101a8748c3faaaaf3a4f955fdaa9ed51`.
 - Both release apps include a bundled Hermes program and support iOS 16.4+.
 - The downloaded artifacts' SHA-256 checksums match the build manifests.
 - The device app was signed locally using the existing Apple development identity
@@ -45,17 +45,17 @@ identifier remains `com.fernandoamaral.bonds` and the sign-in callback remains
   sign-in sheet; the simulator has no saved Google session.
 - [The latest complete native build](https://github.com/Temaki-AI/relationship-manager/actions/runs/37253557642)
   passed device/simulator compilation and the hosted startup/Keychain/SQLite checks
-  for a preceding app revision. The installed photo update changes
+  for a preceding app revision. The final two photo-editor corrections change
   JavaScript only; the guarded bundle helper verifies unchanged native dependencies,
   configuration, assets and Swift modules before producing its Hermes program.
 
 The development IPA is saved privately in
-`apps/mobile/build/releases/Everclose-1.0.0-ios-photos.ipa` (ignored by Git).
+`apps/mobile/build/releases/Everclose-1.0.0-ios-picker.ipa` (ignored by Git).
 Its private `.verification.json` records the source/bundle/package hashes and
 post-install phone checks. The final update is installed, all signatures pass,
 and its upgraded phone cache still contains the same 12 contacts and notes.
 The package SHA-256 is
-`561c66beb55b2c14a0eaf43012b7d49ef79b905e97da5899a6850017edf026c9`.
+`35c037891903f180cec1031dd27818d753c0934251296029678119499cea5253`.
 It can run on the four devices already registered in its profile, which expires
 25 July 2027. This is a development installation, not a TestFlight submission.
 
@@ -110,16 +110,24 @@ bytes in the contact journal. Native profiles validate the image format, size,
 digest, identity, revision and dataset epoch before atomically caching/pruning it.
 People shows cached images, and up to 64 recent photos remain available offline.
 Failed or stale downloads leave CRM fields unchanged. Fixture tests cover offline
-restart, corrupt responses, account switching, real recovery and merges; all seven
+restart, corrupt responses, account switching, real recovery and merges; all fifteen
 also pass against the disposable Cloudflare D1 runtime. The API is deployed as
-Worker `2b5e42b8-b888-4c3c-afbb-16c547a12a8f`; live readiness is healthy and unauthenticated
+Worker `f300697b-8aa5-46c8-b556-fc00144725d4`; live readiness is healthy and unauthenticated
 photo requests return 401. The signed photo update is installed. Fresh pre/post
 phone snapshots match every original table and field, with 12 contacts, clean
 integrity/foreign keys and zero pending writes. Two contacts have existing photo
 flags, but actual profile downloads/rendering on the phone have not been observed.
-Native photo selection/upload remains required work.
+Build 2 includes system photo selection, a saved preview, explicit save/removal,
+offline drafts, up to 64 queued photo changes and review against the latest cloud
+photo. Frozen uploads retry their exact operation after a lost response or restart;
+conflicts, deletion and recovery preserve the phone selection. The shared image
+format/digest checks and a separate atomic D1 receipt guard protect other CRM fields.
+The native picker reencodes a 320-pixel JPEG and cleans only app-owned temporary
+copies. Camera and microphone usage keys are absent from the compiled manifest.
+Five picker fixture tests cover cancellation, account changes, large inputs,
+reencoding and cleanup. Actual physical photo selection/rendering still needs checking.
 
-The complete root regression suite passes **783/783**, including draft reopen,
+The complete root regression suite passes **796/796**, including draft reopen,
 rollback, write ordering, merge recovery, timeline pagination and the previous
 606-person directory fixture. Native TypeScript/lint, targeted root lint and all
 five native package tests pass. The preceding simulator artifact is prepared, but its
@@ -130,8 +138,9 @@ closed-app reminder, phone edit/web round-trip and accessibility checks remain.
 Native run `37255968263` compiled the device and simulator binaries, but its hosted
 Simulator startup step timed out after Apple's first-boot migration. The workflow
 now starts an isolated smoke device before compilation and bounds boot, install,
-launch and data-container queries separately. The corrected CI startup check has
-not yet passed. It never operates the shared Simulator on this Mac.
+launch and data-container queries separately. The corrected CI startup check passed in run `37258306023`.
+The new image-picker native run `37260071983` passed device compilation and its
+signed app is installed; simulator compilation passed, but its 60-second database initialization check failed. A focused diagnostic rerun reuses that verified binary. It never operates the shared Simulator on this Mac.
 
 ## Account and daily use
 

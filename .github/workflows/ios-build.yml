@@ -116,5 +116,7 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ios-${{ matrix.target }}-diagnostics
-          path: apps/mobile/build/xcodebuild.log
+          path: |
+            apps/mobile/build/xcodebuild.log
+            apps/mobile/build/artifact/startup-diagnostics/
           retention-days: 7

@@ -350,3 +350,24 @@ Cloud D1 migration 44, CRM recovery 14 and protocol 4 are unchanged by this brid
 Account-isolated receipt URLs cannot trigger editor actions by themselves. Source
 sharing, cross-provider identity/reservation and physical native-build checks remain
 required; see [Apple Calendar runbook](apple-calendar.md).
+
+## Native contact photo changes
+
+Photos travel separately from the contact journal through the authenticated
+`GET`/`POST /api/v1/contact-photos/:publicId` API. Reads bind image bytes and SHA-256
+to the workspace epoch, person identity and revision. Writes carry a distinct
+operation UUID, epoch, original image digest and a bounded JPEG/PNG/WebP data URI
+or null for removal. D1 atomically checks membership, phone session, account
+lifecycle, epoch and the exact original image; a durable receipt makes an
+uncertain retry return the same result without repeating the write. A changed
+photo requires review, while a concurrent note edit can coexist.
+
+The iPhone uses schema-14 account metadata for separate photo drafts and up to
+64 queued image changes. Saving explicitly queues the selection; restarting or
+losing connectivity preserves it. Once a request is frozen, its exact bytes
+remain unchanged until an acknowledgement or definite rejection. Recovery holds
+earlier-epoch changes. Person deletion never recreates the person, and merge
+aliases permit safe receipt recovery without reusing the retired photo cache.
+The native system image picker selects one image, resizes/reencodes it to a
+320-pixel JPEG and removes only app-owned temporary image copies. Camera,
+microphone and broad library scanning are not part of this workflow.

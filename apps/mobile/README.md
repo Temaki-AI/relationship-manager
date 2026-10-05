@@ -262,3 +262,15 @@ EventKit facts with actual timezone identifiers. Its Swift source must be compil
 a development or distribution build; Expo Go and Hermes export cannot validate it.
 Physical editor behavior, Calendar synchronization and all-day/clock-change boundaries
 remain open. Upgrade 13 to 14 preserves existing data, queues, source links and cursors.
+
+### Installed photo-editor build
+
+Personal iPhone build 2 is installed with the native system image picker and
+image-manipulation modules. Open a person and choose **Edit contact photo** to
+select a photo, preview the small copy, and explicitly save or remove it. Drafts
+and queued images remain on the phone offline. Unconfirmed requests retry
+unchanged; a changed cloud photo requires review. The API is deployed, all 796
+root tests pass, and the 15 complete photo journeys pass against disposable D1.
+The compiled manifest includes the photo explanation and no camera/microphone
+usage keys. See the personal iOS release record for exact binary/hash evidence
+and remaining physical-device and TestFlight checks.
