@@ -1,6 +1,6 @@
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useIsFocused, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,14 +13,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, BrandLockup, StatusPill } from '@/components/design-system';
-import { completeReminder, listOpenReminders, type ReminderRecord } from '@/data/reminders';
+import { completeReminder, listOpenReminders, snoozeReminder, saveReminderNotification, type ReminderRecord } from '@/data/reminders';
+import { getReminderPresetDate, REMINDER_PRESETS, type ReminderPresetId } from '@/domain/reminder';
+import { useNativeAccount } from '@/native/account';
+import { accountScope } from '../../../../../packages/domain/src/devices';
 import { formatDateTime } from '@/lib/format';
-import { cancelReminderNotification } from '@/native/notifications';
+import { cancelReminderNotification, scheduleReminderNotification } from '@/native/notifications';
 import { fonts, palette } from '@/theme';
 
 export default function RemindersScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
+  const { account } = useNativeAccount();
+  const focused = useIsFocused(), visible = useRef(true);
+  useEffect(() => { visible.current = focused; return () => { visible.current = false; }; }, [focused]);
   const [reminders, setReminders] = useState<ReminderRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [completingId, setCompletingId] = useState<string | null>(null);
@@ -40,13 +46,55 @@ export default function RemindersScreen() {
     setCompletingId(reminder.id);
     try {
       const notificationId = await completeReminder(db, reminder.id);
-      await cancelReminderNotification(notificationId);
-      await loadReminders();
+      try { await cancelReminderNotification(notificationId); }
+      catch { tell('Reminder completed; alert needs checking', 'Completion is saved. Reopen Everclose to retry removing its iOS alert.'); }
+      await refreshAfterChange();
     } catch {
-      Alert.alert('Could not complete reminder', 'Your reminder is unchanged. Please try again.');
+      tell('Could not complete reminder', 'Your reminder is unchanged. Please try again.');
     } finally {
       setCompletingId(null);
     }
+  }
+
+  function tell(title: string, message: string) { if (visible.current) Alert.alert(title, message); }
+  async function refreshAfterChange() {
+    try { await loadReminders(); }
+    catch { tell('Change saved', 'Could not refresh this screen. Open Reminders again to see the saved change.'); }
+  }
+
+  async function moveReminder(shown: ReminderRecord, preset: ReminderPresetId) {
+    setCompletingId(shown.id);
+    try {
+      const { reminder, previousNotificationId, changed } = await snoozeReminder(db, shown, getReminderPresetDate(preset));
+      if (!changed) { await refreshAfterChange(); return; }
+      let notificationId: string | null = null;
+      try {
+        await cancelReminderNotification(previousNotificationId);
+        const notification = await scheduleReminderNotification({ accountScope: accountScope(account),
+          reminderId: reminder.id, reminderTitle: reminder.title, contactId: reminder.contact_id,
+          contactName: reminder.contact_name, remindAt: new Date(reminder.remind_at) });
+        notificationId = notification.id;
+        if (!await saveReminderNotification(db, reminder, notificationId)) await cancelReminderNotification(notificationId);
+        if (notification.permission === 'denied') tell('Reminder moved without an alert',
+          'The new time is saved. Check Everclose notification permission and reopen the app to retry the alert.');
+      } catch {
+        await cancelReminderNotification(notificationId).catch(() => {});
+        tell('Reminder moved; alert needs checking',
+          'The new time is saved. iOS alert replacement could not be confirmed. Reopen Everclose to retry; do not create the reminder again.');
+      }
+      await refreshAfterChange();
+    } catch (error) {
+      tell('Could not move reminder', error instanceof Error ? error.message : 'Your reminder is unchanged. Please try again.');
+      await loadReminders().catch(() => {});
+    } finally { setCompletingId(null); }
+  }
+
+  function chooseSnooze(reminder: ReminderRecord) {
+    Alert.alert('Choose reminder time', `Choose a new time for ${reminder.title}.`, [
+      ...REMINDER_PRESETS.map((preset) => ({ text: `${preset.label} · ${preset.detail}`,
+        onPress: () => { void moveReminder(reminder, preset.id); } })),
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   }
 
   return (
@@ -110,10 +158,15 @@ export default function RemindersScreen() {
               </View>
               <View style={styles.reminderBottom}>
                 <Text style={styles.reminderTime}>{formatDateTime(item.remind_at)}</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Snooze reminder for ${item.contact_name}`}
+                  disabled={completingId !== null} onPress={(event) => { event.stopPropagation(); chooseSnooze(item); }}
+                  style={({ pressed }) => [styles.snoozeButton, pressed && styles.pressed]}>
+                  <Text style={styles.snoozeText}>Snooze</Text>
+                </Pressable>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Complete reminder for ${item.contact_name}`}
-                  disabled={completingId === item.id}
+                  disabled={completingId !== null}
                   onPress={(event) => {
                     event.stopPropagation();
                     void markComplete(item);
@@ -181,6 +234,8 @@ const styles = StyleSheet.create({
   reminderTitle: { color: palette.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 },
   reminderBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   reminderTime: { flex: 1, color: palette.primary, fontFamily: fonts.bodyMedium, fontSize: 11 },
-  completeButton: { minWidth: 86, minHeight: 38, borderRadius: 13, backgroundColor: palette.mossSoft, alignItems: 'center', justifyContent: 'center' },
+  completeButton: { minWidth: 86, minHeight: 44, borderRadius: 13, backgroundColor: palette.mossSoft, alignItems: 'center', justifyContent: 'center' },
   completeText: { color: palette.moss, fontFamily: fonts.bodyDemi, fontSize: 12, fontWeight: '700' },
+  snoozeButton: { minWidth: 70, minHeight: 44, borderRadius: 13, backgroundColor: palette.surfaceWarm, alignItems: 'center', justifyContent: 'center' },
+  snoozeText: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 12 },
 });

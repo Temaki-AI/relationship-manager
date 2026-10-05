@@ -13,6 +13,7 @@ on:
       - 'apps/mobile/**'
       - 'packages/domain/**'
       - '.github/workflows/ios-build.yml'
+      - 'tests/native-ui/**'
 
 permissions:
   contents: read
@@ -105,6 +106,35 @@ jobs:
         if: matrix.target == 'simulator'
         timeout-minutes: 16
         run: python3 scripts/verify-ios-startup.py verify
+      - name: Verify native offline journal journey
+        if: matrix.target == 'simulator'
+        timeout-minutes: 12
+        working-directory: .
+        run: |
+          command -v xcodegen >/dev/null || brew install xcodegen
+          xcodegen generate --spec tests/native-ui/project.yml
+          xcodebuild build-for-testing \
+            -project tests/native-ui/EvercloseNativeQA.xcodeproj -scheme EvercloseNativeQA \
+            -destination "platform=iOS Simulator,id=$EVERCLOSE_SMOKE_SIMULATOR" \
+            -derivedDataPath apps/mobile/build/native-ui/DerivedData \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=-
+          xcodebuild test-without-building \
+            -project tests/native-ui/EvercloseNativeQA.xcodeproj -scheme EvercloseNativeQA \
+            -destination "platform=iOS Simulator,id=$EVERCLOSE_SMOKE_SIMULATOR" \
+            -derivedDataPath apps/mobile/build/native-ui/DerivedData \
+            -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 360 \
+            -maximum-test-execution-time-allowance 420 \
+            -only-testing:NativeJourneys/OfflineJournalTests \
+            -resultBundlePath apps/mobile/build/native-ui/offline.xcresult
+      - name: Upload native UI results
+        if: always() && matrix.target == 'simulator'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: Everclose-native-ui-results
+          path: apps/mobile/build/native-ui/offline.xcresult
+          if-no-files-found: warn
+          retention-days: 7
       - name: Upload verified first-launch screenshot
         if: matrix.target == 'simulator'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0

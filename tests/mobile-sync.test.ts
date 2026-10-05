@@ -714,6 +714,79 @@ test('an offline reminder can complete before its first acknowledgement and late
   } finally { await f.close(); }
 });
 
+test('snooze retries its frozen reply after restart and a second offline time preserves a concurrent web title', async () => {
+  const f = await fixture();
+  try {
+    const person = await webContact(f);
+    const reminder = (await f.cloud.call('reminders', { method: 'POST', body: { contact_id: person.id,
+      title: 'Original reminder', notes: 'Private reminder context', remind_at: '2030-01-01T10:00:00Z' } })).body.reminder;
+    await run(f);
+    const [shown] = await f.mobile.reminders.listOpenReminders(f.mobile.db);
+    const moved = await f.mobile.reminders.snoozeReminder(f.mobile.db, shown, new Date('2030-01-02T10:00:00Z'));
+    await assert.rejects(run(f, async (input, init) => {
+      const response = await f.fetcher(input, init);
+      if (String(input).endsWith('/push')) throw new Error('Lost snooze reply after commit');
+      return response;
+    }), /Offline changes are safe/);
+    const frozen = f.mobile.sqlite.prepare("SELECT request_json FROM sync_queue WHERE entity_type = 'reminder' AND request_json IS NOT NULL").get().request_json;
+    const restarted = await createMobileHarness(f.account, f.mobile.sqlite);
+    await restarted.reminders.snoozeReminder(restarted.db, moved.reminder, new Date('2030-01-07T10:00:00Z'));
+    await f.cloud.call(`reminders/${reminder.id}`, { method: 'PATCH', body: { title: 'Web title', notes: reminder.notes,
+      remind_at: '2030-01-02T10:00:00.000Z' } });
+    await restarted.sync.syncWorkspace(restarted.db, f.account, { fetcher: f.fetcher });
+    assert.equal(f.requests.filter((request) => request.path.endsWith('/push') && request.body === frozen).length, 2);
+    const final = await f.cloud.db.prepare('SELECT * FROM reminders WHERE id = ?').bind(reminder.id).first();
+    assert.equal(final?.remind_at, '2030-01-07T10:00:00.000Z'); assert.equal(final?.title, 'Web title');
+    assert.equal(final?.notes, reminder.notes); assert.equal(final?.completed_at, null);
+    assert.equal((await f.cloud.db.prepare('SELECT COUNT(*) n FROM interactions').first())?.n, 0);
+    assert.equal((await restarted.sync.syncSummary(restarted.db)).pending, 0);
+    assert.equal((await restarted.sync.syncSummary(restarted.db)).conflicts, 0);
+  } finally { await f.close(); }
+});
+
+test('overlapping snooze times require review and later phone changes retain their held status', async () => {
+  const f = await fixture();
+  try {
+    const person = await webContact(f);
+    const reminder = (await f.cloud.call('reminders', { method: 'POST', body: { contact_id: person.id,
+      title: 'Reminder', notes: 'Keep context', remind_at: '2030-01-01T10:00:00Z' } })).body.reminder;
+    await run(f);
+    const [shown] = await f.mobile.reminders.listOpenReminders(f.mobile.db);
+    await f.mobile.reminders.snoozeReminder(f.mobile.db, shown, new Date('2030-01-02T10:00:00Z'));
+    await f.cloud.call(`reminders/${reminder.id}`, { method: 'PATCH', body: { title: reminder.title,
+      notes: reminder.notes, remind_at: '2030-01-03T10:00:00Z' } });
+    await run(f);
+    const [review] = await f.mobile.sync.childSyncReviews(f.mobile.db);
+    assert.equal(review.local.remind_at, '2030-01-02T10:00:00.000Z');
+    assert.equal(review.cloud?.data?.remind_at, '2030-01-03T10:00:00.000Z');
+    const [held] = await f.mobile.reminders.listOpenReminders(f.mobile.db);
+    await f.mobile.reminders.snoozeReminder(f.mobile.db, held, new Date('2030-01-04T10:00:00Z'));
+    assert.equal(f.mobile.sqlite.prepare('SELECT sync_state FROM reminders WHERE id = ?').get(held.id).sync_state, 'conflict');
+    const [fresh] = await f.mobile.sync.childSyncReviews(f.mobile.db);
+    await f.mobile.sync.resolveChildSyncReview(f.mobile.db, fresh, 'phone'); await run(f);
+    assert.equal((await f.cloud.db.prepare('SELECT remind_at FROM reminders WHERE id = ?').bind(reminder.id).first())?.remind_at, '2030-01-04T10:00:00.000Z');
+    assert.equal((await f.mobile.sync.syncSummary(f.mobile.db)).conflicts, 0);
+  } finally { await f.close(); }
+});
+
+test('snooze never reopens a reminder concurrently completed on the web', async () => {
+  const f = await fixture();
+  try {
+    const person = await webContact(f);
+    const reminder = (await f.cloud.call('reminders', { method: 'POST', body: { contact_id: person.id,
+      title: 'Reminder', remind_at: '2030-01-01T10:00:00Z' } })).body.reminder;
+    await run(f);
+    const [shown] = await f.mobile.reminders.listOpenReminders(f.mobile.db);
+    await f.mobile.reminders.snoozeReminder(f.mobile.db, shown, new Date('2030-01-02T10:00:00Z'));
+    await f.cloud.call(`reminders/${reminder.id}`, { method: 'PATCH', body: { completed: true } });
+    await run(f);
+    assert.equal((await f.mobile.reminders.listOpenReminders(f.mobile.db)).length, 0);
+    assert.ok((await f.cloud.db.prepare('SELECT completed_at FROM reminders WHERE id = ?').bind(reminder.id).first())?.completed_at);
+    assert.equal((await f.mobile.sync.syncSummary(f.mobile.db)).pending, 0);
+    assert.equal((await f.cloud.db.prepare('SELECT COUNT(*) n FROM interactions').first())?.n, 0);
+  } finally { await f.close(); }
+});
+
 test('overlapping reminder notes retain the phone draft, invalidate stale review and apply only an explicit choice', async () => {
   const f = await fixture();
   try {

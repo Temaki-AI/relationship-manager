@@ -16,7 +16,7 @@ Run from the repository root, using the runtime installed on this computer:
 ```sh
 (
 set -e
-everclose_qa_app="$PWD/apps/mobile/build/releases/build6-ci-simulator/extracted/Everclose.app"
+everclose_qa_app="$PWD/apps/mobile/build/releases/build7-ci-simulator/extracted/Everclose.app"
 everclose_qa_runtime=com.apple.CoreSimulator.SimRuntime.iOS-26-2
 everclose_qa_output="$PWD/apps/mobile/build/native-ui/$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$everclose_qa_output"
@@ -37,8 +37,8 @@ xcodebuild test-without-building \
   -destination "platform=iOS Simulator,id=$everclose_qa_id" \
   -derivedDataPath "$everclose_qa_output/DerivedData" \
   -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 \
-  -test-timeouts-enabled YES -default-test-execution-time-allowance 180 \
-  -maximum-test-execution-time-allowance 240 \
+  -test-timeouts-enabled YES -default-test-execution-time-allowance 360 \
+  -maximum-test-execution-time-allowance 420 \
   -only-testing:NativeJourneys/OfflineJournalTests \
   -resultBundlePath "$everclose_qa_output/offline.xcresult"
 xcrun xcresulttool get test-results summary \
@@ -53,8 +53,17 @@ bundles stay ignored by Git.
 
 `OfflineJournalTests` checks first-run local-only navigation, all four main tabs,
 exact saved name/email/notes after terminating and reopening the app, and the
-default-off device-lock control. Character-by-character public XCTest typing and
-exact value assertions make simulator input failures visible.
+default-off device-lock control. It also closes and resumes an edited contact
+draft, creates and completes a plan with confirmed timeline history, and creates,
+snoozes and completes a reminder through restarts with notifications denied.
+Character-by-character public XCTest typing and exact value assertions make
+simulator input failures visible. The current complete journey requires build 7
+or later, which adds native Snooze. Build 6's shorter passing journey is preserved
+at test-harness commit `7930055` and in its private result bundles.
+
+The native build workflow runs this offline journey against its actual compiled
+Release app after startup/linkage verification. It saves an `.xcresult` artifact
+on success or failure. Hosted sign-in is excluded from this offline CI gate.
 
 `HostedSignInTests` is a separate **live network** check. Run it on its own clean
 simulator by changing `-only-testing` to `NativeJourneys/HostedSignInTests`. It opens
@@ -63,5 +72,6 @@ and cancels before selecting a Google account or authorizing device access. It
 does not prove authenticated sync, provider consent or account-data continuity.
 Keep any authentication-browser screenshot private.
 
-Build-6 execution evidence and the remaining physical checks are recorded in
-[the personal release record](../../docs/personal-ios-build6.md).
+Execution evidence and the remaining physical checks are recorded in the
+[build-6 release record](../../docs/personal-ios-build6.md) and
+[build-7 source/release record](../../docs/personal-ios-build7.md).

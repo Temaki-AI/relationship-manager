@@ -129,6 +129,38 @@ export async function completeReminder(
   return notificationId;
 }
 
+/** Commit the new time and its intent together before touching the OS scheduler. */
+export async function snoozeReminder(db: SQLiteDatabase, shown: ReminderRecord, remindAt: Date): Promise<{
+  reminder: ReminderRecord; previousNotificationId: string | null; changed: boolean;
+}> {
+  if (!Number.isFinite(remindAt.getTime()) || remindAt.getTime() <= Date.now()) {
+    throw new Error('Choose a future reminder time.');
+  }
+  const nextTime = remindAt.toISOString(), now = new Date().toISOString();
+  let result: { reminder: ReminderRecord; previousNotificationId: string | null; changed: boolean } | null = null;
+  await db.withExclusiveTransactionAsync(async (transaction) => {
+    const current = await transaction.getFirstAsync<ReminderRecord>(`SELECT r.*, c.name AS contact_name
+      FROM reminders r JOIN contacts c ON c.id = r.contact_id
+      WHERE r.id = ? AND r.completed_at IS NULL AND r.deleted_at IS NULL AND c.deleted_at IS NULL`, shown.id);
+    if (!current) throw new Error('This reminder is no longer open. Refresh your reminders.');
+    if (current.remind_at !== shown.remind_at) throw new Error('This reminder time changed. Refresh it before choosing another time.');
+    if (Date.parse(current.remind_at) === remindAt.getTime()) {
+      result = { reminder: current, previousNotificationId: null, changed: false }; return;
+    }
+    const remote = await transaction.getFirstAsync<{ record_json: string }>(
+      "SELECT record_json FROM sync_remote_entities WHERE entity_type = 'reminder' AND id = ?", current.id);
+    await transaction.runAsync(`UPDATE reminders SET remind_at = ?, notification_id = NULL, updated_at = ?,
+      sync_state = CASE WHEN EXISTS (SELECT 1 FROM sync_queue WHERE entity_type = 'reminder' AND entity_id = ?
+        AND status = 'conflict') THEN 'conflict' ELSE 'pending' END WHERE id = ?`, nextTime, now, current.id, current.id);
+    await enqueueSyncIntent(transaction, 'reminder', current.id, 'update', { remind_at: nextTime }, now,
+      { revision: remote ? (JSON.parse(remote.record_json) as { revision: number }).revision : null,
+        values: { remind_at: current.remind_at } });
+    result = { reminder: { ...current, remind_at: nextTime, notification_id: null }, previousNotificationId: current.notification_id, changed: true };
+  });
+  if (result!.changed) signalSyncChange(db);
+  return result!;
+}
+
 export async function saveReminderNotification(db: SQLiteDatabase, reminder: ReminderRecord, notificationId: string | null): Promise<boolean> {
   const result = await db.runAsync(`UPDATE reminders SET notification_id = ? WHERE id = ? AND remind_at = ?
     AND completed_at IS NULL AND deleted_at IS NULL

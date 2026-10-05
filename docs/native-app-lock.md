@@ -45,9 +45,11 @@ Build 6 now passes both native Release jobs, linkage and isolated SQLite/Keychai
 startup in run 37321546205. Its first-launch screenshot renders the Google welcome
 screen. The downloaded source tree/checksum and signed package were verified;
 strict signature verification passes. The [build-6 release record](personal-ios-build6.md)
-contains the exact source and package hash. It is not installed yet: the phone
-remains unreachable and macOS's USB inventory did not detect an iPhone. Unlock
-both devices and reconnect directly by USB before delivery. Physical authentication,
+contains the exact source and package hash. Build 6 is installed in dedicated local
+simulators at the owner's request; the actual native journey confirms the setting
+starts off. It is not physically installed yet: the phone remains unreachable and
+macOS's USB inventory did not detect an iPhone. USB reconnection is needed only for
+the later physical delivery. Physical authentication,
 native-editor masking, snapshot timing and accessibility checks remain pending.
 
 The adapter follows [Expo 57 LocalAuthentication](https://docs.expo.dev/versions/v57.0.0/sdk/local-authentication/)
