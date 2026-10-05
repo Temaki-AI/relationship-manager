@@ -5,6 +5,11 @@ The working web release is deployed at **https://everclosecrm.com**. It uses the
 ## Release evidence
 
 - Cloudflare Worker version: `4222b1a6-c7ba-47e1-b8cb-3f78adeaff17`.
+- The 5 October photo-download update is deployed as `2b5e42b8-b888-4c3c-afbb-16c547a12a8f`.
+  It adds a bounded UUID-based read endpoint for the native device credential,
+  without a database migration. Live readiness is healthy and unauthenticated
+  photo access returns 401. Its matched signed iPhone update is installed; all 783
+  regression tests and seven photo/recovery tests against real D1 pass.
 - D1 migrations applied through `0044_calendar_plan_publications.sql`.
 - Production readiness: HTTP 200, `ready: true`, Google authentication and current schema.
 - Unauthenticated contact access: HTTP 401.
@@ -28,7 +33,8 @@ Local Google credentials are still missing. The exact localhost client is prepar
 
 The [personal iOS release](personal-ios-release.md) has now been compiled with Xcode
 26.4.1 on GitHub and installed on the owner's paired iPhone. Native sign-in and the
-phone/web journey await unlocking that phone. TestFlight, actual provider consent
+first sync pass cache verification with all 12 original contacts and notes.
+A physical phone edit/web round trip remains. TestFlight, actual provider consent
 and the full integration pilot remain separate milestones in the [product plan](product-development-plan.md).
 
 ## Migration execution note

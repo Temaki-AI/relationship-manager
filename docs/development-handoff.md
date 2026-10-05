@@ -13,7 +13,7 @@ LinkedIn support uses URLs and export files. It does not continuously synchroniz
 
 ## Verification completed
 
-The last complete regression run passed **775/775 root tests**. Root TypeScript,
+The last complete regression run passed **783/783 root tests**. Root TypeScript,
 targeted root lint and native TypeScript/lint checks passed, as did native unit
 tests and the final Hermes release bundle. Google Calendar publishing/setup passed
 **18 desktop/mobile browser journeys** using fixtures. Disposable Worker/D1 checks
@@ -34,7 +34,13 @@ contact/edit forms resume local drafts, preserving original merge/conflict bases
 timeline pages reach older history. Plan, family, relationship and reminder forms
 now also retain unfinished drafts. Reminders preserve their selected time, commit
 before OS scheduling and serialize alert refresh/cancellation. The latest journal
-update is installed and again preserves all 12 original contacts and notes. The new
+update is installed and again preserves all 12 original contacts and notes. Hosted
+photo downloads and a bounded account-local cache now have an installed update and
+a deployed read-only API. Seven photo/recovery tests pass against real D1; fresh
+phone snapshots preserve every original table and field. Actual photo rendering
+and native photo selection/upload remain unverified/unfinished. Native run
+37255968263 compiled both targets but timed out during hosted Simulator startup;
+the isolated prewarm/deadline correction awaits its CI run. The new
 visual check awaits permission to switch the shared Simulator
 from another project. Separate Google data consent, physical editor
 journeys and a phone edit/web round trip remain. See the iOS release record.

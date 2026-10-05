@@ -12,7 +12,7 @@ identifier remains `com.fernandoamaral.bonds` and the sign-in callback remains
   custom Swift/EventKit module. The build runs native TypeScript, unit tests and lint.
 - Native source commit: `cbe2caf9064411f019c9d05263fd10826874d281`.
   The initial CI merge commit has the same source-tree hash. The final embedded
-  JavaScript comes from `274ddd1ef6eb3bb198c5449ff685c4579f505665`.
+  JavaScript comes from `1e113b63e618636701b715828a79995c990c4414`.
 - Both release apps include a bundled Hermes program and support iOS 16.4+.
 - The downloaded artifacts' SHA-256 checksums match the build manifests.
 - The device app was signed locally using the existing Apple development identity
@@ -45,17 +45,17 @@ identifier remains `com.fernandoamaral.bonds` and the sign-in callback remains
   sign-in sheet; the simulator has no saved Google session.
 - [The latest complete native build](https://github.com/Temaki-AI/relationship-manager/actions/runs/37253557642)
   passed device/simulator compilation and the hosted startup/Keychain/SQLite checks
-  for the preceding app revision. The installed journal update changes
+  for a preceding app revision. The installed photo update changes
   JavaScript only; the guarded bundle helper verifies unchanged native dependencies,
   configuration, assets and Swift modules before producing its Hermes program.
 
 The development IPA is saved privately in
-`apps/mobile/build/releases/Everclose-1.0.0-ios-journal.ipa` (ignored by Git).
+`apps/mobile/build/releases/Everclose-1.0.0-ios-photos.ipa` (ignored by Git).
 Its private `.verification.json` records the source/bundle/package hashes and
 post-install phone checks. The final update is installed, all signatures pass,
 and its upgraded phone cache still contains the same 12 contacts and notes.
 The package SHA-256 is
-`005227ae4b17648cb5bbf115e3abb46e7d1a341973bbc0728575c7049a92138b`.
+`561c66beb55b2c14a0eaf43012b7d49ef79b905e97da5899a6850017edf026c9`.
 It can run on the four devices already registered in its profile, which expires
 25 July 2027. This is a development installation, not a TestFlight submission.
 
@@ -105,13 +105,33 @@ includes saved interaction notes and handles read failures with retry. The conta
 screen no longer stays on a spinner after an initial read failure. Shared action
 buttons announce their disabled state and have vertical space for larger text.
 
-The complete root regression suite passes **775/775**, including draft reopen,
+Hosted contact photos now have a separate authenticated download, avoiding image
+bytes in the contact journal. Native profiles validate the image format, size,
+digest, identity, revision and dataset epoch before atomically caching/pruning it.
+People shows cached images, and up to 64 recent photos remain available offline.
+Failed or stale downloads leave CRM fields unchanged. Fixture tests cover offline
+restart, corrupt responses, account switching, real recovery and merges; all seven
+also pass against the disposable Cloudflare D1 runtime. The API is deployed as
+Worker `2b5e42b8-b888-4c3c-afbb-16c547a12a8f`; live readiness is healthy and unauthenticated
+photo requests return 401. The signed photo update is installed. Fresh pre/post
+phone snapshots match every original table and field, with 12 contacts, clean
+integrity/foreign keys and zero pending writes. Two contacts have existing photo
+flags, but actual profile downloads/rendering on the phone have not been observed.
+Native photo selection/upload remains required work.
+
+The complete root regression suite passes **783/783**, including draft reopen,
 rollback, write ordering, merge recovery, timeline pagination and the previous
 606-person directory fixture. Native TypeScript/lint, targeted root lint and all
-five native package tests pass. The final simulator artifact is prepared, but its
+five native package tests pass. The preceding simulator artifact is prepared, but its
 new screens have not been visually rechecked: another project's app owns the
 shared Simulator and approval to switch is pending. Actual phone Calendar/editor,
 closed-app reminder, phone edit/web round-trip and accessibility checks remain.
+
+Native run `37255968263` compiled the device and simulator binaries, but its hosted
+Simulator startup step timed out after Apple's first-boot migration. The workflow
+now starts an isolated smoke device before compilation and bounds boot, install,
+launch and data-container queries separately. The corrected CI startup check has
+not yet passed. It never operates the shared Simulator on this Mac.
 
 ## Account and daily use
 
@@ -152,7 +172,7 @@ section rather than the host code signature.
 TestFlight requires a distribution identity/profile and an App Store Connect app
 record; those have not been created. The separate Google Contacts/Calendar data
 clients are still unconfigured on the server, and Gmail is not implemented. LinkedIn
-support uses reviewed exports/profile links. Native photo transport, accessibility
+support uses reviewed exports/profile links. Native photo selection/upload, accessibility
 and the complete integration pilot remain in the
 [product plan](product-development-plan.md).
 
