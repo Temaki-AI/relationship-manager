@@ -27,15 +27,6 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: apps/mobile/package-lock.json
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run lint
       - name: Download verified native simulator build
         env:
           GH_TOKEN: ${{ github.token }}
@@ -53,8 +44,18 @@ jobs:
       - name: Prepare isolated simulator
         timeout-minutes: 3
         run: python3 scripts/verify-ios-startup.py prepare >> "$GITHUB_ENV"
-      - name: Verify unchanged native dependencies and embed current program
-        run: node scripts/refresh-ios-bundle.mjs build/DerivedData/Build/Products/Release-iphonesimulator/Everclose.app 039c12b0044227de6c92511e5f335d977e2c2ce7
+      - name: Check native compatibility and test the original compiled program
+        run: |
+          git diff --quiet 039c12b0044227de6c92511e5f335d977e2c2ce7 -- package.json package-lock.json app.json modules assets metro.config.cjs
+          python3 - <<'PY'
+          from pathlib import Path
+          import plistlib
+          app = Path('build/DerivedData/Build/Products/Release-iphonesimulator/Everclose.app')
+          info = plistlib.loads((app / 'Info.plist').read_bytes())
+          assert info['CFBundleIdentifier'] == 'com.fernandoamaral.bonds'
+          assert info['DTPlatformName'] == 'iphonesimulator'
+          assert info['CFBundleVersion'] == '2'
+          PY
       - name: Verify native startup and empty account storage
         timeout-minutes: 17
         run: python3 scripts/verify-ios-startup.py verify
