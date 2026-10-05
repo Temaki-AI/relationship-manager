@@ -1,6 +1,16 @@
 # Everclose personal iOS release — 5 October 2026
 
-**Build 4 is the current signed installation on TIE Fighter.** Its installation
+**Build 7 is the current signed installation on TIE Fighter.** At the owner's
+request, the verified signed package upgraded build 4 in place. Installation,
+actual metadata (1.0.0/build 7), launch and process stability pass. The owner
+confirms existing contacts are visible in People after the upgrade. No personal
+database was copied for this delivery; fresh phone/web sync and physical provider/
+notification/photo/biometric/accessibility journeys still need verification.
+[The build-7 record](personal-ios-build7.md) contains exact source, checksum and
+private receipts. Its separate later contact-label fix has simulator preview
+proof, with clean native compilation still running. The simulator remains ready.
+
+**Previously installed build 4.** Its installation
 receipt and installed-app metadata confirm success. Both native Release builds,
 linkage verification, isolated simulator startup, SQLite and Keychain checks pass
 in [run 37278926485](https://github.com/Temaki-AI/relationship-manager/actions/runs/37278926485).
@@ -11,9 +21,9 @@ contacts remains pending.
 
 **Build 6 runs in a dedicated local iPhone simulator and is signed for the phone.** Both native Release builds, linkage,
 isolated SQLite/Keychain startup and strict signed-package verification pass. It
-adds an optional device-wide Face ID/Touch ID/passcode gate. The phone remains
-unreachable; direct USB reconnection and Trust confirmation with both devices
-unlocked are pending for physical installation. At the owner's request, local
+adds an optional device-wide Face ID/Touch ID/passcode gate. The phone was
+unreachable during build-6 delivery; the subsequent build-7 upgrade now succeeds.
+At the owner's request, local
 simulator installation, startup and an actual native offline contact/restart
 journey now pass, with a separate synthetic QA device. See
 [the build-6 release record](personal-ios-build6.md) for exact source, checksum,

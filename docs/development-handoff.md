@@ -1,6 +1,14 @@
 # Development handoff — 5 October 2026
 
-Everclose's personal web release is deployed at everclosecrm.com. Personal iOS build 4 is signed and installed on TIE Fighter; the actual receipt and installed-app metadata confirm it. Both native Release binaries, linkage verification and isolated first launch with SQLite/Keychain initialization pass in [run 37278926485](https://github.com/Temaki-AI/relationship-manager/actions/runs/37278926485). Exact source, hash, installation evidence and remaining checks are in the [build-4 release record](personal-ios-build4.md). After the owner reported the phone unlocked again, a fresh launch at 10:56 UTC succeeded as process 9346 and a separate stability check passed. Owner confirmation of the UI and contacts remains pending.
+Everclose's personal web release is deployed at everclosecrm.com. Personal iOS
+build 7 is now signed and installed in place on TIE Fighter at the owner's explicit
+request. Actual metadata reports 1.0.0/build 7; installation, launch and the
+subsequent process-stability query pass (process 13565). The owner confirms
+existing contacts are visible in People after the upgrade. The personal database
+was not copied or reset; exact data equality and a fresh phone/web sync round trip
+remain unverified. Exact source, hash and private receipts are in the
+[build-7 record](personal-ios-build7.md); the previous
+[build-4 record](personal-ios-build4.md) remains historical evidence.
 
 **Build 7 is running in the dedicated Everclose Build 7 simulator and is signed for the phone.**
 The unmodified compiled release passes six separate native journeys: offline
@@ -14,7 +22,8 @@ exact source, artifacts, checksums and open account/physical/release checks.
 The Contacts display issue found during QA has a follow-up source fix `38e2084`:
 47 focused regressions, mobile package/types/lint and a 21.626-second native
 JS-preview display test pass with unchanged CRM/source-table hashes. Clean native
-CI run 37363077696 is still pending. The preview is confined to QA; do not
+CI run 37363077696 was cancelled by documentation synchronization; replacement
+37363883290 is live for source-equivalent `3c37a02`. The preview is confined to QA; do not
 attribute it to the earlier compiled artifact in the user-ready simulator.
 
 The preceding **build 6** added an optional device-wide
@@ -22,12 +31,10 @@ Face ID/Touch ID/passcode gate to schema 15 and the default-off Gmail cache. Bot
 native Release jobs and isolated SQLite/Keychain startup pass in run 37321546205.
 That build-6 source passed 878 root tests, 398 D1 tests with 11 documented skips,
 17 native package checks and 157 native data/sync regressions. Source, checksum,
-first-launch screen and strict signature checks pass. The phone remains unreachable;
-macOS's USB inventory did not detect an iPhone. Reuse the exact package recorded
-in [the build-6 record](personal-ios-build6.md) after direct USB reconnection and
-Trust confirmation with both devices unlocked. A documentation commit does not
-require rebuilding or resigning it. Verify installation, exact bundle/build metadata
-and launch/stability before claiming physical delivery. The earlier signed
+first-launch screen and strict signature checks passed. The phone was unreachable
+at that time; its later build-7 upgrade now succeeds. Preserve the package in
+[the build-6 record](personal-ios-build6.md) as historical evidence and use the
+current build-7 record for delivery. The earlier signed
 [build 5](personal-ios-build5.md) remains separately preserved. Private database
 copying remains subject to the pending explicit permission. The owner's later
 instruction to use Simulator is fulfilled with two new Everclose devices. Actual

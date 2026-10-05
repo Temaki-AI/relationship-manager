@@ -53,7 +53,9 @@ Version remains 1.0.0, native schema remains 15 and the frozen version-4 sync
 contract remains unchanged. No native dependency, Google grant, cloud schema or
 production deployment is introduced. Both build-7 native Release binaries compile;
 the simulator artifact is installed and the device artifact is locally signed with
-a verified signature. Build 7 has not been installed on the physical phone.
+a verified signature. Build 7 is now installed in place on the physical phone;
+actual metadata, successful launch and subsequent process stability are verified.
+The owner confirms existing contacts are visible after this upgrade.
 
 ## Verification status
 
@@ -107,9 +109,10 @@ Private evidence is `build7-contact-label-preview.xcresult` and
 `build7-contact-label-preview/cache-verification.json` under the ignored build
 directories. This preview ran only on QA; the user-ready simulator retains the
 unmodified compiled release. Clean native compilation of the follow-up is in
-[run 37363077696](https://github.com/Temaki-AI/relationship-manager/actions/runs/37363077696)
-and is not yet verified complete. Its result must be checked before replacing
-the user-ready release with that artifact.
+[run 37363077696](https://github.com/Temaki-AI/relationship-manager/actions/runs/37363077696),
+which was later cancelled by documentation synchronization. Its replacement is
+recorded with the physical installation below. A completed successful result is
+required before replacing the user-ready release with that artifact.
 
 The closed-app notification screenshot was inspected. The empty user-ready cache
 also passes read-only schema-15 and SQLite integrity checks, and the launched
@@ -143,6 +146,32 @@ The locally signed device package is
 `apps/mobile/build/releases/Everclose-1.0.0-ios-build7.ipa`, SHA-256
 `da109d8a2abb8a41130bc2874e5749f31ad70440bdf705b063cebbff244a22ff`.
 Strict signature verification passes; no signing key was exported or uploaded.
+
+### Physical installation — 5 October 2026
+
+After the owner explicitly requested delivery to the phone, CoreDevice found the
+paired **TIE Fighter** iPhone 13 available. Installed metadata showed build 4.
+The exact signed build-7 package above passed its checksum, normal-context strict
+signature and linkage checks, then an in-place installation returned success.
+The installed bundle reports version 1.0.0/build 7. Launch succeeded at 19:37 UTC
+as process 13565, and the subsequent device process query confirms the same
+Everclose executable remains running. The owner then confirmed that existing
+contacts are visible in People. This is actual physical installation and owner
+UI evidence; it does not establish exact database equality, a fresh cloud-sync
+round trip or all physical integration behavior.
+
+Private receipts are under `apps/mobile/build/releases/build7-phone-install/`:
+`installation-receipt.json`, `installed-metadata.json`, `launch-receipt.json`,
+`process-stability.json` and `delivery-verification.json`. The personal database
+was not copied or reset. Physical provider/notification/photo/biometric/VoiceOver
+journeys remain required. The later label fix is separate and is not included in
+this installed package.
+
+The label-build run 37363077696 was cancelled by the subsequent documentation
+synchronization. Its replacement
+[37363883290](https://github.com/Temaki-AI/relationship-manager/actions/runs/37363883290)
+is confirmed live for `3c37a02`, with both native jobs running. Documentation-only
+pushes are held until it finishes so they do not cancel another healthy build.
 
 Private compiled artifacts, screenshots, result bundles and signing receipts stay
 under the ignored mobile build directory. When back at the Mac, select the
