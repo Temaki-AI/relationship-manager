@@ -19,6 +19,7 @@ import type { SyncV4EntityRecord as SyncEntityRecord, SyncV4BootstrapPosition as
 import { applyRemoteCalendarEvent } from './calendar-events';
 import { holdCalendarLinksForEpoch, syncCalendarLinks } from './calendar-event-links';
 import { holdAppleCalendarForEpoch } from './apple-calendar';
+import { discardContactPhotosForEpoch } from './contact-photos';
 import { applyRemoteChild, childPayload, childTable, childReferences, pendingChildren, remoteEntity, stagePlanCompletion, discardPlanCompletionDrafts,
   CHILD_ENTITIES, CHILD_FIELDS, type ChildEntity, type QueueRow } from './sync-entities';
 
@@ -227,6 +228,7 @@ async function bootstrap(db: SQLiteDatabase, account: NativeAccount, fetcher: ty
     await holdDevicePoliciesForEpoch(tx, head!.epoch);
     await holdCalendarLinksForEpoch(tx, head!.epoch);
     await holdAppleCalendarForEpoch(tx, head!.epoch);
+    await discardContactPhotosForEpoch(tx, head!.epoch);
     const legacy = old ? null : await metadata(tx, 'sync-cursor-v3') ?? await metadata(tx, 'sync-cursor-v2') ?? await metadata(tx, 'sync-cursor');
     const previous = old ?? (legacy ? readSyncCursor(JSON.parse(legacy)) : null);
     if (previous && previous.epoch !== head!.epoch) {

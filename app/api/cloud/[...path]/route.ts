@@ -22,6 +22,7 @@ import { handleDeviceSources } from '@/lib/cloud/device-source-api';
 import { isNativeDeviceApiPath } from '@/packages/domain/src/devices';
 import { handleSavedCalendarEvents } from '@/lib/cloud/calendar-event-links';
 import { handleCalendarEventLinks } from '@/lib/cloud/calendar-event-link-api';
+import { handleContactPhotos } from '@/lib/cloud/contact-photo-api';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,7 @@ async function dispatch(request: Request, context: Context) {
     const { workspaceId, userId, lifecycle, role } = actor;
     const maintenance = cloudWorkspaceMaintenanceResponse(lifecycle, path, request.method);
     if (maintenance) return maintenance;
+    if (path[0] === 'v1' && path[1] === 'contact-photos') return handleContactPhotos(request, actor, path);
     if (path[0] === 'connections') return handleProviderConnections(request, actor, path);
     if (path[0] === 'calendar' && path[1] === 'events') return handleSavedCalendarEvents(request, actor, path);
     if (path.join('/') === 'v1/calendar-event-links/push') return handleCalendarEventLinks(request, actor, path);

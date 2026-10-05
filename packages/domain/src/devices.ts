@@ -65,6 +65,7 @@ export function parseDeviceBearer(value: string | null): string | null {
   return isDeviceSecret(token.slice(DEVICE_TOKEN_PREFIX.length)) ? token : null;
 }
 export function isNativeDeviceApiPath(pathname: string): boolean {
+  if (/^\/api\/v1\/contact-photos\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(pathname)) return true;
   return ['/api/v1/sync/bootstrap', '/api/v1/sync/pull', '/api/v1/sync/push',
     '/api/v2/sync/bootstrap', '/api/v2/sync/pull', '/api/v2/sync/push',
     '/api/v3/sync/bootstrap', '/api/v3/sync/pull', '/api/v3/sync/push',

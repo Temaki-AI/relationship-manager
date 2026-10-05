@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import {
   Image,
   Pressable,
@@ -38,7 +39,8 @@ export function SectionHeading({ title, action }: { title: string; action?: Reac
   );
 }
 
-export function Avatar({ name, size = 48 }: { name: string; size?: number }) {
+export function Avatar({ name, size = 48, photo = null }: { name: string; size?: number; photo?: string | null }) {
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
   const colors = ['#9F2447', '#315C72', '#2D6D55', '#7A4A1D', '#6D3B67'];
   const colorIndex = Array.from(name).reduce((sum, character) => sum + character.charCodeAt(0), 0)
     % colors.length;
@@ -50,9 +52,10 @@ export function Avatar({ name, size = 48 }: { name: string; size?: number }) {
         { width: size, height: size, borderRadius: Math.round(size * 0.36), backgroundColor: colors[colorIndex] },
       ]}
     >
-      <Text style={[styles.avatarText, { fontSize: Math.max(12, Math.round(size * 0.32)) }]}>
+      {photo && photo !== failedPhoto ? <Image accessible={false} source={{ uri: photo }} resizeMode="cover"
+        style={{ width: size, height: size, borderRadius: Math.round(size * 0.36) }} onError={() => setFailedPhoto(photo)} /> : <Text style={[styles.avatarText, { fontSize: Math.max(12, Math.round(size * 0.32)) }]}>
         {getInitials(name)}
-      </Text>
+      </Text>}
     </View>
   );
 }

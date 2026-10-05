@@ -172,15 +172,16 @@ export async function createCloudHarness() {
       body: options.form || (options.body === undefined ? undefined : JSON.stringify(options.body)),
     });
     let response;
-    if (parts.join('/') === 'v1/calendar-event-links/push' || parts.join('/') === 'v1/device-sources/push' || parts[0] === 'contacts' && parts[2] === 'device-sources') {
+    if (parts[0] === 'v1' && parts[1] === 'contact-photos' || parts.join('/') === 'v1/calendar-event-links/push' || parts.join('/') === 'v1/device-sources/push' || parts[0] === 'contacts' && parts[2] === 'device-sources') {
       const authorization = headers.get('authorization');
       let actor: unknown = { userId: 'owner', workspaceId: options.workspace || 'test', authMethod: 'web', lifecycle: 'active' };
       if (authorization) {
         try { actor = { ...await (deviceApi.requireDeviceWorkspace as (db: typeof db, h: Headers) => Promise<unknown>)(db, headers), authMethod: 'device' }; }
         catch { return { status: 401, headers: new Headers(), body: { error: 'Device session revoked.' } }; }
       }
-      const handler = parts.join('/') === 'v1/calendar-event-links/push'
-        ? load(path.join(root, 'lib/cloud/calendar-event-link-api.ts')).handleCalendarEventLinks : deviceSourceApi.handleDeviceSources;
+      const handler = parts[0] === 'v1' && parts[1] === 'contact-photos'
+        ? load(path.join(root, 'lib/cloud/contact-photo-api.ts')).handleContactPhotos : parts.join('/') === 'v1/calendar-event-links/push'
+          ? load(path.join(root, 'lib/cloud/calendar-event-link-api.ts')).handleCalendarEventLinks : deviceSourceApi.handleDeviceSources;
       response = await (handler as (r: Request, a: unknown, p: string[]) => Promise<Response>)(request, actor, parts);
     } else if (parts[0] === 'calendar' && parts[1] === 'events') {
       response = await (load(path.join(root, 'lib/cloud/calendar-event-links.ts')).handleSavedCalendarEvents as (r: Request, a: unknown, p: string[]) => Promise<Response>)(request, { userId: 'owner', workspaceId: options.workspace || 'test', lifecycle: 'active', authMethod: 'web' }, parts);

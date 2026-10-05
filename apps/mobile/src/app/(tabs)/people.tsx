@@ -17,7 +17,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ActionButton, Avatar, BrandLockup, StatusPill } from '@/components/design-system';
+import { ActionButton, BrandLockup, StatusPill } from '@/components/design-system';
+import { ContactAvatar } from '@/components/contact-avatar';
 import { listContactPage } from '@/data/contacts';
 import { getRelationshipState, type ContactRecord } from '@/domain/contact';
 import { formatRelativeDate } from '@/lib/format';
@@ -170,7 +171,7 @@ export default function PeopleScreen() {
               onPress={() => router.push({ pathname: '/contacts/[id]', params: { id: item.id } })}
               style={({ pressed }) => [styles.personRow, pressed && styles.personRowPressed]}
             >
-              <Avatar name={item.name} />
+              <ContactAvatar id={item.id} name={item.name} />
               <View style={styles.personCopy}>
                 <Text style={styles.personName}>{item.name}</Text>
                 <Text numberOfLines={1} style={styles.personMeta}>

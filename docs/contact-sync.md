@@ -14,7 +14,13 @@ The shared TypeScript contract is in `packages/domain/src/sync.ts`. It has no Ne
 
 ## Authentication and routes
 
-All three routes require an Everclose web session or a valid native device bearer credential, with current workspace membership checked through the cloud dispatcher. Middleware rewrites only supported versioned paths. They return `Cache-Control: no-store`. Provider access credentials are not accepted as Everclose sessions. Private photo reads still require web-session authentication; native photo transport is not part of the device grant yet.
+All three routes require an Everclose web session or a valid native device bearer credential, with current workspace membership checked through the cloud dispatcher. Middleware rewrites only supported versioned paths. They return `Cache-Control: no-store`. Provider access credentials are not accepted as Everclose sessions. The integer-ID web photo endpoint still requires web authentication. A separate UUID-based photo download now accepts the revocable native device credential.
+
+### Contact photo downloads
+
+`GET /api/v1/contact-photos/<person-uuid>?epoch=<uuid>&revision=<number>` returns a bounded version-1 JSON envelope containing the current embedded image and its SHA-256 digest, or a null image/digest. The handler rechecks membership and the device session inside its database read, rejects maintenance and replaced datasets, and requires the exact current contact revision. Retired merge identities do not redirect image bytes. JPEG, PNG and WebP must match the shared image signature/size validator; unsupported legacy URLs remain unchanged. Responses use `Cache-Control: private, no-store` and `nosniff`.
+
+Native profiles download images separately from the contact journal and retain at most 64 recent photos in their account database. People reads cached images; it does not fetch every person's photo. The client validates identity, revision, epoch, byte limit and digest, then rechecks the local position before atomically storing/pruning the cache. A changed contact, merge, removal or restore cannot display an image under an old identity or dataset. Offline reopening uses a valid cached image; initials remain available when a photo is absent or unavailable. This does not add photos to contact outbox requests or grant photo selection/upload. Native selection/upload and physical photo journeys remain required work.
 
 ### Device authorization
 

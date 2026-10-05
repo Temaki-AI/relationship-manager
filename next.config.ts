@@ -15,6 +15,11 @@ if (process.env.EVERCLOSE_DEVELOPMENT !== 'local') {
 const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: ["better-sqlite3"],
+  webpack(config, { dev }) {
+    // Allow release builds on machines without space for webpack's disk cache.
+    if (!dev && process.env.EVERCLOSE_BUILD_CACHE === 'false') config.cache = false;
+    return config;
+  },
   outputFileTracingExcludes: {
     "/*": ["./data/**/*"],
   },

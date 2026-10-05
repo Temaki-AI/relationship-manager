@@ -1,0 +1,168 @@
+import assert from 'node:assert/strict';
+import { createHash, randomBytes } from 'node:crypto';
+import test from 'node:test';
+import Database from 'better-sqlite3';
+import { createCloudHarness } from './helpers/cloud-harness.ts';
+import { createMobileHarness } from './helpers/mobile-harness.ts';
+import { accountScope, DEVICE_TOKEN_PREFIX, parseDeviceCallback, readNativeAccount } from '../packages/domain/src/devices.ts';
+import { MAX_CACHED_CONTACT_PHOTOS, MAX_CONTACT_PHOTO_RESPONSE_BYTES, readContactPhotoTransfer } from '../packages/domain/src/contact-photo-transfer.ts';
+
+const PHOTO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+async function fixture() {
+  const cloud = await createCloudHarness();
+  await cloud.db.prepare(`INSERT INTO user (id, name, email, email_verified, created_at, updated_at)
+    VALUES ('owner', 'Owner', 'owner@example.test', 1, 1, 1)`).run();
+  await cloud.db.prepare("INSERT INTO workspace_members (workspace_id, user_id, role) VALUES ('test', 'owner', 'owner')").run();
+  const verifier = randomBytes(32).toString('hex'), state = randomBytes(32).toString('hex');
+  const approval = await cloud.authorizeDevice({ challenge: createHash('sha256').update(verifier).digest('base64url'), state, deviceName: 'Photo test iPhone' });
+  const code = parseDeviceCallback((await approval.json()).callback, state), token = `${DEVICE_TOKEN_PREFIX}${randomBytes(32).toString('base64url')}`;
+  const exchange = await cloud.exchangeDevice({ code, state, verifier, token });
+  const account = readNativeAccount({ ...(await exchange.json()).identity, origin: 'https://everclosecrm.com', token });
+  const person = (await cloud.call('contacts', { method: 'POST', body: { name: 'Photo person', email: 'photo.person@example.test', notes: 'Original private note', photo_url: PHOTO } })).body.contact;
+  const mobile = await createMobileHarness(account), requests: string[] = [];
+  const fetcher: typeof fetch = async (input, init) => {
+    const url = new URL(String(input)), headers = new Headers(init?.headers);
+    assert.equal(url.origin, account.origin); assert.equal(init?.credentials, 'omit'); assert.equal(init?.redirect, 'error');
+    assert.equal(headers.get('Authorization'), `Bearer ${account.token}`);
+    const path = url.pathname.slice('/api/'.length) + url.search; requests.push(path);
+    const response = await cloud.call(path, { method: init?.method, headers: { Authorization: headers.get('Authorization')! },
+      ...(init?.body ? { body: JSON.parse(init.body as string) } : {}) });
+    return Response.json(response.body, { status: response.status, headers: response.headers });
+  };
+  await mobile.sync.syncWorkspace(mobile.db, account, { fetcher });
+  const epoch = (await cloud.call('v4/sync/bootstrap')).body.cursor.epoch;
+  const revision = (await cloud.db.prepare('SELECT revision FROM sync_contact_records WHERE workspace_id = ? AND public_id = ?').bind('test', person.public_id).first())!.revision;
+  const url = (id = person.public_id, query = `epoch=${epoch}&revision=${revision}`) => `v1/contact-photos/${id}?${query}`;
+  const download = (custom = fetcher, isCurrent?: () => boolean) => mobile.photos.loadContactPhoto(mobile.db, account, person.public_id, { fetcher: custom, isCurrent });
+  const cacheCount = () => mobile.sqlite.prepare("SELECT count(*) n FROM app_metadata WHERE key LIKE 'contact-photo:v1:%'").get()!.n;
+  return { cloud, mobile, account, person, epoch, revision, requests, fetcher, url, download, cacheCount,
+    async close() { mobile.close(); await cloud.close(); } };
+}
+
+test('hosted photos download separately, survive restart offline and never become contact mutations', async () => {
+  const f = await fixture(); let reopened: Awaited<ReturnType<typeof createMobileHarness>> | undefined;
+  try {
+    const before = await f.mobile.contacts.getContact(f.mobile.db, f.person.public_id);
+    assert.equal(await f.mobile.photos.cachedContactPhoto(f.mobile.db, f.person.public_id, accountScope(f.account)), null);
+    assert.equal(await f.download(), PHOTO); assert.equal(await f.download(), PHOTO);
+    assert.equal(f.requests.filter((path) => path.startsWith('v1/contact-photos/')).length, 1);
+    assert.deepEqual(await f.mobile.contacts.getContact(f.mobile.db, f.person.public_id), before);
+    assert.equal(f.mobile.sqlite.prepare('SELECT count(*) n FROM sync_queue').get()!.n, 0);
+    reopened = await createMobileHarness(f.account, new Database(f.mobile.sqlite.serialize()));
+    assert.equal(await reopened.photos.loadContactPhoto(reopened.db, f.account, f.person.public_id, { fetcher: async () => { throw new Error('Offline'); } }), PHOTO);
+    assert.equal(reopened.sqlite.pragma('user_version', { simple: true }), 14);
+    assert.equal((await f.cloud.call('contacts/' + f.person.id)).body.contact.notes, 'Original private note');
+  } finally { reopened?.close(); await f.close(); }
+});
+
+test('photo reads recheck owner/session, maintenance, epoch, revision and deleted identities', async () => {
+  const f = await fixture(); try {
+    const options = { headers: { Authorization: `Bearer ${f.account.token}` } };
+    const first = await f.cloud.call(f.url(), options);
+    assert.equal(first.status, 200); assert.equal(first.headers.get('cache-control'), 'private, no-store');
+    const photo = readContactPhotoTransfer(first.body, { epoch: f.epoch, contactId: f.person.public_id, revision: f.revision });
+    assert.equal(photo.digest, createHash('sha256').update(PHOTO).digest('hex'));
+    await f.cloud.db.prepare("INSERT INTO workspaces (id, name) VALUES ('foreign', 'Other account')").run();
+    const foreign = (await f.cloud.call('contacts', { workspace: 'foreign', method: 'POST', body: { name: 'Other person', photo_url: PHOTO } })).body.contact;
+    assert.equal((await f.cloud.call(f.url(foreign.public_id), options)).status, 404);
+    assert.equal((await f.cloud.call(f.url(crypto.randomUUID()), options)).status, 404);
+    assert.equal((await f.cloud.call(f.url(undefined, `epoch=${crypto.randomUUID()}&revision=${f.revision}`), options)).body.code, 'epoch_changed');
+    assert.equal((await f.cloud.call(f.url(undefined, `epoch=${f.epoch}&revision=${f.revision + 1}`), options)).body.code, 'photo_changed');
+    assert.equal((await f.cloud.call(f.url(undefined, `epoch=${f.epoch}&epoch=${f.epoch}&revision=${f.revision}`), options)).status, 400);
+    assert.equal((await f.cloud.call(f.url(), { ...options, method: 'POST', body: {} })).status, 405);
+    await f.cloud.db.prepare("UPDATE workspaces SET lifecycle = 'restoring' WHERE id = 'test'").run();
+    assert.equal((await f.cloud.call(f.url(), options)).status, 423);
+    await f.cloud.db.prepare("UPDATE workspaces SET lifecycle = 'active' WHERE id = 'test'").run();
+    await f.cloud.db.prepare('UPDATE device_sessions SET revoked_at = ? WHERE id = ?').bind(new Date().toISOString(), f.account.deviceId).run();
+    assert.equal((await f.cloud.call(f.url(), options)).status, 401);
+    assert.equal(f.cacheCount(), 0);
+  } finally { await f.close(); }
+});
+
+test('wrong identities, formats, hashes and excessive photo responses never enter the cache', async () => {
+  const f = await fixture(); try {
+    const valid = (await f.cloud.call(f.url(), { headers: { Authorization: `Bearer ${f.account.token}` } })).body;
+    for (const value of [{ ...valid, contact_id: crypto.randomUUID() }, { ...valid, epoch: crypto.randomUUID() },
+      { ...valid, revision: valid.revision + 1 }, { ...valid, photo: 'data:image/png;base64,PGh0bWw+PC9odG1sPg==' },
+      { ...valid, digest: '0'.repeat(64) }, { ...valid, photo: PHOTO + 'A'.repeat(180_000) }]) {
+      await assert.rejects(f.download(async () => Response.json(value))); assert.equal(f.cacheCount(), 0);
+    }
+    await assert.rejects(f.download(async () => new Response(' '.repeat(MAX_CONTACT_PHOTO_RESPONSE_BYTES + 1))), /too large/);
+    await assert.rejects(f.download(async () => Response.json(valid, { headers: { 'content-length': String(MAX_CONTACT_PHOTO_RESPONSE_BYTES + 1) } })), /too large/);
+    assert.equal(f.cacheCount(), 0);
+    const corrupted = { ...valid, digest: '0'.repeat(64) };
+    f.mobile.sqlite.prepare('INSERT INTO app_metadata (key, value, updated_at) VALUES (?, ?, ?)').run('contact-photo:v1:' + f.person.public_id, JSON.stringify(corrupted), new Date().toISOString());
+    assert.equal(await f.mobile.photos.cachedContactPhoto(f.mobile.db, f.person.public_id, accountScope(f.account)), null);
+    assert.equal(await f.download(), PHOTO);
+  } finally { await f.close(); }
+});
+
+test('account switches and contact changes reject late photo downloads without touching private notes', async () => {
+  const f = await fixture(); try {
+    let current = true;
+    await assert.rejects(f.download(async (input, init) => { const reply = await f.fetcher(input, init); current = false; return reply; }, () => current), /account changed/);
+    assert.equal(f.cacheCount(), 0);
+    await assert.rejects(f.download(async (input, init) => {
+      const reply = await f.fetcher(input, init);
+      const original = (await f.cloud.call('contacts/' + f.person.id)).body.contact;
+      const changed = await f.cloud.call('contacts/' + f.person.id, { method: 'PATCH', body: { notes: 'A web edit after opening', photo_url: null, expected_edit_revision: original.edit_revision } });
+      assert.equal(changed.status, 200);
+      await f.mobile.sync.syncWorkspace(f.mobile.db, f.account, { fetcher: f.fetcher });
+      return reply;
+    }), /changed during/);
+    assert.equal(f.cacheCount(), 0); assert.equal(await f.download(), null);
+    assert.equal((await f.mobile.contacts.getContact(f.mobile.db, f.person.public_id))!.notes, 'A web edit after opening');
+    await assert.rejects(f.mobile.photos.cachedContactPhoto(f.mobile.db, f.person.public_id, accountScope({ ...f.account, workspaceId: 'another-workspace' })), /account changed/);
+  } finally { await f.close(); }
+});
+
+test('cache write and pruning failures roll back together; a bounded cache keeps drafts intact', async () => {
+  const f = await fixture(); try {
+    f.mobile.faults.sqlContains = 'DELETE FROM app_metadata WHERE key LIKE';
+    await assert.rejects(f.download(), /Simulated/); assert.equal(f.cacheCount(), 0);
+    f.mobile.faults.sqlContains = undefined;
+    for (let index = 0; index < MAX_CACHED_CONTACT_PHOTOS + 5; index++) f.mobile.sqlite.prepare('INSERT INTO app_metadata (key, value, updated_at) VALUES (?, ?, ?)')
+      .run('contact-photo:v1:' + crypto.randomUUID(), JSON.stringify({ old: true }), new Date(index).toISOString());
+    f.mobile.sqlite.prepare('INSERT INTO app_metadata (key, value, updated_at) VALUES (?, ?, ?)').run('journal-form:v1:plan:new:any', 'Private unfinished plan', new Date().toISOString());
+    assert.equal(await f.download(), PHOTO); assert.equal(f.cacheCount(), MAX_CACHED_CONTACT_PHOTOS);
+    assert.equal(f.mobile.sqlite.prepare("SELECT value FROM app_metadata WHERE key = 'journal-form:v1:plan:new:any'").get()!.value, 'Private unfinished plan');
+    assert.equal(await f.mobile.photos.cachedContactPhoto(f.mobile.db, f.person.public_id, accountScope(f.account)), PHOTO);
+  } finally { await f.close(); }
+});
+
+test('removed and restored people never reuse a cached photo from an earlier identity or dataset', async () => {
+  const f = await fixture(); try {
+    assert.equal(await f.download(), PHOTO);
+    const oldCache = f.mobile.sqlite.prepare("SELECT value FROM app_metadata WHERE key = ?").get('contact-photo:v1:' + f.person.public_id)!.value;
+    const backup = await f.cloud.call('settings/backups', { method: 'POST' });
+    assert.equal(backup.status, 201);
+    const restored = await f.cloud.call('settings/restore', { method: 'POST', body: { filename: backup.body.backup.filename, confirmation: 'RESTORE' } });
+    assert.equal(restored.status, 200);
+    await f.mobile.sync.syncWorkspace(f.mobile.db, f.account, { fetcher: f.fetcher });
+    assert.equal(f.cacheCount(), 0);
+    f.mobile.sqlite.prepare('INSERT INTO app_metadata (key, value, updated_at) VALUES (?, ?, ?)').run('contact-photo:v1:' + f.person.public_id, oldCache, new Date().toISOString());
+    assert.equal(await f.mobile.photos.cachedContactPhoto(f.mobile.db, f.person.public_id, accountScope(f.account)), null);
+    assert.equal(await f.download(), PHOTO);
+    await f.cloud.call('contacts/' + f.person.id, { method: 'DELETE' });
+    await f.mobile.sync.syncWorkspace(f.mobile.db, f.account, { fetcher: f.fetcher });
+    assert.equal(await f.mobile.photos.cachedContactPhoto(f.mobile.db, f.person.public_id, accountScope(f.account)), null);
+    assert.equal(await f.download(), null);
+  } finally { await f.close(); }
+});
+
+test('merging a photographed person follows the survivor identity and never shows the retired cache', async () => {
+  const f = await fixture(); try {
+    assert.equal(await f.download(), PHOTO);
+    const survivor = (await f.cloud.call('contacts', { method: 'POST', body: { name: 'Photo person', email: f.person.email, notes: 'Survivor note' } })).body.contact;
+    const review = await f.cloud.call('contacts/duplicates');
+    const merged = await f.cloud.call('contacts/duplicates', { method: 'POST', body: { primaryId: survivor.id, duplicateIds: [f.person.id], expectedRevision: review.body.revision } });
+    assert.equal(merged.status, 200, JSON.stringify(merged.body));
+    await f.mobile.sync.syncWorkspace(f.mobile.db, f.account, { fetcher: f.fetcher });
+    assert.equal((await f.mobile.contacts.getContact(f.mobile.db, f.person.public_id))!.id, survivor.public_id);
+    assert.equal(await f.mobile.photos.cachedContactPhoto(f.mobile.db, f.person.public_id, accountScope(f.account)), null);
+    assert.equal(await f.mobile.photos.cachedContactPhoto(f.mobile.db, survivor.public_id, accountScope(f.account)), null);
+    const current = (await f.cloud.call('contacts/' + survivor.id)).body.contact;
+    const copied = await f.mobile.photos.loadContactPhoto(f.mobile.db, f.account, survivor.public_id, { fetcher: f.fetcher });
+    assert.equal(copied, current.photo_url); // Merge may intentionally preserve the original photo on the survivor.
+  } finally { await f.close(); }
+});

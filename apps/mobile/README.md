@@ -114,7 +114,13 @@ Schema 8 additionally caches Google source identity, original observations and
 accepted-field details. Its upgrade clears the incremental cursor while retaining
 queued edits, forcing a complete current download. Saved Google details remain
 available offline; older receipts preserve them and unlink downloads remove only
-the source collection. Native photo transport and broader editing remain planned.
+the source collection. Hosted contact photos now have a separate authenticated
+download and an account-local cache. Opening a profile downloads its current JPEG,
+PNG or WebP image; People displays already cached photos. Up to 64 recent photos
+remain available offline, with initials as the fallback. Downloads verify size,
+signature, digest, contact revision and dataset epoch before committing. Restore
+purges older photo cache entries; failed or stale downloads never edit CRM fields.
+Native photo selection/upload and broader editing remain planned.
 
 Schema 10 retains selected iPhone review previews and device-local source details,
 adds a shared source projection and resets the cloud cursor for a complete download

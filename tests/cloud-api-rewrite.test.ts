@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { getCloudApiRewrite } from '../lib/cloud/api-rewrite.ts';
+import { isNativeDeviceApiPath } from '../packages/domain/src/devices.ts';
+
+test('private photo routes permit device credentials only for a public person UUID', () => {
+  const path = '/api/v1/contact-photos/7a9d9fbc-e4c0-4597-ae15-2df10dfb4955';
+  assert.equal(getCloudApiRewrite(path), path.replace('/api/', '/api/cloud/'));
+  assert.equal(isNativeDeviceApiPath(path), true);
+  for (const invalid of ['/api/v1/contact-photos', '/api/v1/contact-photos/42', path + '/upload', '/api/v2/contact-photos/7a9d9fbc-e4c0-4597-ae15-2df10dfb4955']) {
+    assert.equal(getCloudApiRewrite(invalid), null); assert.equal(isNativeDeviceApiPath(invalid), false);
+  }
+});
 
 test('cloud export job routes rewrite to their authenticated handlers', () => {
   const id = '7a9d9fbc-e4c0-4597-ae15-2df10dfb4955';

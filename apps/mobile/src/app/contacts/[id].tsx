@@ -29,6 +29,7 @@ import { getRelationshipState, type ContactRecord } from '@/domain/contact';
 import { formatDateTime, formatRelativeDate } from '@/lib/format';
 import { fonts, palette } from '@/theme';
 import { useNativeSync } from '@/native/sync';
+import { useContactPhoto } from '@/native/contact-photo';
 import { readContactMethods, contactMethodHref } from '../../../../../packages/domain/src/contact-methods';
 import { readContactSources, readSourceFacts, SOURCE_FIELD_LABELS } from '../../../../../packages/domain/src/contact-sources';
 import { readProviderSources, readProviderFacts } from '../../../../../packages/domain/src/provider-sources';
@@ -51,6 +52,7 @@ function ContactDetail({ id }: { id: string }) {
   const { revision } = useNativeSync();
   const router = useRouter();
   const [contact, setContact] = useState<ContactRecord | null>(null);
+  const photo = useContactPhoto(contact?.id ?? id, true, focused);
   const [interactions, setInteractions] = useState<InteractionRecord[]>([]);
   const [reminders, setReminders] = useState<ReminderRecord[]>([]);
   const [loading, setLoading] = useState(!!id);
@@ -141,13 +143,15 @@ function ContactDetail({ id }: { id: string }) {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {!!error && <><Text accessibilityRole="alert" style={styles.notes}>{error}</Text><ActionButton label="Try again" variant="secondary" onPress={() => setReload((value) => value + 1)} /></>}
         <View style={styles.identity}>
-          <Avatar name={contact.name} size={82} />
+          <Avatar name={contact.name} size={82} photo={photo.uri} />
           <View style={styles.identityCopy}>
             <Text style={styles.name}>{contact.name}</Text>
             <StatusPill tone={stateTone} label={stateLabel} />
           </View>
         </View>
 
+        {!!photo.error && <View style={styles.section}><Text accessibilityRole="alert" style={styles.lastTouch}>{photo.error}</Text>
+          <ActionButton label="Retry photo download" variant="secondary" onPress={photo.retry} /></View>}
         <ActionButton label="Edit contact details" variant="secondary" onPress={() => router.push({ pathname: '/contacts/edit', params: { id: contact.id } })} />
         <ActionButton label="Contact methods" variant="secondary" onPress={() => router.push({ pathname: '/contacts/methods', params: { id: contact.id } })} />
         <ActionButton label="Plans, family & relationships" variant="secondary" onPress={() => router.push({ pathname: '/contacts/context', params: { contactId: contact.id } })} />
