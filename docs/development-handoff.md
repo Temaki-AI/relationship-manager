@@ -1,6 +1,6 @@
 # Development handoff — 5 October 2026
 
-Everclose's personal web release is deployed at everclosecrm.com. Personal iOS build 4 is signed and installed on TIE Fighter; the actual receipt and installed-app metadata confirm it. Both native Release binaries, linkage verification and isolated first launch with SQLite/Keychain initialization pass in [run 37278926485](https://github.com/Temaki-AI/relationship-manager/actions/runs/37278926485). Exact source, hash, installation evidence and remaining checks are in the [build-4 release record](personal-ios-build4.md). After the owner unlocked the phone, build 4 launched as process 8278 and remained running. Owner confirmation of the UI and contacts remains pending.
+Everclose's personal web release is deployed at everclosecrm.com. Personal iOS build 4 is signed and installed on TIE Fighter; the actual receipt and installed-app metadata confirm it. Both native Release binaries, linkage verification and isolated first launch with SQLite/Keychain initialization pass in [run 37278926485](https://github.com/Temaki-AI/relationship-manager/actions/runs/37278926485). Exact source, hash, installation evidence and remaining checks are in the [build-4 release record](personal-ios-build4.md). After the owner reported the phone unlocked again, a fresh launch at 10:56 UTC succeeded as process 9346 and a separate stability check passed. Owner confirmation of the UI and contacts remains pending.
 
 ## Delivered personal iOS implementation
 

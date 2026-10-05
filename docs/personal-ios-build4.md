@@ -58,8 +58,15 @@ receipts are `phone-verification/build4-unlocked-launch.json` and
 These checks read no screen or contact database. The owner confirmation that
 People shows the existing contacts remains pending.
 
-A later process check and direct launch attempt on 5 October could not reach the
-phone and returned CoreDeviceError 4. Their separate private receipts are
+After the owner reported the phone unlocked again, a fresh direct launch succeeded
+on 5 October at 10:56 UTC as process 9346. A separate check confirmed that this
+Everclose process remained running. The private receipts are
+`phone-verification/build4-owner-unlocked-recheck.json` and
+`phone-verification/build4-owner-unlocked-stability.json`. The latest phone
+connection check now passes; UI and contact visibility still await the owner.
+
+Before this latest successful check, a process check and direct launch attempt on
+5 October could not reach the phone and returned CoreDeviceError 4. Their private receipts are
 `phone-verification/build4-current-process.json` and
 `phone-verification/build4-current-launch.json`. This does not establish a new
 app failure or replace the earlier successful installation and launch evidence.
