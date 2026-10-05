@@ -19,6 +19,14 @@ startup and the complete offline journey in 331.439 seconds, with one test and
 zero failures/skips. Delivered source `c9cbca3` and CI merge `ab976b4` have identical
 trees. The earlier failed CI and unsuccessful local diagnostic runs are preserved.
 
+The next build-10 source candidate removes the image/URI decoder findings with
+scoped upstream upgrades and minimal reproducible Metro/query-string adapters.
+Clean installation, 22 mobile tests, types/lint, Hermes export and seven existing
+foundation/supply-chain checks pass. Native compilation/startup/offline validation
+is pending. The root/mobile audits still fail for braces and node-forge; the
+installed phone stays on verified build 9. See
+[dependency security](dependency-security.md) for graph counts and exact scope.
+
 Native Today has a per-person queue, combined reasons/latest history and explicit
 Reach out/Log/Done/Snooze actions. Choice pickers scroll with persistent Cancel and
 close when backgrounded or locked. Standard Apple method labels display clearly

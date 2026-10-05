@@ -1,6 +1,6 @@
 # Everclose product development plan
 
-Prepared on 3 October 2026; implementation status updated on 5 October 2026. The [working personal web release](personal-web-release.md) is now deployed at everclosecrm.com with verified Google sign-in and preserved existing contacts. This plan distinguishes that release from local native implementation, proposed work and integrated-beta requirements. Your personal use is the first product target; public distribution follows it.
+Prepared on 3 October 2026; implementation status updated on 6 October 2026. The [working personal web release](personal-web-release.md) is now deployed at everclosecrm.com with verified Google sign-in and preserved existing contacts. This plan distinguishes that release from local native implementation, proposed work and integrated-beta requirements. Your personal use is the first product target; public distribution follows it.
 
 Build Everclose into one personal relationship manager across the web and a native iPhone app. A person should be able to capture someone in seconds, connect that record to address books and supported accounts at any later point, see relevant conversations and events, and receive useful reminders without continually maintaining the database.
 
@@ -20,13 +20,18 @@ Build around the owner's existing Everclose account and contact database. Local 
 
 Native Today’s per-person queue, birthday/reminder/check-in reasons, explicit
 conversation logging and direct reminder Done/Snooze now pass native preview
-checks, including the largest text size and restarts. Clean build 8 passes both
+checks, including the largest text size and restarts. Clean build 9 passes both
 Release binaries and the full offline CI journey, plus actual-release largest-text
-and background checks. It is installed and running on the phone and user-ready
+and durable prompt checks. It is installed and running on the phone and user-ready
 simulator; existing contact visibility was owner-confirmed on preceding build 7.
-See [the build-8 delivery record](personal-ios-build8.md).
-Shared birthday/check-in prompt snoozes, current-account sync/provider
-pilots and physical accessibility/privacy checks remain open. See [Native Today](native-today.md).
+See [the build-9 delivery record](personal-ios-build9.md).
+Shared birthday/check-in/reminder preferences are implemented and their limited
+server extension is live. A fresh owner phone/web round trip, current-account
+provider pilots and physical accessibility/privacy checks remain open. The next
+build-10 source candidate removes the image/URI decoder findings with tested
+dependency adapters; native verification is pending and the two remaining
+underlying dependency advisories still block public release. See
+[Native Today](native-today.md) and [Dependency security](dependency-security.md).
 
 The personal beta is the first complete product target. General sales workflows, teams and additional providers do not delay that target. LinkedIn automatic connection sync is conditional on approved access; useful profile links and export import remain part of the beta. A personal pilot may qualify for Google's verification exception, but that exception must be checked against the actual use and does not establish readiness for a public service. [Google verification exceptions](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification).
 

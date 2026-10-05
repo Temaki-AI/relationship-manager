@@ -1,9 +1,13 @@
-# Dependency security — 5 October 2026
+# Dependency security — 6 October 2026
 
 The remaining security gate is active; no advisory is suppressed and no audit
-severity threshold is lowered. Signed personal iOS build 7 is the installed
+severity threshold is lowered. Signed personal iOS build 9 is the installed
 release; its earlier source/provenance is recorded separately. The public audit
 gate remains open. A fresh root audit still reports seven high findings.
+
+The new parser adapters below are a **build-10 source candidate**, not part of
+installed build 9. Actual native compilation/startup and offline validation are
+required before distributing that candidate.
 
 ## Compatible patches applied
 
@@ -31,8 +35,6 @@ counts of independent vulnerabilities.
 
 - [braces stack exhaustion](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm): latest 3.0.3 is affected and the advisory has no patched release. This reaches Tailwind/Next lint on web and Metro on mobile.
 - [node-forge signature verification](https://github.com/advisories/GHSA-86w9-cpqp-85rv): latest 1.4.0 is affected and has no published patch. This reaches Expo CLI/code-signing tooling. Apple app signing continues to use the local system codesign tool; that does not resolve the Expo dependency finding.
-- [image-size malformed-image loops](https://github.com/advisories/GHSA-5p2g-fcmc-qvqq) and [ICNS loop](https://github.com/advisories/GHSA-w3rx-r6r6-pgpr): installed 1.2.1 is affected. Patched 2.0.4 changes the interface. Metro calls the version-1 default export with both buffers and file paths; a blind override would break asset compilation. A compatible integration fix remains required.
-- [decode-uri-component malformed-input complexity](https://github.com/advisories/GHSA-vcc3-ghjq-m6fr): Router's query-string dependency uses CommonJS decoder 0.2.2. The patched 0.5.0 is ESM and is outside its range. A tested Router-compatible decoder update remains required.
 
 Do not force npm's proposed Expo 44 or React Native 0.72 downgrade. Public release
 requires upstream patches or verified compatible remediation, followed by actual
@@ -44,3 +46,40 @@ linkage verification and isolated simulator startup with real SQLite/Keychain
 initialization in [run 37267403749](https://github.com/Temaki-AI/relationship-manager/actions/runs/37267403749).
 This validates compatibility of the applied patches; unresolved audit findings
 remain open, and the installed personal build still has its recorded earlier source.
+
+## Patched image and URI parsers — 6 October 2026
+
+Scoped overrides replace Metro's image-size 1.2.1 with 2.0.4 and query-string's
+decode-uri-component 0.2.2 with 0.5.0. Minimal checked-in patches adapt Metro 0.84.4
+to the named buffer API and asynchronous, bounded file-header API, retaining its
+zip-directory buffer path. Query-string 7.1.3 selects the ESM decoder's default
+export and retains its existing Router interface and options. Expo 57, React
+Native 0.86, React, Router and every native module keep their prior versions.
+
+Pinned patch-package 8.0.1 applies both patches on postinstall with
+`--error-on-fail`. A clean `npm ci` successfully reapplies them. Five new behavioral
+checks cover PNG/SVG buffers, file and zip-directory assets, scale metadata,
+recognized zero-sized HEIF/JXL/ICNS containers, Unicode/contact-method queries,
+repeated/array parameters, malformed percent sequences and repeatable application.
+Potentially hanging image/URI inputs run in subprocesses with hard deadlines;
+both buffer and actual file parsing reject the malformed images. The URI case
+preserves 20,000 malformed encoded bytes without recursive failure.
+
+All **22 mobile package tests** pass with no failures/skips, including those five
+new checks. Mobile types/lint and the iOS Hermes export pass (1,356 modules, 24
+assets, 3.8 MB). The fresh mobile audit removes the
+[HEIF/JXL loop advisory](https://github.com/advisories/GHSA-5p2g-fcmc-qvqq),
+[ICNS finding](https://github.com/advisories/GHSA-w3rx-r6r6-pgpr) and
+[URI decoder finding](https://github.com/advisories/GHSA-vcc3-ghjq-m6fr),
+along with their query-string/Router propagation. The audit reports **22 high,
+zero moderate** affected packages, compared with 21 high/three moderate before:
+the patch tool and its workspace helper add two parents affected by the existing
+braces advisory. They introduce no additional advisory. These are dependency
+graph counts, not independent vulnerability counts.
+
+The root audit remains seven high findings. Braces 3.0.3 and node-forge 1.4.0 are
+still the latest published releases and still have no patched versions in the
+reviewed advisories. Both audit commands continue to fail at the unchanged gate.
+No root dependency, production Worker, provider grant, database migration or
+installed phone package changes in this slice. Native build-10 validation is
+pending; the passing build-9 delivery stays separately recorded.

@@ -13,6 +13,13 @@ npm run validate
 
 `validate` runs TypeScript, the mobile unit tests, lint and an iOS JavaScript/Hermes
 bundle export. It does **not** build an iOS binary or prove a physical-device journey.
+`npm ci` applies the checked-in Metro/Router dependency adapters through pinned
+`patch-package`; installation fails if a patch cannot apply. Keep development
+dependencies installed for builds. Metro uses patched image-size 2.0.4 with its
+buffer and bounded file APIs; query-string keeps its version-7 interface while
+using the patched 0.5.0 URI decoder. Do not remove postinstall or use an unpatched
+dependency tree. [Dependency security](../../docs/dependency-security.md) records
+the adapters, adversarial checks and remaining audit findings.
 For a native build, run `npm run ios` with the SDK's required Xcode version. Expo 57
 requires Xcode 26.4+ and supports iOS 16.4+; this computer currently has Xcode 26.2.
 See the [versioned SDK requirements](https://docs.expo.dev/versions/v57.0.0/).
@@ -64,9 +71,9 @@ Disconnect removes local credentials and scheduled notifications, while retainin
 the account's offline cache. When the network is unavailable, revoke the phone on the
 website as well. App files remain protected by the iOS sandbox and device data
 protection; SQLCipher and portable native recovery remain public-release work.
-The build-6 source candidate adds an optional device authentication gate in Account
-& sync, with default-off device-wide policy and authenticated recovery. It is not
-in signed build 5 yet. See [native device lock](../../docs/native-app-lock.md) for
+The installed build-9 release includes an optional device authentication gate in
+Account & sync, with default-off device-wide policy and authenticated recovery.
+See [native device lock](../../docs/native-app-lock.md) for
 validation, privacy limits and remaining native/physical checks. Keeping an offline
 cache is distinct from deleting the account or its data.
 

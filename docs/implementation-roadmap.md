@@ -961,3 +961,21 @@ unchanged dependency-audit gate; public/account/physical pilots remain open.
   and TestFlight/public release remain open. The personal delivery is complete;
   the broader development plan remains incomplete. See
   [the build-9 record](personal-ios-build9.md) for exact packages and private receipts.
+
+### Mobile parser security adapters — 6 October 2026
+
+Scoped overrides and minimal reproducible Metro/query-string adapters use upstream
+image-size 2.0.4 and decode-uri-component 0.5.0 without changing Expo, React Native,
+Router or native modules. A clean install applies both patches. All 22 mobile
+package tests, types/lint and the Hermes export pass; five new behavior checks
+exercise file/buffer/zip image dimensions, malformed HEIF/JXL/ICNS containers,
+Unicode and repeated queries, long malformed input and repeatable application.
+Seven existing foundation/supply-chain checks also pass. The mobile audit no longer
+reports either image parser advisory or the URI decoder advisory. It still fails
+with 22 high affected packages: the conventional patch tool adds two parents of
+the existing braces finding, while moderate findings fall from three to zero.
+Root audit remains seven high. Braces/node-forge have no published patches; no
+advisory or threshold is suppressed. Build 10 is configured for actual native
+verification; it is not yet distributed. The installed build 9, production Worker,
+database and provider configuration are unchanged. See
+[dependency security](dependency-security.md) for exact scope and evidence.
