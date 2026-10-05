@@ -14,6 +14,8 @@ export type TodayPerson = {
 };
 type Candidate = ContactRecord & {
   birthday_days: number;
+  birthday_snoozed: number;
+  checkin_snoozed: number;
   reminder_id: string | null;
   reminder_title: string | null;
   reminder_notes: string | null;
@@ -35,7 +37,7 @@ function decorate(row: Candidate, today: string, timeZone: string): TodayPerson 
   } : null;
   if (reminder) reasons.push({ kind: 'reminder', title: reminder.title, detail: 'Reminder' });
   const birthday = row.birthday && nextBirthdayOccurrence(row.birthday, today);
-  if (birthday && birthday.daysUntil <= row.birthday_days) reasons.push({ kind: 'birthday',
+  if (birthday && birthday.daysUntil <= row.birthday_days && !row.birthday_snoozed) reasons.push({ kind: 'birthday',
     title: birthday.daysUntil === 0 ? 'Birthday today' : birthday.daysUntil === 1 ? 'Birthday tomorrow' : `Birthday in ${birthday.daysUntil} days`,
     detail: 'A little time to make it thoughtful.',
   });
@@ -50,7 +52,7 @@ function decorate(row: Candidate, today: string, timeZone: string): TodayPerson 
   let lastContacted = row.last_contacted;
   if (recordedDay && (!lastContacted || lastContacted <= latestInteraction!.date)) lastContacted = recordedDay;
   const elapsed = lastContacted ? civilDaysBetween(lastContacted, today) : null;
-  if (elapsed === null || elapsed >= row.contact_frequency) reasons.push({ kind: 'check-in', title: 'Time for a check-in',
+  if (!row.checkin_snoozed && (elapsed === null || elapsed >= row.contact_frequency)) reasons.push({ kind: 'check-in', title: 'Time for a check-in',
     detail: elapsed === null ? 'No conversation recorded yet.'
       : `Last connected ${elapsed === 1 ? '1 day' : `${elapsed} days`} ago · every ${row.contact_frequency} days.`,
   });
@@ -74,6 +76,7 @@ export async function getTodayQueue(db: SQLiteDatabase, now = new Date(), timeZo
         FROM reminders r JOIN contacts c ON c.id = r.contact_id
         WHERE r.deleted_at IS NULL AND r.completed_at IS NULL AND c.deleted_at IS NULL
           AND julianday(r.remind_at) < julianday(?)
+          AND NOT EXISTS (SELECT 1 FROM today_snoozes s WHERE s.kind = 'reminder' AND s.target_id = r.id AND s.until_date > ?)
       ), birthdays AS (
         SELECT c.*, CASE WHEN json_valid(remote.record_json) THEN
           COALESCE(json_extract(remote.record_json, '$.data.birthday_reminder_days'), 7) ELSE 7 END AS birthday_days,
@@ -89,21 +92,23 @@ export async function getTodayQueue(db: SQLiteDatabase, now = new Date(), timeZo
       )
       SELECT c.*, r.id AS reminder_id, r.title AS reminder_title, r.notes AS reminder_notes,
         r.remind_at, r.notification_id, i.id AS interaction_id, i.type AS interaction_type,
-        i.date AS interaction_date, i.occurred_at AS interaction_occurred_at, i.summary AS interaction_summary
+        i.date AS interaction_date, i.occurred_at AS interaction_occurred_at, i.summary AS interaction_summary,
+        EXISTS (SELECT 1 FROM today_snoozes s WHERE s.kind = 'birthday' AND s.target_id = c.id AND s.until_date > ?) AS birthday_snoozed,
+        EXISTS (SELECT 1 FROM today_snoozes s WHERE s.kind = 'overdue' AND s.target_id = c.id AND s.until_date > ?) AS checkin_snoozed
       FROM occasions c LEFT JOIN due r ON r.contact_id = c.id AND r.rank = 1
       LEFT JOIN interactions i ON i.id = (
         SELECT recent.id FROM interactions recent WHERE recent.contact_id = c.id AND recent.deleted_at IS NULL
         ORDER BY recent.date DESC, COALESCE(recent.occurred_at, '') DESC, recent.id DESC LIMIT 1
       )
-      WHERE r.id IS NOT NULL OR julianday(c.next_birthday) - julianday(?) BETWEEN 0 AND c.birthday_days
-        OR c.last_contacted IS NULL OR julianday(?) - julianday(c.last_contacted) + 1 >= c.contact_frequency
+      WHERE r.id IS NOT NULL OR (birthday_snoozed = 0 AND julianday(c.next_birthday) - julianday(?) BETWEEN 0 AND c.birthday_days)
+        OR (checkin_snoozed = 0 AND (c.last_contacted IS NULL OR julianday(?) - julianday(c.last_contacted) + 1 >= c.contact_frequency))
       ORDER BY CASE WHEN r.id IS NOT NULL THEN 0
-        WHEN julianday(c.next_birthday) - julianday(?) BETWEEN 0 AND c.birthday_days THEN 1 ELSE 2 END,
-        julianday(r.remind_at), CASE WHEN julianday(c.next_birthday) - julianday(?) BETWEEN 0 AND c.birthday_days
+        WHEN birthday_snoozed = 0 AND julianday(c.next_birthday) - julianday(?) BETWEEN 0 AND c.birthday_days THEN 1 ELSE 2 END,
+        julianday(r.remind_at), CASE WHEN birthday_snoozed = 0 AND julianday(c.next_birthday) - julianday(?) BETWEEN 0 AND c.birthday_days
           THEN julianday(c.next_birthday) END,
         COALESCE(julianday(c.last_contacted) - julianday(?) + c.contact_frequency, -999999), c.id
       LIMIT 32 OFFSET ?
-    `, endOfToday, today, today, today, today, today, today, today, today, offset);
+    `, endOfToday, today, today, today, today, today, today, today, today, today, today, today, offset);
     for (const row of rows) {
       const person = decorate(row, today, timeZone);
       if (person.reasons.length) people.push(person);

@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ActionButton, Avatar, BrandLockup, Eyebrow, SectionHeading, StatusPill, Surface } from '@/components/design-system';
 import { getContact, getDashboardSnapshot, logInteraction, type DashboardSnapshot, type InteractionType } from '@/data/contacts';
 import { getTodayQueue, type TodayPerson } from '@/data/today';
+import { getPromptReview, listSnoozedPrompts, resolvePromptReview, savePromptSnooze, type SnoozedPrompt } from '@/data/today-snoozes';
 import { formatDateTime, getGreeting } from '@/lib/format';
 import { fonts, palette } from '@/theme';
 import { useNativeSync } from '@/native/sync';
@@ -16,29 +17,33 @@ import { useNativeAccount } from '@/native/account';
 import { useReminderActions } from '@/native/reminder-actions';
 import { useChoiceSheet } from '@/components/choice-sheet';
 import { contactMethodHref, displayContactMethodLabel, readContactMethods } from '../../../../../packages/domain/src/contact-methods';
+import { promptUntil, type PromptKind } from '../../../../../packages/domain/src/today-snoozes';
 
 const LOG_OPTIONS: { type: InteractionType; label: string }[] = [
   { type: 'message', label: 'Messaged' }, { type: 'call', label: 'Called' },
   { type: 'meetup', label: 'Met up' }, { type: 'email', label: 'Emailed' },
 ];
-type HomeState = { snapshot: DashboardSnapshot; queue: TodayPerson[] };
+type HomeState = { snapshot: DashboardSnapshot; queue: TodayPerson[]; snoozes: SnoozedPrompt[] };
+const promptLabel = (kind: PromptKind) => kind === 'birthday' ? 'Birthday' : kind === 'overdue' ? 'Check-in' : 'Reminder';
+const showDay = (day: string | null) => day ? new Date(`${day}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Available now';
 
 export default function TodayScreen() {
   const db = useSQLiteContext();
   const focused = useIsFocused();
-  const { revision } = useNativeSync();
+  const { revision, promptError } = useNativeSync();
   const { account } = useNativeAccount();
   const router = useRouter();
   const [state, setState] = useState<HomeState | null>(null);
   const [error, setError] = useState(''), [notice, setNotice] = useState('');
   const [reload, setReload] = useState(0), [workingId, setWorkingId] = useState<string | null>(null);
+  const [showSnoozes, setShowSnoozes] = useState(false), [snoozeLimit, setSnoozeLimit] = useState(10);
   const visible = useRef(focused), working = useRef(false), requestState = useRef({ generation: 0 });
   const refresh = useCallback(async () => {
     if (!visible.current) return;
     const current = requestState.current, request = ++current.generation;
     try {
-      const [snapshot, queue] = await Promise.all([getDashboardSnapshot(db), getTodayQueue(db)]);
-      if (visible.current && request === current.generation) { setState({ snapshot, queue }); setError(''); }
+      const [snapshot, queue, snoozes] = await Promise.all([getDashboardSnapshot(db), getTodayQueue(db), listSnoozedPrompts(db)]);
+      if (visible.current && request === current.generation) { setState({ snapshot, queue, snoozes }); setError(''); }
     } catch {
       if (visible.current && request === current.generation) setError('Unable to read today’s list. Your saved people are still here. Try again.');
     }
@@ -81,6 +86,39 @@ export default function TodayScreen() {
     choices.present('Record a conversation', `What happened with ${person.contact.name}? This records a conversation now.`, [
       ...LOG_OPTIONS.map(({ type, label }) => ({ label, onPress: () => { void record(person, type); } })),
     ]);
+  }
+  async function changePrompt(kind: PromptKind, targetId: string, contactId: string, untilDate: string | null) {
+    if (!begin(contactId)) return;
+    try {
+      await savePromptSnooze(db, account, kind, targetId, untilDate, { isCurrent: () => visible.current });
+      if (visible.current) setNotice(untilDate ? `${promptLabel(kind)} prompt snoozed until ${showDay(untilDate)}.` : `${promptLabel(kind)} prompt brought back.`);
+      await refresh();
+    } catch (cause) { tell('Could not change this prompt', cause instanceof Error ? cause.message : 'Nothing changed. Please try again.'); }
+    finally { finish(); }
+  }
+  function choosePrompt(person: TodayPerson, kind: 'birthday' | 'overdue') {
+    if (busy) return;
+    choices.present(`Snooze ${promptLabel(kind).toLowerCase()} prompt`, `Only this reason for ${person.contact.name} is snoozed. Other reminders stay available. No conversation is recorded.`,
+      [{ days: 1, label: 'Tomorrow' }, { days: 7, label: 'In a week' }, { days: 30, label: 'In 30 days' }].map(({ days, label }) => ({ label,
+        onPress: () => { void changePrompt(kind, person.contact.id, person.contact.id, promptUntil(days)); } })));
+  }
+  async function reviewPrompt(item: SnoozedPrompt) {
+    if (!account || !begin(item.contact_id)) return;
+    try {
+      const review = await getPromptReview(db, item.kind, item.target_id);
+      if (!review.cloudKnown) throw new Error('Sync to load the current web choice before reviewing this prompt. Your iPhone choice is preserved.');
+      choices.present(`Review ${promptLabel(item.kind).toLowerCase()} choice`, `${item.contact_name}\nOn this iPhone: ${showDay(review.until_date)}\nOn the web: ${showDay(review.remote_until_date)}\nChoose which preference to keep.`,
+        [{ choice: 'cloud' as const, label: 'Use web choice', until: undefined },
+          ...(!review.until_date || review.until_date >= promptUntil(1) ? [{ choice: 'phone' as const, label: 'Keep iPhone choice', until: undefined }] : []),
+          ...[1, 7, 30].map((days) => ({ choice: 'phone' as const, label: `Snooze until ${showDay(promptUntil(days))}`, until: promptUntil(days) }))]
+          .map(({ choice, label, until }) => ({ label, onPress: () => {
+          if (!begin(item.contact_id)) return;
+          void resolvePromptReview(db, account, review, choice, () => visible.current, until).then(async () => {
+            if (visible.current) setNotice('Prompt choice reviewed.'); await refresh();
+          }).catch((cause: unknown) => tell('Could not save this choice', cause instanceof Error ? cause.message : 'Review this prompt again.')).finally(finish);
+        } })));
+    } catch (cause) { tell('Could not review this choice', cause instanceof Error ? cause.message : 'Please try again.'); }
+    finally { finish(); }
   }
   async function reachOut(person: TodayPerson) {
     if (!begin(person.contact.id)) return;
@@ -137,6 +175,7 @@ export default function TodayScreen() {
           <ActionButton label="Try Today again" variant="secondary" onPress={() => setReload((value) => value + 1)} />
         </Surface>}
         {!!notice && <Text accessibilityRole="alert" style={styles.notice}>{notice}</Text>}
+        {!!account && !!promptError && !!state?.snoozes.length && <Text accessibilityRole="alert" style={styles.reasonDetail}>{promptError}</Text>}
         {!state && !error ? <View style={styles.loading}><ActivityIndicator accessibilityLabel="Loading Today" color={palette.primary} /></View> : state && <>
           <View style={styles.sectionBlock}>
             <SectionHeading title="Your next small moves" />
@@ -151,6 +190,11 @@ export default function TodayScreen() {
                 <Text accessibilityLabel={`${reason.title} for ${person.contact.name}`} style={styles.reasonTitle}>{reason.title}</Text>
                 <Text style={styles.reasonDetail}>{reason.kind === 'reminder' && person.reminder
                   ? formatDateTime(person.reminder.remind_at) : reason.detail}</Text>
+                {reason.kind !== 'reminder' && <View style={styles.actions}>
+                  <QueueAction label={`Snooze ${reason.kind === 'birthday' ? 'birthday' : 'check-in'}`} disabled={busy}
+                    accessibilityLabel={`Snooze ${reason.kind} prompt for ${person.contact.name}`}
+                    onPress={() => choosePrompt(person, reason.kind === 'birthday' ? 'birthday' : 'overdue')} />
+                </View>}
               </View>)}
               <Text numberOfLines={3} style={styles.lastConversation}>{person.latestInteraction
                 ? `Last recorded: ${LOG_OPTIONS.find((item) => item.type === person.latestInteraction!.type)?.label || 'Connected'} · ${person.latestInteraction.date}${person.latestInteraction.summary ? `\n${person.latestInteraction.summary}` : ''}`
@@ -175,6 +219,23 @@ export default function TodayScreen() {
             </Surface>}
             {!!state.queue.length && <ActionButton label="See all reminders" variant="quiet" onPress={() => router.push('/reminders')} />}
           </View>
+          {!!state.snoozes.length && <Surface style={styles.messageCard}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Snoozed prompts, ${state.snoozes.length}`}
+              accessibilityState={{ expanded: showSnoozes }} style={styles.accountButton} onPress={() => setShowSnoozes((value) => !value)}>
+              <Text style={styles.privacyTitle}>Snoozed prompts ({state.snoozes.length})</Text>
+            </Pressable>
+            {showSnoozes && <>
+              {state.snoozes.slice(0, snoozeLimit).map((item) => <View key={`${item.kind}:${item.target_id}`} style={styles.reason}>
+                <Text style={styles.reasonTitle}>{item.contact_name} · {item.reminder_title || promptLabel(item.kind)}</Text>
+                <Text style={styles.reasonDetail}>{item.conflict ? 'Web and iPhone choices need review.'
+                  : `Returns ${showDay(item.until_date)}${account && item.pending ? ' · Saved on this iPhone; waiting to sync.' : ''}`}</Text>
+                <View style={styles.actions}><QueueAction label={item.conflict ? 'Review choice' : 'Bring back'} disabled={busy}
+                  accessibilityLabel={`${item.conflict ? 'Review' : 'Bring back'} ${promptLabel(item.kind).toLowerCase()} prompt for ${item.contact_name}`}
+                  onPress={() => { if (item.conflict) void reviewPrompt(item); else void changePrompt(item.kind, item.target_id, item.contact_id, null); }} /></View>
+              </View>)}
+              {state.snoozes.length > snoozeLimit && <ActionButton label="More snoozed prompts" variant="quiet" onPress={() => setSnoozeLimit((value) => value + 10)} />}
+            </>}
+          </Surface>}
           <View style={styles.sectionBlock}>
             <SectionHeading title="Relationship rhythm" />
             <View style={styles.metrics}>

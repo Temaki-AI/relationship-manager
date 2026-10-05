@@ -172,14 +172,14 @@ export async function createCloudHarness() {
       body: options.form || (options.body === undefined ? undefined : JSON.stringify(options.body)),
     });
     let response;
-    if (parts.join('/') === 'v1/gmail-context' || parts[0] === 'v1' && parts[1] === 'contact-photos' || parts.join('/') === 'v1/calendar-event-links/push' || parts.join('/') === 'v1/device-sources/push' || parts[0] === 'contacts' && parts[2] === 'device-sources') {
+    if (parts.join('/') === 'v1/today-snoozes' || parts.join('/') === 'v1/gmail-context' || parts[0] === 'v1' && parts[1] === 'contact-photos' || parts.join('/') === 'v1/calendar-event-links/push' || parts.join('/') === 'v1/device-sources/push' || parts[0] === 'contacts' && parts[2] === 'device-sources') {
       const authorization = headers.get('authorization');
       let actor: unknown = { userId: 'owner', workspaceId: options.workspace || 'test', authMethod: 'web', lifecycle: 'active' };
       if (authorization) {
         try { actor = { ...await (deviceApi.requireDeviceWorkspace as (db: typeof db, h: Headers) => Promise<unknown>)(db, headers), authMethod: 'device' }; }
         catch { return { status: 401, headers: new Headers(), body: { error: 'Device session revoked.' } }; }
       }
-      const handler = parts.join('/') === 'v1/gmail-context' ? load(path.join(root, 'lib/cloud/gmail-context-api.ts')).handleGmailContext : parts[0] === 'v1' && parts[1] === 'contact-photos'
+      const handler = parts.join('/') === 'v1/today-snoozes' ? load(path.join(root, 'lib/cloud/today-snooze-sync-api.ts')).handleTodaySnoozeSync : parts.join('/') === 'v1/gmail-context' ? load(path.join(root, 'lib/cloud/gmail-context-api.ts')).handleGmailContext : parts[0] === 'v1' && parts[1] === 'contact-photos'
         ? load(path.join(root, 'lib/cloud/contact-photo-api.ts')).handleContactPhotos : parts.join('/') === 'v1/calendar-event-links/push'
           ? load(path.join(root, 'lib/cloud/calendar-event-link-api.ts')).handleCalendarEventLinks : deviceSourceApi.handleDeviceSources;
       response = await (handler as (r: Request, a: unknown, p: string[]) => Promise<Response>)(request, actor, parts);
@@ -231,6 +231,7 @@ export async function createCloudHarness() {
     db: typeof db, bucket: typeof assets, now?: Date
   ) => Promise<{ attempted: number; removed: number; pending: number; failed: number }>;
   return { db, assets, faults, call, emailEnv, queueMessages, deadLetterMessages,
+    todaySnoozeSync: load(path.join(root, 'lib/cloud/today-snooze-sync-api.ts')) as typeof import('../../lib/cloud/today-snooze-sync-api'),
     providers: load(path.join(root, 'lib/cloud/provider-connections.ts')) as typeof import('../../lib/cloud/provider-connections'),
     googleCalendarResources: load(path.join(root, 'lib/cloud/google-calendar-resources.ts')) as typeof import('../../lib/cloud/google-calendar-resources'),
     googleCalendars: load(path.join(root, 'lib/cloud/google-calendars.ts')) as typeof import('../../lib/cloud/google-calendars'),

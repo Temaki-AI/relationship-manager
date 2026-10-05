@@ -100,7 +100,7 @@ test('a genuine schema-14 upgrade preserves every existing table and frozen queu
     const tables = (sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name!='app_metadata' ORDER BY name").all() as { name: string }[]).map((row) => row.name);
     const before = tables.map((name) => ({ name, rows: sqlite.prepare('SELECT * FROM "' + name + '"').all() }));
     upgraded = await createMobileHarness(f.account, sqlite);
-    assert.equal(sqlite.pragma('user_version', { simple: true }), 15);
+    assert.equal(sqlite.pragma('user_version', { simple: true }), 16);
     assert.deepEqual(tables.map((name) => ({ name, rows: sqlite.prepare('SELECT * FROM "' + name + '"').all() })), before);
     assert.deepEqual(sqlite.prepare("SELECT * FROM app_metadata WHERE key IN('sync-cursor-v4','private-form-draft') ORDER BY key").all(), metadata);
     assert.equal((await upgraded.gmailContext.readGmailContext(upgraded.db, f.account)).enabled, false);

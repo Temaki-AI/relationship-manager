@@ -52,7 +52,7 @@ test('Google source facts survive offline edits, schema-7 upgrades, older receip
     await queuePatch(f, contact.public_id, { notes: 'Offline correction' });
     f.mobile.sqlite.exec('DROP TRIGGER gmail_context_contact_insert; DROP TRIGGER gmail_context_contact_identity; DROP TRIGGER gmail_context_contact_delete; DROP TRIGGER gmail_context_alias_insert; DROP TRIGGER gmail_context_alias_delete; DROP TRIGGER gmail_context_alias_update; DROP TABLE gmail_person_context; DROP TABLE gmail_context_state; DROP TRIGGER apple_calendar_plan_removed; DROP TRIGGER apple_calendar_plan_deleted; DROP TRIGGER apple_calendar_plan_date_changed; DROP TABLE apple_calendar_receipts; DROP TABLE calendar_event_link_queue; DROP TABLE calendar_events; DROP TRIGGER device_policy_after_edit; DROP TRIGGER device_policy_after_move; DROP TABLE device_contact_policies; DROP TABLE device_source_queue; ALTER TABLE contacts DROP COLUMN device_links; DROP TABLE device_contact_links; DROP TABLE device_contact_previews; ALTER TABLE contacts DROP COLUMN provider_links; PRAGMA user_version = 7;');
     await f.mobile.database.migrateDatabase(f.mobile.db);
-    assert.equal(f.mobile.sqlite.pragma('user_version', { simple: true }), 15);
+    assert.equal(f.mobile.sqlite.pragma('user_version', { simple: true }), 16);
     assert.equal((await f.mobile.db.getFirstAsync("SELECT value FROM app_metadata WHERE key = 'sync-cursor-v4'")), null);
     assert.equal((await f.mobile.sync.syncSummary(f.mobile.db)).pending, 1);
     await run(f); let cached = (await f.mobile.contacts.getContact(f.mobile.db, contact.public_id))!;
@@ -660,7 +660,7 @@ test('a version-1 phone database upgrades without losing local-only people, hist
   const account = { deviceId: crypto.randomUUID(), workspaceId: 'test', userId: 'owner', email: 'me@example.com', name: 'Me', origin: 'https://everclosecrm.com', token: `${DEVICE_TOKEN_PREFIX}${randomBytes(32).toString('base64url')}`, expiresAt: '2030-01-01T00:00:00Z' } satisfies NativeAccount;
   const mobile = await createMobileHarness(account, sqlite);
   try {
-    assert.equal(sqlite.pragma('user_version', { simple: true }), 15);
+    assert.equal(sqlite.pragma('user_version', { simple: true }), 16);
     assert.equal((await mobile.contacts.getContact(mobile.db, id))?.name, 'Before upgrade');
     assert.equal((await mobile.sync.syncSummary(mobile.db)).pending, 1);
     await mobile.database.migrateDatabase(mobile.db); assert.equal((await mobile.sync.syncSummary(mobile.db)).pending, 1);
@@ -860,7 +860,7 @@ test('version-2 cache upgrade retains a frozen version-1 contact request and saf
     assert.equal((await upgraded.contacts.getContact(upgraded.db, id))?.notes, 'Later web edit');
     assert.equal((await f.cloud.db.prepare('SELECT completed_at FROM reminders WHERE public_id = ?').bind(reminderId).first())?.completed_at, now);
     assert.equal((await upgraded.sync.syncSummary(upgraded.db)).pending, 0);
-    assert.equal(sqlite.pragma('user_version', { simple: true }), 15);
+    assert.equal(sqlite.pragma('user_version', { simple: true }), 16);
   } finally { sqlite.close(); await f.close(); }
 });
 
@@ -1426,7 +1426,7 @@ test('schema-4 cache upgrade retains frozen operations and local-only identities
     const before = f.mobile.sqlite.prepare('SELECT * FROM sync_queue ORDER BY rowid').all();
     f.mobile.sqlite.exec('DROP TRIGGER gmail_context_contact_insert; DROP TRIGGER gmail_context_contact_identity; DROP TRIGGER gmail_context_contact_delete; DROP TRIGGER gmail_context_alias_insert; DROP TRIGGER gmail_context_alias_delete; DROP TRIGGER gmail_context_alias_update; DROP TABLE gmail_person_context; DROP TABLE gmail_context_state; DROP TRIGGER apple_calendar_plan_removed; DROP TRIGGER apple_calendar_plan_deleted; DROP TRIGGER apple_calendar_plan_date_changed; DROP TABLE apple_calendar_receipts; DROP TABLE calendar_event_link_queue; DROP TABLE calendar_events; DROP TRIGGER device_policy_after_edit; DROP TRIGGER device_policy_after_move; DROP TABLE device_contact_policies; DROP TABLE device_source_queue; ALTER TABLE contacts DROP COLUMN device_links; DROP TABLE device_contact_links; DROP TABLE device_contact_previews; DROP TABLE contact_aliases; ALTER TABLE contacts DROP COLUMN contact_methods; ALTER TABLE contacts DROP COLUMN source_links; ALTER TABLE contacts DROP COLUMN provider_links; PRAGMA user_version = 4;');
     const upgraded = await createMobileHarness(f.account, f.mobile.sqlite);
-    assert.equal(f.mobile.sqlite.pragma('user_version', { simple: true }), 15);
+    assert.equal(f.mobile.sqlite.pragma('user_version', { simple: true }), 16);
     assert.deepEqual(f.mobile.sqlite.prepare('SELECT * FROM sync_queue ORDER BY rowid').all(), before);
     await upgraded.sync.syncWorkspace(upgraded.db, f.account, { fetcher: f.fetcher });
     assert.equal((await upgraded.contacts.getContact(upgraded.db, b.public_id))?.phone, 'Uncertain edit');

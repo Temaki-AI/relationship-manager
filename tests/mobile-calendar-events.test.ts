@@ -52,7 +52,7 @@ test('phone sync retains source-first meetings, links later to people/plans and 
     assert.equal((await f.phone.contacts.listContactInteractions(f.phone.db, p.public_id)).length, 0);
     const restarted = await createMobileHarness(f.account, f.phone.sqlite);
     assert.equal((await restarted.calendarEvents.getCalendarEvent(restarted.db, saved.public_id))!.facts.title, 'Lunch with Ana');
-    assert.equal(f.requests[0].path, 'v4/sync/bootstrap'); assert.equal(f.phone.sqlite.pragma('user_version', { simple: true }), 15);
+    assert.equal(f.requests[0].path, 'v4/sync/bootstrap'); assert.equal(f.phone.sqlite.pragma('user_version', { simple: true }), 16);
   } finally { await f.close(); }
 });
 

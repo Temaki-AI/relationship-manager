@@ -1,6 +1,6 @@
 import { contactMethodsBackfillSql } from '../../../../packages/domain/src/contact-method-storage.ts';
 export const MOBILE_DATABASE_NAME = 'bonds-mobile.db';
-export const MOBILE_SCHEMA_VERSION = 15;
+export const MOBILE_SCHEMA_VERSION = 16;
 
 export const MOBILE_SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS app_metadata (
@@ -85,6 +85,26 @@ export const MOBILE_SCHEMA_SQL = `
     ON reminders(contact_id, completed_at, deleted_at, remind_at, id);
   CREATE INDEX IF NOT EXISTS idx_sync_queue_due
     ON sync_queue(next_attempt_at, created_at, id);
+`;
+
+export const MOBILE_TODAY_SNOOZES_MIGRATION_SQL = `
+  CREATE TABLE today_snoozes (
+    kind TEXT NOT NULL CHECK (kind IN ('birthday', 'overdue', 'reminder')),
+    target_id TEXT NOT NULL, contact_id TEXT NOT NULL,
+    until_date TEXT, remote_until_date TEXT,
+    PRIMARY KEY (kind, target_id)
+  );
+  CREATE TABLE today_snooze_queue (
+    id TEXT PRIMARY KEY NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('birthday', 'overdue', 'reminder')),
+    target_id TEXT NOT NULL, contact_id TEXT NOT NULL,
+    until_date TEXT, base_until_date TEXT, epoch TEXT, time_zone TEXT NOT NULL,
+    depends_on TEXT, request_json TEXT CHECK (request_json IS NULL OR json_valid(request_json)),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'conflict')),
+    last_error_code TEXT, created_at TEXT NOT NULL
+  );
+  CREATE INDEX idx_today_snooze_queue_target ON today_snooze_queue(kind, target_id, status);
+  CREATE INDEX idx_today_snoozes_contact ON today_snoozes(contact_id, until_date);
 `;
 
 export const MOBILE_CALENDAR_CONTEXT_MIGRATION_SQL = `

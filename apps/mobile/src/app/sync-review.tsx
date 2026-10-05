@@ -11,6 +11,7 @@ import { calendarLinkSyncReviews, discardCalendarLinkReview, type CalendarLinkQu
 import { useNativeAccount } from '@/native/account';
 import { fonts, palette } from '@/theme';
 import { photoSyncReviews, type PhotoQueue } from '@/data/contact-photo-outbox';
+import { listSnoozedPrompts, type SnoozedPrompt } from '@/data/today-snoozes';
 
 export default function SyncReviewScreen() {
   const db = useSQLiteContext(), sync = useNativeSync();
@@ -24,16 +25,17 @@ export default function SyncReviewScreen() {
   const [sourceReviews, setSourceReviews] = useState<SourceQueueRow[]>([]);
   const [calendarReviews, setCalendarReviews] = useState<CalendarLinkQueueRow[]>([]);
   const [photoReviews, setPhotoReviews] = useState<PhotoQueue[]>([]);
+  const [promptReviews, setPromptReviews] = useState<SnoozedPrompt[]>([]);
   const [people, setPeople] = useState<Record<string, { name: string; deleted_at: string | null }>>({});
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!focused) return;
     let active = true;
-    void Promise.all([contactSyncReviews(db), childSyncReviews(db), deviceSourceSyncReviews(db), calendarLinkSyncReviews(db), photoSyncReviews(db)]).then(async ([rows, children, sources, calendar, photos]) => {
+    void Promise.all([contactSyncReviews(db), childSyncReviews(db), deviceSourceSyncReviews(db), calendarLinkSyncReviews(db), photoSyncReviews(db), listSnoozedPrompts(db)]).then(async ([rows, children, sources, calendar, photos, prompts]) => {
       const ids = [...new Set(children.flatMap((review) => [review.contactId, review.local.linked_contact_id, review.local.related_contact_id,
         review.cloud?.data?.linked_contact_id, review.cloud?.data?.related_contact_id]).filter((id): id is string => typeof id === 'string'))];
       const profiles = await Promise.all(ids.map((id) => db.getFirstAsync<{ name: string; deleted_at: string | null }>('SELECT name, deleted_at FROM contacts WHERE id = ?', id).then((person) => [id, person] as const)));
-      if (active) { setReviews(rows); setChildReviews(children); setSourceReviews(sources); setCalendarReviews(calendar); setPhotoReviews(photos); setPeople(Object.fromEntries(profiles.filter((entry) => entry[1] !== null)) as typeof people); }
+      if (active) { setReviews(rows); setChildReviews(children); setSourceReviews(sources); setCalendarReviews(calendar); setPhotoReviews(photos); setPromptReviews(prompts.filter((item) => item.conflict)); setPeople(Object.fromEntries(profiles.filter((entry) => entry[1] !== null)) as typeof people); }
     }).catch(() => { if (active) setError('Unable to load these offline changes.'); });
     return () => { active = false; };
   }, [focused, db, sync.revision]);
@@ -61,7 +63,12 @@ export default function SyncReviewScreen() {
   return <ScrollView contentContainerStyle={styles.content}>
     <Text style={styles.body}>Cloud restores, removals or overlapping edits can leave a different version on this phone. Review your drafts before choosing.</Text>
     {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-    {!reviews.length && !childReviews.length && !sourceReviews.length && !calendarReviews.length && !photoReviews.length && <Text style={styles.body}>No offline changes need review.</Text>}
+    {!reviews.length && !childReviews.length && !sourceReviews.length && !calendarReviews.length && !photoReviews.length && !promptReviews.length && <Text style={styles.body}>No offline changes need review.</Text>}
+    {!!promptReviews.length && <Surface style={styles.card}>
+      <Text style={styles.title}>Prompt choices need review</Text>
+      <Text style={styles.body}>Your iPhone choices are preserved. Open Today and expand Snoozed prompts to compare the current web and iPhone preferences.</Text>
+      <ActionButton label="Review prompt choices in Today" variant="secondary" onPress={() => router.push('/')} />
+    </Surface>}
     {photoReviews.map((review) => <Surface key={review.id} style={styles.card}>
       <Text style={styles.title}>A contact photo needs review</Text>
       <Text style={styles.body}>{review.error === 'epoch_changed' ? 'Account data was restored. Your phone photo was held.' : 'The person or cloud photo changed. Your phone photo is preserved.'}</Text>

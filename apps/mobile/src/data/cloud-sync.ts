@@ -20,6 +20,7 @@ import { applyRemoteCalendarEvent } from './calendar-events';
 import { holdCalendarLinksForEpoch, syncCalendarLinks } from './calendar-event-links';
 import { holdAppleCalendarForEpoch } from './apple-calendar';
 import { discardGmailContextForEpoch } from './gmail-context';
+import { holdPromptSnoozesForEpoch } from './today-snoozes';
 import { discardContactPhotosForEpoch } from './contact-photos';
 import { holdContactPhotosForEpoch, PHOTO_QUEUE_PREFIX, syncContactPhotos } from './contact-photo-outbox';
 import { applyRemoteChild, childPayload, childTable, childReferences, pendingChildren, remoteEntity, stagePlanCompletion, discardPlanCompletionDrafts,
@@ -231,6 +232,7 @@ async function bootstrap(db: SQLiteDatabase, account: NativeAccount, fetcher: ty
     await holdCalendarLinksForEpoch(tx, head!.epoch);
     await holdAppleCalendarForEpoch(tx, head!.epoch);
     await discardGmailContextForEpoch(tx, head!.epoch);
+    await holdPromptSnoozesForEpoch(tx, head!.epoch);
     await discardContactPhotosForEpoch(tx, head!.epoch);
     await holdContactPhotosForEpoch(tx, head!.epoch);
     const legacy = old ? null : await metadata(tx, 'sync-cursor-v3') ?? await metadata(tx, 'sync-cursor-v2') ?? await metadata(tx, 'sync-cursor');
@@ -479,7 +481,7 @@ export async function syncSummary(db: SQLiteDatabase): Promise<SyncSummary> {
   const totals = await db.getFirstAsync<{ pending: number; conflicts: number; phoneOnly: number }>(`SELECT
     SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
     SUM(CASE WHEN status = 'conflict' THEN 1 ELSE 0 END) AS conflicts,
-    0 AS phoneOnly FROM (SELECT status FROM sync_queue UNION ALL SELECT status FROM device_source_queue UNION ALL SELECT status FROM calendar_event_link_queue
+    0 AS phoneOnly FROM (SELECT status FROM sync_queue UNION ALL SELECT status FROM device_source_queue UNION ALL SELECT status FROM calendar_event_link_queue UNION ALL SELECT status FROM today_snooze_queue
       UNION ALL SELECT json_extract(value, '$.status') status FROM app_metadata WHERE key LIKE ? AND json_valid(value))`, PHOTO_QUEUE_PREFIX + '%');
   return { pending: totals?.pending ?? 0, conflicts: totals?.conflicts ?? 0, phoneOnly: totals?.phoneOnly ?? 0,
     lastSuccess: await metadata(db, 'sync-last-success') };

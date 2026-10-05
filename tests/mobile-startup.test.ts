@@ -130,9 +130,9 @@ test('newer schemas and account ownership failures stop startup without resettin
     const f = startupFixture(phone.database); f.render(); await settle();
     const initialize = provider(f.render()).props.onInit as (db: unknown) => Promise<void>;
     let closes = 0; const db = { ...phone.db, closeAsync: async () => { closes++; } };
-    phone.sqlite.pragma('user_version = 16'); await assert.rejects(initialize(db), /supports 15/);
-    assert.equal(phone.sqlite.pragma('user_version', { simple: true }), 16);
-    phone.sqlite.pragma('user_version = 15');
+    phone.sqlite.pragma('user_version = 17'); await assert.rejects(initialize(db), /supports 16/);
+    assert.equal(phone.sqlite.pragma('user_version', { simple: true }), 17);
+    phone.sqlite.pragma('user_version = 16');
     phone.sqlite.prepare("UPDATE app_metadata SET value = 'other-account' WHERE key = 'account-scope'").run();
     await assert.rejects(initialize(db), /another account/); assert.equal(closes, 2);
     assert.equal(JSON.stringify(phone.sqlite.prepare('SELECT * FROM contacts').all()), before);
