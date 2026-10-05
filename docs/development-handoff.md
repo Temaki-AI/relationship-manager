@@ -16,7 +16,7 @@ migration is introduced: mobile remains schema 14 and cloud migrations remain 44
 
 ## Verification
 
-All **796 root tests**, five native package tests, five native-picker fixtures,
+All **805 root tests**, five native package tests, five native-picker fixtures,
 native/root TypeScript and lint checks, release export and cloud build pass.
 The **15 complete photo journeys pass against real D1**, covering durable offline
 uploads, conflicts, exact retry, merge/recovery, account fences and transaction
@@ -60,3 +60,17 @@ complete the integrated personal beta or public release.
 - [Google Calendar](google-calendar.md)
 - [Apple Calendar](apple-calendar.md)
 - [LinkedIn imports](linkedin-import.md)
+
+## Continuing integration/security work
+
+Compatible dependency patches remove four root and seven mobile reported package
+findings; audits remain failing for the explicitly recorded unresolved packages.
+Native source validation/export passes with unchanged framework versions. The
+complete source suite and Cloudflare build pass (805/805 tests) with bounded
+concurrency; the initial
+run exhausted local disk and a sandboxed retry could not bind fixture servers,
+so the final complete run used two workers with fixture-only localhost access. See
+[dependency security](dependency-security.md) for exact versions and remediation
+limits. The new [Gmail metadata transport](gmail.md) has seven provider-boundary
+fixture tests. It is not exposed as a working connection: consent, durable staging,
+matching, web/native context and real-account evidence remain required.
