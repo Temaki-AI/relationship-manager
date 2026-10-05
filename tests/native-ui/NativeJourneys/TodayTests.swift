@@ -3,7 +3,7 @@ import XCTest
 // Serial checks on the retained synthetic QA simulator only. The host retimes
 // this test's two reminders between preparation and the action checks.
 final class TodayTests: XCTestCase {
-    private let person = "Everclose Today QA"
+    private let person = "Everclose Today Accessible QA"
     private let first = "Today first nudge"
     private let second = "Today second nudge"
     private var journal: XCUIApplication!
@@ -137,5 +137,16 @@ final class TodayTests: XCTestCase {
         XCTAssertTrue(journal.staticTexts["Record a conversation"].waitForExistence(timeout: 5))
         tap("Cancel")
         XCTAssertTrue(journal.staticTexts["Birthday today for \(person)"].exists)
+    }
+
+    func testChoicePickerClosesWhenJournalIsBackgrounded() {
+        tap("Today"); tap("Reach out to \(person)")
+        XCTAssertTrue(journal.staticTexts["Reach out to \(person)"].waitForExistence(timeout: 5))
+        XCUIApplication(bundleIdentifier: "com.apple.springboard").activate()
+        journal.activate()
+        XCTAssertTrue(journal.buttons["Open \(person) from Today"].waitForExistence(timeout: 15))
+        XCTAssertFalse(journal.staticTexts["Reach out to \(person)"].exists, "A private choice sheet survived the background cover")
+        tap("Reach out to \(person)")
+        XCTAssertTrue(journal.staticTexts["Reach out to \(person)"].waitForExistence(timeout: 5)); tap("Cancel")
     }
 }

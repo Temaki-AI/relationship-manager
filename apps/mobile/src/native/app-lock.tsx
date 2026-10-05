@@ -34,13 +34,14 @@ export function useAppLock() {
   const controller = useContext(LockContext);
   if (!controller) throw new Error('App lock provider is missing.');
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
-  return { ...state, supported: Platform.OS !== 'web', reload: () => controller.load(),
+  const contentVisible = state.loaded && (state.enabled === false || state.enabled === true && !state.locked) && state.appState === 'active';
+  return { ...state, contentVisible, supported: Platform.OS !== 'web', reload: () => controller.load(),
     unlock: () => controller.unlock(), repair: () => controller.repair(), changeEnabled: (enabled: boolean) => controller.changeEnabled(enabled), lockNow: () => controller.lockNow() };
 }
 
 export function AppLockGate({ children }: { children: ReactNode }) {
   const lock = useAppLock();
-  const visible = lock.loaded && (lock.enabled === false || lock.enabled === true && !lock.locked) && lock.appState === 'active';
+  const visible = lock.contentVisible;
   useEffect(() => { void SplashScreen.hideAsync().catch(() => {}); }, []);
   const cover = <View style={styles.cover} accessibilityViewIsModal><ScrollView contentContainerStyle={styles.coverContent}>
       <Text style={styles.title}>Everclose</Text>

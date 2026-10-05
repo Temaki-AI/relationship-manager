@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { fonts, palette } from '@/theme';
+import { useAppLock } from '@/native/app-lock';
 
 export type ChoiceOption = { label: string; onPress: () => void };
 type Choice = { title: string; detail: string; options: ChoiceOption[] };
@@ -10,15 +11,16 @@ type Choice = { title: string; detail: string; options: ChoiceOption[] };
 /** A scrollable choice list with a persistent Cancel control, including large text. */
 export function useChoiceSheet() {
   const focused = useIsFocused();
+  const available = useAppLock().contentVisible && focused;
   const [choice, setChoice] = useState<Choice | null>(null);
   const pending = useRef<(() => void) | null>(null);
-  const focusState = useRef({ focused, generation: 0 });
+  const focusState = useRef({ focused: available, generation: 0 });
   useEffect(() => {
     const current = focusState.current;
-    current.focused = focused;
-    if (!focused) void Promise.resolve().then(() => setChoice(null));
+    current.focused = available;
+    if (!available) void Promise.resolve().then(() => setChoice(null));
     return () => { current.focused = false; current.generation++; pending.current = null; };
-  }, [focused]);
+  }, [available]);
   function present(title: string, detail: string, options: ChoiceOption[]) {
     const current = focusState.current, generation = current.generation;
     if (!current.focused) return;
@@ -36,7 +38,7 @@ export function useChoiceSheet() {
     // iOS waits for the modal to close before presenting a permission/warning alert.
     if (Platform.OS !== 'ios') dismiss();
   }
-  const sheet = <Modal visible={focused && choice !== null} animationType="slide" presentationStyle="fullScreen"
+  const sheet = <Modal visible={available && choice !== null} animationType="slide" presentationStyle="fullScreen"
     onRequestClose={cancel} onDismiss={dismiss}>
     <SafeAreaView style={styles.safeArea} accessibilityViewIsModal>
       <ScrollView contentContainerStyle={styles.content}>
