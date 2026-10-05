@@ -4,6 +4,7 @@ import { cachedContactPhoto, loadContactPhoto } from '@/data/contact-photos';
 import { useNativeAccount } from './account';
 import { useNativeSync } from './sync';
 import { accountScope } from '../../../../packages/domain/src/devices';
+import { queuedContactPhoto } from '@/data/contact-photo-outbox';
 
 export function useContactPhoto(contactId: string, download = false, focused = true) {
   const db = useSQLiteContext(), { account } = useNativeAccount(), { revision } = useNativeSync();
@@ -14,6 +15,8 @@ export function useContactPhoto(contactId: string, download = false, focused = t
     if (!focused || !account) return;
     let active = true;
     void (async () => {
+      const queued = await queuedContactPhoto(db, contactId, accountScope(account));
+      if (queued) { if (active) setState({ key, uri: queued.photo, error: queued.status === 'conflict' ? 'This photo needs review before it can sync.' : '' }); return; }
       const cached = await cachedContactPhoto(db, contactId, accountScope(account));
       if (active) setState({ key, uri: cached, error: '' });
       if (active && download) {

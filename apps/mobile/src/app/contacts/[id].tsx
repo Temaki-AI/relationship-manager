@@ -153,6 +153,7 @@ function ContactDetail({ id }: { id: string }) {
         {!!photo.error && <View style={styles.section}><Text accessibilityRole="alert" style={styles.lastTouch}>{photo.error}</Text>
           <ActionButton label="Retry photo download" variant="secondary" onPress={photo.retry} /></View>}
         <ActionButton label="Edit contact details" variant="secondary" onPress={() => router.push({ pathname: '/contacts/edit', params: { id: contact.id } })} />
+        <ActionButton label="Edit contact photo" variant="secondary" onPress={() => router.push({ pathname: '/contacts/photo', params: { id: contact.id } })} />
         <ActionButton label="Contact methods" variant="secondary" onPress={() => router.push({ pathname: '/contacts/methods', params: { id: contact.id } })} />
         <ActionButton label="Plans, family & relationships" variant="secondary" onPress={() => router.push({ pathname: '/contacts/context', params: { contactId: contact.id } })} />
 

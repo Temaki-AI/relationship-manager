@@ -244,6 +244,7 @@ export async function createCloudHarness() {
     calendarFacts: load(path.join(root, 'packages/domain/src/calendar-events.ts')) as typeof import('../../packages/domain/src/calendar-events'),
     eventLinks: load(path.join(root, 'lib/cloud/calendar-event-links.ts')) as typeof import('../../lib/cloud/calendar-event-links'),
     deviceSources: deviceSourceApi as typeof import('../../lib/cloud/device-source-api'),
+    contactPhotos: load(path.join(root, 'lib/cloud/contact-photo-api.ts')) as typeof import('../../lib/cloud/contact-photo-api'),
     providerVault: load(path.join(root, 'lib/cloud/provider-vault.ts')) as typeof import('../../lib/cloud/provider-vault'),
     providerApi: load(path.join(root, 'lib/cloud/provider-connection-api.ts')) as typeof import('../../lib/cloud/provider-connection-api'),
     googleContacts: load(path.join(root, 'lib/cloud/google-contacts.ts')) as typeof import('../../lib/cloud/google-contacts'),

@@ -20,6 +20,7 @@ import { applyRemoteCalendarEvent } from './calendar-events';
 import { holdCalendarLinksForEpoch, syncCalendarLinks } from './calendar-event-links';
 import { holdAppleCalendarForEpoch } from './apple-calendar';
 import { discardContactPhotosForEpoch } from './contact-photos';
+import { holdContactPhotosForEpoch, PHOTO_QUEUE_PREFIX, syncContactPhotos } from './contact-photo-outbox';
 import { applyRemoteChild, childPayload, childTable, childReferences, pendingChildren, remoteEntity, stagePlanCompletion, discardPlanCompletionDrafts,
   CHILD_ENTITIES, CHILD_FIELDS, type ChildEntity, type QueueRow } from './sync-entities';
 
@@ -229,6 +230,7 @@ async function bootstrap(db: SQLiteDatabase, account: NativeAccount, fetcher: ty
     await holdCalendarLinksForEpoch(tx, head!.epoch);
     await holdAppleCalendarForEpoch(tx, head!.epoch);
     await discardContactPhotosForEpoch(tx, head!.epoch);
+    await holdContactPhotosForEpoch(tx, head!.epoch);
     const legacy = old ? null : await metadata(tx, 'sync-cursor-v3') ?? await metadata(tx, 'sync-cursor-v2') ?? await metadata(tx, 'sync-cursor');
     const previous = old ?? (legacy ? readSyncCursor(JSON.parse(legacy)) : null);
     if (previous && previous.epoch !== head!.epoch) {
@@ -446,6 +448,19 @@ export function syncWorkspace(db: SQLiteDatabase, account: NativeAccount, option
       changed += await calendarPush();
     }
     changed += await pull(db, account, fetcher, isCurrent);
+    const photoPush = async () => {
+      const position = await cursor(db);
+      return position ? syncContactPhotos(db, position.epoch,
+        (id, body) => request(account, `/api/v1/contact-photos/${id}`, fetcher, isCurrent, body),
+        (tx) => checkAccount(tx, account, isCurrent)) : 0;
+    };
+    try { changed += await photoPush(); }
+    catch (error) {
+      if (!(error instanceof Error) || !('code' in error) || error.code !== 'epoch_changed') throw error;
+      changed += await bootstrap(db, account, fetcher, isCurrent);
+      changed += await photoPush();
+    }
+    changed += await pull(db, account, fetcher, isCurrent);
     await checkAccount(db, account, isCurrent);
     await saveMetadata(db, 'sync-last-success', new Date().toISOString());
     return { changed };
@@ -462,7 +477,8 @@ export async function syncSummary(db: SQLiteDatabase): Promise<SyncSummary> {
   const totals = await db.getFirstAsync<{ pending: number; conflicts: number; phoneOnly: number }>(`SELECT
     SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
     SUM(CASE WHEN status = 'conflict' THEN 1 ELSE 0 END) AS conflicts,
-    0 AS phoneOnly FROM (SELECT status FROM sync_queue UNION ALL SELECT status FROM device_source_queue UNION ALL SELECT status FROM calendar_event_link_queue)`);
+    0 AS phoneOnly FROM (SELECT status FROM sync_queue UNION ALL SELECT status FROM device_source_queue UNION ALL SELECT status FROM calendar_event_link_queue
+      UNION ALL SELECT json_extract(value, '$.status') status FROM app_metadata WHERE key LIKE ? AND json_valid(value))`, PHOTO_QUEUE_PREFIX + '%');
   return { pending: totals?.pending ?? 0, conflicts: totals?.conflicts ?? 0, phoneOnly: totals?.phoneOnly ?? 0,
     lastSuccess: await metadata(db, 'sync-last-success') };
 }

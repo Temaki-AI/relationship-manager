@@ -34,6 +34,20 @@ async function position(db: SQLiteDatabase, id: string, scope: string): Promise<
   return { contactId: id, epoch: cursor.epoch, revision: record.revision, available: record.data!.photo_available === 1, cached };
 }
 
+export async function contactPhotoBaseline(db: SQLiteDatabase, id: string, scope: string) {
+  const value = await position(db, id, scope);
+  if (value?.available && !value.cached) throw new ContactPhotoDownloadError('Download the current photo before replacing it. Your selection can wait safely on this phone.', 'baseline_missing');
+  return { epoch: value?.epoch ?? null, digest: value?.cached?.digest ?? null };
+}
+export async function saveTransferredContactPhoto(db: SQLiteDatabase, value: ContactPhotoTransfer) {
+  if (value.photo !== null && await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, value.photo) !== value.digest) throw new Error('Invalid photo checksum.');
+  await db.runAsync(`INSERT INTO app_metadata (key, value, updated_at) VALUES (?, ?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`, PREFIX + value.contact_id, JSON.stringify(value), new Date().toISOString());
+  await db.runAsync(`DELETE FROM app_metadata WHERE key LIKE ? AND key != ? AND key NOT IN
+    (SELECT key FROM app_metadata WHERE key LIKE ? AND key != ? ORDER BY updated_at DESC, key DESC LIMIT ?)`,
+    PREFIX + '%', PREFIX + value.contact_id, PREFIX + '%', PREFIX + value.contact_id, MAX_CACHED_CONTACT_PHOTOS - 1);
+}
+
 export async function cachedContactPhoto(db: SQLiteDatabase, id: string, scope: string) {
   const value = await position(db, id, scope);
   return value?.available ? value.cached?.photo ?? null : null;
