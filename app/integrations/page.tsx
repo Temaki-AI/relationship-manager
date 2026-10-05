@@ -151,6 +151,7 @@ export default function IntegrationsPage() {
             <Link href="/connections/google" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Manage Google Contacts</Link>
             <Link href="/connections/google/calendar" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Manage Google Calendar</Link>
             <Link href="/connections/google/publish" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Calendar publishing setup</Link>
+            <Link href="/connections/google/gmail" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Gmail account preview</Link>
           </CardContent>
         </Card>}
         <div className="mb-4">

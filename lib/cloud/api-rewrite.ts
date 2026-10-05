@@ -59,7 +59,7 @@ export function getCloudApiRewrite(pathname: string): string | null {
   const photoPath = /^\/api\/v1\/contact-photos\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(pathname);
   const contactPath = /^\/api\/contacts\/\d+(?:\/(?:children|relationships)(?:\/\d+)?|\/photo)?$/u.test(pathname);
   const sourcePath = /^\/api\/contacts\/\d+\/(?:sources|provider-sources|device-sources)(?:\/[0-9a-f-]{36})?$/u.test(pathname);
-  const connectionPath = /^\/api\/connections\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?:\/plan-publications\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?:\/step)?|\/owned-calendar(?:\/step)?|\/contacts(?:\/(?:step|import-preview|import|schedule))?|\/calendars(?:\/(?:step|selection|events(?:\/(?:step|link-preview|link|schedule))?))?)?$/u.test(pathname);
+  const connectionPath = /^\/api\/connections\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?:\/gmail|\/plan-publications\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?:\/step)?|\/owned-calendar(?:\/step)?|\/contacts(?:\/(?:step|import-preview|import|schedule))?|\/calendars(?:\/(?:step|selection|events(?:\/(?:step|link-preview|link|schedule))?))?)?$/u.test(pathname);
   const eventPath = /^\/api\/calendar\/events\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(pathname);
   const backupPath = /^\/api\/settings\/backups\/bonds-cloud-[A-Za-z0-9.-]+\.json$/u.test(pathname);
   const importPath = /^\/api\/import\/jobs\/[0-9a-f-]{36}(?:\/source)?$/iu.test(pathname);

@@ -1,6 +1,6 @@
 import type { D1Database } from '@cloudflare/workers-types';
 
-export const CLOUD_READINESS_MIGRATION = '0044_calendar_plan_publications.sql';
+export const CLOUD_READINESS_MIGRATION = '0045_google_gmail_consent.sql';
 
 export async function getCloudReadinessReport(
   db: Pick<D1Database, 'prepare'>,

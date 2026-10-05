@@ -16,7 +16,7 @@ migration is introduced: mobile remains schema 14 and cloud migrations remain 44
 
 ## Verification
 
-All **805 root tests**, five native package tests, five native-picker fixtures,
+All **814 root tests**, five native package tests, five native-picker fixtures,
 native/root TypeScript and lint checks, release export and cloud build pass.
 The **15 complete photo journeys pass against real D1**, covering durable offline
 uploads, conflicts, exact retry, merge/recovery, account fences and transaction
@@ -71,6 +71,18 @@ concurrency; the initial
 run exhausted local disk and a sandboxed retry could not bind fixture servers,
 so the final complete run used two workers with fixture-only localhost access. See
 [dependency security](dependency-security.md) for exact versions and remediation
-limits. The new [Gmail metadata transport](gmail.md) has seven provider-boundary
-fixture tests. It is not exposed as a working connection: consent, durable staging,
-matching, web/native context and real-account evidence remain required.
+limits. Both patched-dependency native Release builds and isolated first launch
+also pass in [run 37267403749](https://github.com/Temaki-AI/relationship-manager/actions/runs/37267403749).
+The installed build 3 retains its separately recorded source and signing evidence.
+
+The [Gmail metadata implementation](gmail.md) now includes separate owner consent,
+dedicated client validation, encrypted grant lifecycle and an explicit read-only
+mailbox-label preview. Eight consent/lifecycle journeys pass against isolated D1,
+and migration 45 preserves every existing table and field. Root TypeScript/lint,
+all 814 root tests, standalone/Cloudflare builds and all 16 targeted desktop/mobile
+browser journeys pass. Migration 45 is applied only to isolated local D1.
+Mailbox labels are temporary;
+message staging, reviewed matching, web/native relationship context and real-account
+OAuth remain required. No production Gmail read or deployment is implied. The
+source requires migration 45 before a future deploy; live production still has
+migration 44, and mobile remains schema 14.

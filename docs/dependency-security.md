@@ -37,3 +37,9 @@ Do not force npm's proposed Expo 44 or React Native 0.72 downgrade. Public relea
 requires upstream patches or verified compatible remediation, followed by actual
 native compilation/startup, web build and security validation. Current npm audit
 continues to exit unsuccessfully, accurately retaining the open gate.
+
+The patched dependency tree at `7754c68` passes both native Release compilations,
+linkage verification and isolated simulator startup with real SQLite/Keychain
+initialization in [run 37267403749](https://github.com/Temaki-AI/relationship-manager/actions/runs/37267403749).
+This validates compatibility of the applied patches; unresolved audit findings
+remain open, and the installed personal build still has its recorded earlier source.

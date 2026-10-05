@@ -42,7 +42,7 @@ test('Calendar consent and refresh retain separate records for the same Google s
     assert.notEqual(calendar.connection.id, contacts.connection.id); assert.equal(calendar.connection.purpose, 'calendar'); assert.equal(contacts.connection.purpose, 'contacts');
     assert.equal(calendar.url.searchParams.get('scope'), CALENDAR); assert.equal(calendar.url.searchParams.get('client_id'), 'calendar-client');
     assert.equal(calendar.url.searchParams.get('redirect_uri'), 'https://test.invalid/api/connections/google/callback');
-    const available = await h.providers.listProviderConnections(h.db, actor, environment); assert.deepEqual(available.configured_purposes, { contacts: true, calendar: true, 'calendar-publish': false });
+    const available = await h.providers.listProviderConnections(h.db, actor, environment); assert.deepEqual(available.configured_purposes, { contacts: true, calendar: true, 'calendar-publish': false, gmail: false });
     await assert.rejects(h.providers.googleConnectionAccess(h.db, actor, environment, calendar.connection.id, calendar.epoch), /requested Google resource/);
     await assert.rejects(h.providers.beginGoogleConnection(h.db, actor, environment, { purpose: 'calendar', expected_epoch: calendar.epoch, connection_id: contacts.connection.id, expected_revision: 1 }, environment.BETTER_AUTH_URL), /connection changed/);
     const grant = await h.providers.googleConnectionAccess(h.db, actor, environment, calendar.connection.id, calendar.epoch, async (_url, request) => {

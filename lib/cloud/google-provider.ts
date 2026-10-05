@@ -1,17 +1,19 @@
 import { ProviderConnectionError, providerKeyring, type ProviderKeyring } from './provider-vault';
+import { GOOGLE_GMAIL_METADATA_SCOPE } from './google-gmail';
 
 export const GOOGLE_CONTACTS_SCOPE = 'https://www.googleapis.com/auth/contacts.readonly';
 export const GOOGLE_CONNECTION_SCOPES = ['openid', 'email', 'profile', GOOGLE_CONTACTS_SCOPE] as const;
 export const GOOGLE_CALENDAR_SCOPES = ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/calendar.calendarlist.readonly', 'https://www.googleapis.com/auth/calendar.events.readonly'] as const;
 export const GOOGLE_CALENDAR_PUBLISH_SCOPES = ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/calendar.calendarlist.readonly', 'https://www.googleapis.com/auth/calendar.app.created'] as const;
-export type GoogleConnectionPurpose = 'contacts' | 'calendar' | 'calendar-publish';
-const CLIENT_PREFIX: Record<GoogleConnectionPurpose, string> = { contacts: 'GOOGLE_CONNECTOR', calendar: 'GOOGLE_CALENDAR', 'calendar-publish': 'GOOGLE_CALENDAR_PUBLISH' };
-export const googlePurposeLabel = (purpose: GoogleConnectionPurpose) => purpose === 'calendar-publish' ? 'Calendar publishing' : purpose === 'calendar' ? 'Calendar' : 'Contacts';
+export const GOOGLE_GMAIL_SCOPES = ['openid', 'email', 'profile', GOOGLE_GMAIL_METADATA_SCOPE] as const;
+export type GoogleConnectionPurpose = 'contacts' | 'calendar' | 'calendar-publish' | 'gmail';
+const CLIENT_PREFIX: Record<GoogleConnectionPurpose, string> = { contacts: 'GOOGLE_CONNECTOR', calendar: 'GOOGLE_CALENDAR', 'calendar-publish': 'GOOGLE_CALENDAR_PUBLISH', gmail: 'GOOGLE_GMAIL' };
+export const googlePurposeLabel = (purpose: GoogleConnectionPurpose) => purpose === 'gmail' ? 'Gmail metadata' : purpose === 'calendar-publish' ? 'Calendar publishing' : purpose === 'calendar' ? 'Calendar' : 'Contacts';
 export function googlePurpose(value: unknown): GoogleConnectionPurpose {
-  if (value !== 'contacts' && value !== 'calendar' && value !== 'calendar-publish') throw new ProviderConnectionError('Choose Contacts, Calendar reading or Calendar publishing access.');
+  if (value !== 'contacts' && value !== 'calendar' && value !== 'calendar-publish' && value !== 'gmail') throw new ProviderConnectionError('Choose Contacts, Gmail metadata, Calendar reading or Calendar publishing access.');
   return value;
 }
-export function googleConnectionScopes(purpose: GoogleConnectionPurpose) { return purpose === 'calendar-publish' ? GOOGLE_CALENDAR_PUBLISH_SCOPES : purpose === 'calendar' ? GOOGLE_CALENDAR_SCOPES : GOOGLE_CONNECTION_SCOPES; }
+export function googleConnectionScopes(purpose: GoogleConnectionPurpose) { return purpose === 'gmail' ? GOOGLE_GMAIL_SCOPES : purpose === 'calendar-publish' ? GOOGLE_CALENDAR_PUBLISH_SCOPES : purpose === 'calendar' ? GOOGLE_CALENDAR_SCOPES : GOOGLE_CONNECTION_SCOPES; }
 export type GoogleConfiguration = { clientId: string; clientSecret: string; origin: string; redirectUri: string; keyring: ProviderKeyring; purpose: GoogleConnectionPurpose };
 export type ProviderEnvironment = Record<string, string | undefined>;
 export function googleConfiguration(environment: ProviderEnvironment, purpose: GoogleConnectionPurpose = 'contacts'): GoogleConfiguration {

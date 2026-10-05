@@ -12,6 +12,11 @@ Native and JavaScript source are `a5b5a8eec2a303f554413f55bbef49802d5263b6`;
 the CI merge source is `69dc05c26e5c58f909e61de4e8df051a0bb9502c`, with its
 identical source tree verified before signing. API origin is `https://everclosecrm.com`.
 
+The subsequent compatible tool-dependency patches at `7754c68` also pass both
+native Release builds and the isolated startup/SQLite/Keychain check in
+[run 37267403749](https://github.com/Temaki-AI/relationship-manager/actions/runs/37267403749).
+That later CI result does not change the source of the installed build-3 package.
+
 ## Replacement build 3
 
 Photo selection, explicit previews/save/removal, offline drafts, durable uploads

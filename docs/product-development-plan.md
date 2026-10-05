@@ -319,6 +319,15 @@ The main operating cost drivers are Cloudflare database/storage/queue usage, log
 
 ## Decisions to confirm as work is scheduled
 
+The Gmail source implementation now has a dedicated metadata-only consent purpose,
+encrypted credential lifecycle and explicit mailbox-label preview, with D1-tested
+ownership/recovery/revocation fences and preservation of prior records in migration
+45. This is a consent/preview milestone: real client configuration, durable message
+staging, reviewed matching and web/iPhone relationship context remain required.
+Production still has migration 44; the installed native build remains the verified
+personal build 3. See [Gmail implementation](gmail.md) and the
+[personal iOS release record](personal-ios-release.md).
+
 The provider and audience choices are confirmed: Google Contacts, Gmail, Google Calendar, iPhone Contacts and LinkedIn, for personal use first and a public release later. Use the personal-beta defaults above for planning, then adjust them from actual usage. Set the operating budget and service limits before activating recurring provider jobs or opening public registration. The proposed native stack remains Expo/React Native; a full SwiftUI rewrite, Android, direct iCloud access and team sharing are separate scope decisions. Broad email-content ingestion, autonomous outreach, sales campaigns and universal social-history synchronization are outside the initial release.
 
 The immediate release gates are real development OAuth and a supported native build/device journey. Continue independent work on shared source availability, calendar integration and mobile account usability while those gates are completed. LinkedIn export import is implemented locally and still needs an actual-owner export and authenticated staging/device validation. The existing sync and Google source foundations support the calendar and Gmail slices that follow.

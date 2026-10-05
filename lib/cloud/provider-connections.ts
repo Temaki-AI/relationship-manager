@@ -3,6 +3,7 @@ import { isSyncUuid } from '@/packages/domain/src/sync';
 import { exchangeGoogleCode, googleAccount, googleConfiguration, googleConnectionScopes, googlePurpose, refreshGoogleCredentials,
   revokeGoogleCredentials, GoogleGrantError, GooglePermissionError, type GoogleCredentials, type ProviderEnvironment, type ProviderFetch, type GoogleConnectionPurpose } from './google-provider';
 import { ProviderConnectionError, providerDigest, providerKeyring, randomProviderSecret, openProviderValue, sealProviderValue, type VaultBinding } from './provider-vault';
+import { googleGmailProfile } from './google-gmail';
 
 type DB = CloudflareEnv['DB'];
 export type ConnectionActor = { workspaceId: string; userId: string; authMethod?: 'web' | 'device' };
@@ -47,8 +48,8 @@ export async function listProviderConnections(db: DB, actor: ConnectionActor, en
   await requireProviderOwner(db, actor);
   const state = await db.prepare('SELECT epoch FROM workspace_sync_state WHERE workspace_id = ?').bind(actor.workspaceId).first<{ epoch: string }>();
   const rows = (await db.prepare('SELECT * FROM provider_connections WHERE workspace_id = ? AND user_id = ? ORDER BY created_at, id').bind(actor.workspaceId, actor.userId).all<ConnectionRow>()).results;
-  const configured_purposes = { contacts: false, calendar: false, 'calendar-publish': false };
-  for (const purpose of ['contacts', 'calendar', 'calendar-publish'] as const) try { googleConfiguration(environment, purpose); configured_purposes[purpose] = true; } catch { /* Missing configuration is public capability state. */ }
+  const configured_purposes = { contacts: false, calendar: false, 'calendar-publish': false, gmail: false };
+  for (const purpose of ['contacts', 'calendar', 'calendar-publish', 'gmail'] as const) try { googleConfiguration(environment, purpose); configured_purposes[purpose] = true; } catch { /* Missing configuration is public capability state. */ }
   const configured = configured_purposes.contacts;
   return { mode: 'cloud', configured, configured_purposes, epoch: state?.epoch ?? null, connections: rows.map((row: ConnectionRow) => publicConnection(row, state?.epoch ?? null)), automatic_sync: false };
 }
@@ -57,7 +58,7 @@ export async function beginGoogleConnection(db: DB, actor: ConnectionActor, envi
   const purpose = googlePurpose(body.purpose), configuration = googleConfiguration(environment, purpose);
   if (origin !== configuration.origin) throw new ProviderConnectionError('Open the connection flow from this Everclose app.', 403);
   const epoch = await activeEpoch(db, actor);
-  if (body.expected_epoch !== epoch) throw new ProviderConnectionError('Refresh before connecting a Google Contacts account.');
+  if (body.expected_epoch !== epoch) throw new ProviderConnectionError('Refresh before connecting this Google account.');
   const target = body.connection_id === undefined || body.connection_id === null ? null : await ownedConnection(db, actor, String(body.connection_id));
   if (target && (target.purpose !== purpose || target.revision !== body.expected_revision || target.status === 'revocation_pending')) throw new ProviderConnectionError('This connection changed. Refresh before reconnecting.');
   const state = randomProviderSecret(), stateHash = await providerDigest(state), verifier = randomProviderSecret(), now = Date.now();
@@ -75,6 +76,17 @@ export async function beginGoogleConnection(db: DB, actor: ConnectionActor, envi
     scope: googleConnectionScopes(purpose).join(' '), access_type: 'offline', prompt: 'consent select_account', include_granted_scopes: 'false',
     state, code_challenge: await providerDigest(verifier), code_challenge_method: 'S256' })) url.searchParams.set(name, value);
   return { authorization_url: url.href };
+}
+/** Only a live, owner-bound attempt may select the callback's local return page. */
+export async function googleAuthorizationPurpose(db: DB, actor: ConnectionActor, parameters: URLSearchParams): Promise<GoogleConnectionPurpose | null> {
+  await requireProviderOwner(db, actor);
+  const state = parameters.get('state');
+  if (!state || !/^[A-Za-z0-9_-]{43}$/.test(state) || parameters.getAll('state').length !== 1) return null;
+  const row = await db.prepare(`SELECT purpose FROM provider_authorization_attempts WHERE state_hash = ? AND workspace_id = ? AND user_id = ?
+    AND claim_token IS NULL AND expires_at > ? AND EXISTS (SELECT 1 FROM workspace_sync_state s JOIN workspaces w ON w.id = s.workspace_id
+      WHERE s.workspace_id = provider_authorization_attempts.workspace_id AND s.epoch = provider_authorization_attempts.dataset_epoch AND s.paused = 0 AND w.lifecycle = 'active')`)
+    .bind(await providerDigest(state), actor.workspaceId, actor.userId, Date.now()).first<{ purpose: string }>();
+  return row ? googlePurpose(row.purpose) : null;
 }
 export async function completeGoogleConnection(db: DB, actor: ConnectionActor, environment: ProviderEnvironment, parameters: URLSearchParams, fetcher: ProviderFetch = fetch) {
   await requireProviderOwner(db, actor);
@@ -94,6 +106,10 @@ export async function completeGoogleConnection(db: DB, actor: ConnectionActor, e
     const sealed = await openProviderValue<{ verifier: string }>(attempt.verifier, attemptBinding(attempt), configuration.keyring);
     if (!/^[A-Za-z0-9_-]{43}$/.test(sealed.verifier)) throw new ProviderConnectionError('This connection request is invalid. Start again.');
     const credentials = await exchangeGoogleCode(code, sealed.verifier, configuration, fetcher), account = await googleAccount(credentials, fetcher);
+    if (attempt.purpose === 'gmail') {
+      const mailbox = await googleGmailProfile(credentials.accessToken, fetcher);
+      if (mailbox.email !== account.email.normalize('NFC').toLowerCase()) throw new ProviderConnectionError('The Gmail mailbox does not match the verified Google account.', 502);
+    }
     const existing = await db.prepare("SELECT * FROM provider_connections WHERE workspace_id = ? AND provider = 'google' AND account_id = ? AND purpose = ?")
       .bind(actor.workspaceId, account.accountId, attempt.purpose).first<ConnectionRow>();
     if (existing && (existing.user_id !== actor.userId || existing.status === 'revocation_pending')) throw new ProviderConnectionError('This Google account is already connected or awaiting disconnection.');

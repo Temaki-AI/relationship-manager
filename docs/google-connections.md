@@ -2,6 +2,12 @@
 
 Google Contacts now has a local implementation for separate authorization, address-book review and selected imports. The owner can connect multiple accounts, download contacts, choose fields to create a person or attach to an existing relationship, and retain the original source details through merges, recovery and phone sync. Disconnect and unlink preserve CRM people and private history. Explicit field choices and opt-in recurring downloads now preserve corrections while refreshing saved sources. No real Google account or production deployment has verified this flow yet.
 
+[Gmail metadata](gmail.md) now has its own source implementation for dedicated
+consent and an explicit mailbox-label preview. It uses separate encrypted grants
+and requires migration 45 before deployment. Login and Contacts consent do not
+authorize Gmail. Full message/context synchronization and real-account validation
+remain open.
+
 ## Configure a development connection
 
 Finish the identity-only login setup in [Development setup](development.md) first. Create a dedicated Google Cloud project for data connections and enable the People API. In its Google Auth Platform, configure the consent audience and test users, then create an OAuth Web application client for this environment. Use separate projects and credentials for local, staging and production.
@@ -16,7 +22,12 @@ For staging and production, provision the connector client secret and token keyr
 
 The consent request asks only for `openid`, `email`, `profile` and `https://www.googleapis.com/auth/contacts.readonly`, with offline access, account selection, consent, state and an S256 PKCE challenge. Gmail and Calendar are not requested. In Google's External Testing mode, these data grants normally receive refresh tokens lasting seven days; expiry requires reconnecting and must not delete imported people. [Google refresh-token expiration](https://developers.google.com/identity/protocols/oauth2#expiration).
 
-Apply migrations 0032–0035 before running the updated cloud application. Only isolated local D1 has received them. On `/connections/google`, a configured server enables consent and a connected account offers **Review address book**. Choose **Choose how to save** on a downloaded contact to review its import. A self-hosted SQLite workspace supports file transfers; Google connectors require the cloud service.
+Contacts requires migrations 0032–0035. The deployed schema now includes migration
+44; the new Gmail source requires migration 45 before a future deployment.
+On `/connections/google`, a configured server enables consent and a connected
+account offers **Review address book**. Choose **Choose how to save** on a downloaded
+contact to review its import. A self-hosted SQLite workspace supports file transfers;
+Google connectors require the cloud service.
 
 The Worker configuration declares a separate `GOOGLE_CONTACTS_QUEUE`, with `everclose-google-contacts` and `everclose-google-contacts-failed` as production queue names. Provision both queues in staging before deploying there; this local change has not created remote queues. Local configuration uses distinct `everclose-local-google-contacts` names. Scheduled reconciliation runs every fifteen minutes with the existing maintenance schedule. Local Next development does not run queue consumers or scheduled events automatically; **Continue download** advances one bounded step in the authenticated web app.
 
