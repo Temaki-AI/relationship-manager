@@ -160,8 +160,8 @@ and the `build8-shared-prompts-actions` / `build8-shared-prompts-largest-text`
 result bundles under `apps/mobile/build/native-ui/`. The QA simulator retains
 schema 16, normal text size and its four synthetic people, and is shut down.
 
-Build 9 is prepared for a clean compile; build 8 remains installed on the phone
-and user-ready simulator. The shared server endpoint is now deployed in Worker `370949af-afef-44e2-8578-900625e1ce0d`, from isolated source `d741d51` over the production-compatible `039c12b` baseline.
+Clean build 9 runs on the user-ready simulator; build 8 remains installed on the
+phone. The shared server endpoint is now deployed in Worker `370949af-afef-44e2-8578-900625e1ce0d`, from isolated source `d741d51` over the production-compatible `039c12b` baseline.
 Production remains migration 44, while this branch contains separate undeployed
 Gmail migrations 45–48; deploying the entire branch would change unrelated
 readiness/queue requirements. The limited candidate passes 793 full root tests, 24 selected D1 checks, three additional D1 HTTP/authorization journeys, lint, the complete Cloudflare build and the deployment dry run. Live readiness/login remain healthy; an invented phone token reaches the exact route and is rejected as an invalid session, while extra paths remain closed. No migration or Gmail binding was added, and no owner preference round trip is claimed.
@@ -186,10 +186,21 @@ Xcode 26.4.1. Its CI merge `c0df9d70a925806725b4c5f4757cc9efd2800bcb` has no fil
 differences from candidate `1d0366818d1aff0ac386305a10704ad651ef2777`. The signed
 IPA passes strict verification and stays private; SHA-256 is
 `9da4c91d11bf12367ea7adee5f6181f97cf3ab641ee6cb29937017c9f7194523`.
-Simulator compilation/startup/offline gates are still running. Build 9 has not
-been installed; the last device discovery showed TIE Fighter paired but
-disconnected. The phone and user-ready simulator retain build 8. Preserve the
-current healthy native run without additional pushes until it completes.
+Simulator compilation, linkage and real SQLite/Keychain startup also pass in
+that run. The full offline journey fails after saving a reminder and restarting:
+navigation exists in the final screenshot/hierarchy, but the helper attempts to
+scroll before controls are hittable and reports no foreground scroll view.
+The original failed log and result bundle are preserved. The test now waits for
+foreground, interactive navigation after restart, with a bounded failure deadline
+and every persistence assertion retained. A full isolated rerun is in progress;
+the failed CI run is not green. Phone installation waits for that result.
+
+The unmodified compiled build 9 separately passes local prompt persistence/Bring
+back in 42.907 seconds and largest-text reachability in 32.537 seconds, with zero
+failures/skips. The picker screenshot was inspected. All 23 existing synthetic
+data tables and installation identity remain unchanged. The user-ready simulator
+runs clean build 9 with its original empty database preserved through 15-to-16
+migration; its welcome screenshot was inspected. See [the build-9 record](personal-ios-build9.md).
 
 Private server receipts and exact deployment logs are under
 `apps/mobile/build/releases/shared-prompt-server/`. The limited source is

@@ -31,6 +31,15 @@ final class OfflineJournalTests: XCTestCase {
     private func tap(_ label: String) {
         let button = journal.buttons[label].firstMatch
         XCTAssertTrue(button.waitForExistence(timeout: 15), "Missing button: \(label)")
+        // Navigation sits outside the scrolling screen. After a cold launch,
+        // its accessibility nodes can appear before UIKit permits interaction.
+        // Wait for readiness instead of trying to scroll a navigation button.
+        if ["Today", "People", "Agenda", "Reminders", "Account and sync"].contains(label) {
+            let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: button)
+            XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 20), .completed, "Navigation is not ready: \(label)")
+            button.tap()
+            return
+        }
         for _ in 0..<8 {
             if button.isHittable { break }
             scrollUp()
@@ -87,6 +96,10 @@ final class OfflineJournalTests: XCTestCase {
     private func restart() {
         journal.terminate()
         journal.launch()
+        XCTAssertTrue(journal.wait(for: .runningForeground, timeout: 20), "Journal did not return to the foreground")
+        let today = journal.buttons["Today"].firstMatch
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND isHittable == true"), object: today)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 20), .completed, "Journal navigation did not become interactive after restart")
     }
 
     private func expectGone(_ element: XCUIElement) {
@@ -121,8 +134,7 @@ final class OfflineJournalTests: XCTestCase {
         tap("Add to Everclose")
         XCTAssertTrue(journal.staticTexts[person].waitForExistence(timeout: 15))
 
-        journal.terminate()
-        journal.launch()
+        restart()
         tap("People")
         tap("Open \(person)")
         XCTAssertTrue(journal.staticTexts[person].waitForExistence(timeout: 15))

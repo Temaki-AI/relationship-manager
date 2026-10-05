@@ -3,9 +3,10 @@
 Everclose's personal web release is deployed at everclosecrm.com. Personal iOS
 **build 8** is signed, installed in place and running on TIE Fighter (1.0.0/build 8,
 process 14545). Installation, fresh metadata, launch and subsequent process
-stability pass. The **Everclose Build 8** simulator runs the unmodified compiled
-release at welcome, with its original empty schema-15 cache and installation
-identity. The separate synthetic QA simulator is shut down with its four guarded people and the schema-16 shared-prompt preview.
+stability pass. The **Everclose Build 9** simulator runs the unmodified compiled
+release at welcome, with its original empty cache and installation identity
+preserved through schema 15-to-16 migration. The separate synthetic QA simulator
+is shut down with its four guarded people and clean compiled build 9.
 [The build-8 record](personal-ios-build8.md) preserves source, checksums and receipts.
 
 Native Today has a per-person queue, combined reasons/latest history and explicit
@@ -58,15 +59,21 @@ back and explicit conflict review. All 913 root tests, 15 disposable D1 journeys
 pass. The inspected largest-text picker keeps Cancel and all choices reachable;
 migration preserves all 21 existing synthetic data tables and private intents.
 [Native Today](native-today.md#shared-web-and-iphone-prompt-choices--verified-preview)
-contains exact provenance and scope. Build 9 is prepared for clean compilation;
-the phone and user-ready simulator retain build 8. The new extension is deployed
+contains exact provenance and scope. Clean build 9 runs on the user-ready simulator;
+the phone retains build 8. The new extension is deployed
 as Worker `370949af-afef-44e2-8578-900625e1ce0d`, from the limited migration-44
 source `d741d51`, with full server tests/build and healthy live checks. No Gmail
 migration/queue rollout is implied. Build-9 device compilation, source comparison
-and strict package signing pass; clean simulator gates and phone reconnection
-remain pending. The exact native middleware allowance is corrected and passes
-29 focused checks plus the actual D1 middleware/dispatcher journey. Latest general CI
-37374856861 passes cloud validation but fails its unchanged dependency-audit gate.
+and strict package signing pass, as do simulator compilation/linkage and real
+SQLite/Keychain startup. CI 37380356652's full offline journey fails after a
+reminder restart; the original evidence is preserved. A bounded navigation
+readiness wait retains all persistence assertions, and a fresh isolated rerun is
+in progress. Phone installation awaits that result and reconnection. Clean build
+9 separately passes prompt persistence and largest-text actions with all 23 QA
+data tables preserved. [The build-9 record](personal-ios-build9.md) has exact
+provenance. The exact native middleware allowance is corrected and passes
+29 focused checks plus the actual D1 middleware/dispatcher journey. Latest general
+CI 37380356500 passes cloud validation but fails its unchanged dependency-audit gate.
 
 ## Delivered personal iOS implementation
 
