@@ -6,10 +6,11 @@ downloads, reviewed correspondent matching and separate per-person web context.
 Interrupted or invalid reads
 keep the previous generation until a complete replacement commits. Real OAuth
 clients are not configured or verified, and no production Gmail grant, mailbox
-read or deployment has occurred. Native Gmail context, reviewed activity behavior,
-recurring downloads and the real-account pilot remain unfinished.
+read or deployment has occurred. General profile cards and the native offline
+transport/cache now have a source implementation described below. Reviewed
+activity behavior, recurring downloads and the real-account pilot remain unfinished.
 
-The complete **853-test root suite**, root TypeScript/lint, standalone build and
+The complete **868-test root suite**, root TypeScript/lint, standalone build and
 Cloudflare build pass. The 38 focused consent/download/matching checks pass with
 the D1 runtime: 34 run on disposable D1, three preserve prior SQLite data through
 migrations 45–47, and one checks pure matching rules. All **20 desktop/mobile
@@ -18,6 +19,16 @@ retries, pagination, shared-address decisions, exclusions, changed-authorization
 and changed-catalog suppression, and confirmation before replacing settings.
 The download/matching review passes automated WCAG and viewport checks; its rendered mobile
 screen was inspected. These are synthetic fixtures, not a real mailbox pilot.
+
+The additional profile/native transport checks pass **15/15 on disposable D1 with
+real mobile SQLite**, including owner/device revocation, bounded paging, scope
+changes, offline restart, retained schema-14 data and exact frozen requests.
+Eight desktop/mobile profile and Calendar regression journeys pass, including
+WCAG and viewport checks. Native TypeScript/lint, five package tests and the
+production Hermes export pass for the build-5 candidate. The first complete root
+run exposed three simulated-downgrade fixtures that retained schema-15 tables and
+two localhost-denied readiness fixtures. After fixing the downgrade fixtures and
+allowing fixture localhost access, the complete rerun passes 868/868 with no skips.
 
 Migration 47 is applied only to isolated local D1; production was last verified at migration
 44. The installed personal iOS build remains build 4 with mobile schema 14. Its
@@ -136,9 +147,53 @@ reviewed addresses and explicitly retained subjects remain observed context; no
 interaction is logged and last-contacted is unchanged. Pages pin the source generation,
 contact-directory and matching revisions. The server and browser recheck consent,
 ownership, recovery and those revisions after reads, suppressing stale results.
-Reload discards displayed metadata and unfinished browser selections. This does not
-yet provide native offline correspondence, a general profile card, cross-account
-message correlation or an observed-to-confirmed activity review flow.
+Reload discards displayed metadata and unfinished browser selections. General
+person profiles now have a short reviewed-context preview, mailbox selection and
+bounded older-message pages. Cross-account message correlation and an
+observed-to-confirmed activity review flow remain unfinished.
+
+## Profile and native offline transport
+
+`GET /api/v1/gmail-context` is a separate version-1 read protocol; existing frozen
+version-4 CRM requests are unchanged. A live owner web or device session can read
+a complete bounded catalog of up to 32 saved Gmail resources. Device sessions
+cannot manage provider consent, change mailbox choices or confirm matches. The
+catalog fingerprint covers authorization, choices, published generations, matching
+decisions, contact email identities and recovery epoch. Atomic guards reject
+revocation, expiry, owner loss and catalog changes during a read. Cursors also bind
+the mailbox and person. Each page contains at most 50 messages and one MiB, with
+only IDs, date, direction, consented subject and reviewed addresses; raw
+participants, headers, bodies, credentials and unrelated contacts are omitted.
+
+The web profile presents three messages initially and requires an explicit action
+to show the rest of a page. It checks the catalog again before displaying a page
+and while open; switching away clears displayed private context. No message
+metadata enters browser storage or confirmed CRM history.
+
+Native schema 15 adds account-local email state and cached person projections.
+Storage defaults off. Enable **Save reviewed email metadata on this phone** in
+Account to use the profile card. Active startup/resume/sync checks the complete
+catalog. Changing it clears all cached projections, including unopened profiles.
+Changing contact email identities, deleting or merging people, recovery,
+authorization denial, disabling storage and local disconnect also invalidate
+private context. In-flight replies cannot re-enable storage or publish after a
+policy/account change. A pending contact-identity outbox entry holds email review;
+notes-only edits preserve its separate projection.
+
+Reviewed pages publish atomically and remain readable after restart offline.
+They expire after the earliest known grant/device expiry or 24 hours; reconnect
+to learn about a revocation that happened while offline. Retention also filters
+expired messages and prunes them during catalog refresh. The bounded cache keeps
+at most 500 messages, four MiB and 64 person/mailbox projections, evicting older
+other profiles when needed. A page that cannot fit preserves the prior complete
+cache. The iPhone profile shows five messages initially with explicit expansion
+and older-page actions. These tables are private cache, not portable CRM recovery
+or an interaction/outbox source.
+
+The installed build 4 still uses schema 14 and does not contain this new source.
+Native binary/startup verification and a production API/migration deployment are
+required before delivering this integration to that phone. Real mailbox consent
+and a controlled pilot remain required; fixture checks do not establish them.
 
 ## Provider boundary
 
@@ -184,7 +239,7 @@ permission failures, malformed data and bounded retry delays remain distinct.
 ## Remaining complete integration
 
 1. Configure the dedicated clients/vault in an isolated pilot environment and validate actual consent, expiry, reconnection and Google's project-wide revocation behavior.
-2. Extend the reviewed web context into general profile cards and native offline transport/schema/cards without changing frozen version-4 requests.
+2. Validate and deliver the implemented general profile/native context through matching web/native releases and controlled physical-device checks.
 3. Deliver reviewed activity behavior and cross-account correlation, preserving private relationship notes and one underlying message identity where the available evidence supports it.
 4. Add consented recurring download jobs with bounded delivery/recovery, then validate real-account renewal, history repair, privacy retention and disconnect behavior.
 

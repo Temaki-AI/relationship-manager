@@ -60,6 +60,7 @@ import { MentionInput } from '@/components/ui/mention-input';
 import { LoadError } from '@/components/ui/load-error';
 import { contactMethodHref, readContactMethods } from '@/packages/domain/src/contact-methods';
 import { PersonCalendarContext } from '@/components/person-calendar-context';
+import { PersonGmailContext } from '@/components/person-gmail-context';
 
 type RelationshipBrief = {
   headline: string;
@@ -1349,6 +1350,7 @@ export default function ContactDetail() {
 
         <div className="min-w-0 space-y-4">
           {process.env.NEXT_PUBLIC_AUTH_MODE === 'google' && <PersonCalendarContext key={id} contactId={id} refreshKey={contact} />}
+          {process.env.NEXT_PUBLIC_AUTH_MODE === 'google' && contact.public_id && <PersonGmailContext key={contact.public_id} personId={contact.public_id} refreshKey={contact} />}
           <Card className="border-0 shadow-sm animate-fade-in-up">
             <CardContent className="pt-5 pb-4">
               <div className="flex items-center gap-2">

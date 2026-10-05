@@ -287,6 +287,14 @@ Gmail downloads and reviewed correspondence matching now have a tested cloud/web
 implementation, including existing and later-created people, shared addresses,
 exclusions and separate per-person metadata. Local D1 is at migration 47; these
 changes are not deployed to production or included in personal iOS build 4.
-Native offline Gmail transport/schema/cards, recurring jobs and the real-account
-pilot remain required. Keep frozen version-4 requests unchanged when adding the
-new transport. See [Gmail implementation](../../docs/gmail.md).
+Native schema 15 now implements a separate read-only Gmail protocol, default-off
+offline metadata storage, per-person cards, bounded paging and cache invalidation
+for account/consent/identity/recovery changes. Frozen version-4 requests remain
+unchanged. This source is not in the installed schema-14 build 4; a matching
+server deployment/native release and the real-account pilot remain required.
+The build-5 candidate passes all 868 root tests, 15 D1/mobile SQLite transport
+checks, native TypeScript/lint, five package tests and production Hermes export.
+Native device compilation and isolated simulator startup are pending; follow
+[the build-5 record](../../docs/personal-ios-build5.md) for delivery evidence.
+Recurring jobs and reviewed activity behavior are also unfinished.
+See [Gmail implementation](../../docs/gmail.md).

@@ -64,18 +64,20 @@ export function ActionButton({
   label,
   onPress,
   disabled = false,
+  selected,
   variant = 'primary',
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  selected?: boolean;
   variant?: 'primary' | 'secondary' | 'quiet';
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled }}
+      accessibilityState={{ disabled, selected }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [

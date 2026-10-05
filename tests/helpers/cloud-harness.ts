@@ -172,14 +172,14 @@ export async function createCloudHarness() {
       body: options.form || (options.body === undefined ? undefined : JSON.stringify(options.body)),
     });
     let response;
-    if (parts[0] === 'v1' && parts[1] === 'contact-photos' || parts.join('/') === 'v1/calendar-event-links/push' || parts.join('/') === 'v1/device-sources/push' || parts[0] === 'contacts' && parts[2] === 'device-sources') {
+    if (parts.join('/') === 'v1/gmail-context' || parts[0] === 'v1' && parts[1] === 'contact-photos' || parts.join('/') === 'v1/calendar-event-links/push' || parts.join('/') === 'v1/device-sources/push' || parts[0] === 'contacts' && parts[2] === 'device-sources') {
       const authorization = headers.get('authorization');
       let actor: unknown = { userId: 'owner', workspaceId: options.workspace || 'test', authMethod: 'web', lifecycle: 'active' };
       if (authorization) {
         try { actor = { ...await (deviceApi.requireDeviceWorkspace as (db: typeof db, h: Headers) => Promise<unknown>)(db, headers), authMethod: 'device' }; }
         catch { return { status: 401, headers: new Headers(), body: { error: 'Device session revoked.' } }; }
       }
-      const handler = parts[0] === 'v1' && parts[1] === 'contact-photos'
+      const handler = parts.join('/') === 'v1/gmail-context' ? load(path.join(root, 'lib/cloud/gmail-context-api.ts')).handleGmailContext : parts[0] === 'v1' && parts[1] === 'contact-photos'
         ? load(path.join(root, 'lib/cloud/contact-photo-api.ts')).handleContactPhotos : parts.join('/') === 'v1/calendar-event-links/push'
           ? load(path.join(root, 'lib/cloud/calendar-event-link-api.ts')).handleCalendarEventLinks : deviceSourceApi.handleDeviceSources;
       response = await (handler as (r: Request, a: unknown, p: string[]) => Promise<Response>)(request, actor, parts);
@@ -239,6 +239,7 @@ export async function createCloudHarness() {
     gmailDownloads: load(path.join(root, 'lib/cloud/google-gmail-downloads.ts')) as typeof import('../../lib/cloud/google-gmail-downloads'),
     gmailDirectory: load(path.join(root, 'lib/cloud/gmail-contact-directory.ts')) as typeof import('../../lib/cloud/gmail-contact-directory'),
     gmailMatching: load(path.join(root, 'lib/cloud/google-gmail-matching.ts')) as typeof import('../../lib/cloud/google-gmail-matching'),
+    gmailContext: load(path.join(root, 'lib/cloud/gmail-context-api.ts')) as typeof import('../../lib/cloud/gmail-context-api'),
     googleEvents: load(path.join(root, 'lib/cloud/google-calendar-events.ts')) as typeof import('../../lib/cloud/google-calendar-events'),
     eventDownloads: load(path.join(root, 'lib/cloud/google-event-downloads.ts')) as typeof import('../../lib/cloud/google-event-downloads'),
     eventJobs: load(path.join(root, 'lib/cloud/google-event-jobs.ts')) as typeof import('../../lib/cloud/google-event-jobs'),

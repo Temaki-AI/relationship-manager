@@ -1,6 +1,6 @@
 import { contactMethodsBackfillSql } from '../../../../packages/domain/src/contact-method-storage.ts';
 export const MOBILE_DATABASE_NAME = 'bonds-mobile.db';
-export const MOBILE_SCHEMA_VERSION = 14;
+export const MOBILE_SCHEMA_VERSION = 15;
 
 export const MOBILE_SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS app_metadata (
@@ -346,5 +346,38 @@ export const MOBILE_APPLE_CALENDAR_MIGRATION_SQL = `
   CREATE TRIGGER apple_calendar_plan_date_changed AFTER UPDATE OF planned_date ON plans WHEN NEW.planned_date IS NOT OLD.planned_date BEGIN
     UPDATE apple_calendar_receipts SET follow_date = 0, issue = 'date_following_suspended', revision = revision + 1
       WHERE plan_id = NEW.id AND follow_date = 1 AND last_plan_date IS NOT NEW.planned_date;
+  END;
+`;
+
+export const MOBILE_GMAIL_CONTEXT_MIGRATION_SQL = `
+  CREATE TABLE gmail_context_state (
+    id INTEGER PRIMARY KEY CHECK(id=1), enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN(0,1)),
+    revision INTEGER NOT NULL DEFAULT 0, manifest TEXT CHECK(manifest IS NULL OR json_valid(manifest)), checked_at INTEGER
+  );
+  INSERT INTO gmail_context_state(id) VALUES(1);
+  CREATE TABLE gmail_person_context (
+    source_id TEXT NOT NULL, person_id TEXT NOT NULL, scope TEXT NOT NULL,
+    messages TEXT NOT NULL CHECK(json_valid(messages) AND json_type(messages)='array'),
+    next TEXT, checked_at INTEGER NOT NULL, PRIMARY KEY(source_id,person_id)
+  );
+  CREATE INDEX gmail_person_context_lru ON gmail_person_context(checked_at,source_id,person_id);
+  CREATE TRIGGER gmail_context_contact_insert AFTER INSERT ON contacts BEGIN
+    DELETE FROM gmail_person_context; UPDATE gmail_context_state SET revision=revision+1,manifest=NULL,checked_at=NULL;
+  END;
+  CREATE TRIGGER gmail_context_contact_identity AFTER UPDATE OF email,contact_methods,deleted_at ON contacts
+    WHEN NEW.email IS NOT OLD.email OR NEW.contact_methods IS NOT OLD.contact_methods OR NEW.deleted_at IS NOT OLD.deleted_at BEGIN
+    DELETE FROM gmail_person_context; UPDATE gmail_context_state SET revision=revision+1,manifest=NULL,checked_at=NULL;
+  END;
+  CREATE TRIGGER gmail_context_contact_delete AFTER DELETE ON contacts BEGIN
+    DELETE FROM gmail_person_context; UPDATE gmail_context_state SET revision=revision+1,manifest=NULL,checked_at=NULL;
+  END;
+  CREATE TRIGGER gmail_context_alias_insert AFTER INSERT ON contact_aliases BEGIN
+    DELETE FROM gmail_person_context; UPDATE gmail_context_state SET revision=revision+1,manifest=NULL,checked_at=NULL;
+  END;
+  CREATE TRIGGER gmail_context_alias_delete AFTER DELETE ON contact_aliases BEGIN
+    DELETE FROM gmail_person_context; UPDATE gmail_context_state SET revision=revision+1,manifest=NULL,checked_at=NULL;
+  END;
+  CREATE TRIGGER gmail_context_alias_update AFTER UPDATE ON contact_aliases BEGIN
+    DELETE FROM gmail_person_context; UPDATE gmail_context_state SET revision=revision+1,manifest=NULL,checked_at=NULL;
   END;
 `;

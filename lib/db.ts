@@ -45,6 +45,7 @@ export type Workspace = {
 };
 
 export type Contact = {
+  public_id?: string;
   contact_methods?: string;
   id: number;
   name: string;

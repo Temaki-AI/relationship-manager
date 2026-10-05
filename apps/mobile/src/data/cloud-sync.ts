@@ -19,6 +19,7 @@ import type { SyncV4EntityRecord as SyncEntityRecord, SyncV4BootstrapPosition as
 import { applyRemoteCalendarEvent } from './calendar-events';
 import { holdCalendarLinksForEpoch, syncCalendarLinks } from './calendar-event-links';
 import { holdAppleCalendarForEpoch } from './apple-calendar';
+import { discardGmailContextForEpoch } from './gmail-context';
 import { discardContactPhotosForEpoch } from './contact-photos';
 import { holdContactPhotosForEpoch, PHOTO_QUEUE_PREFIX, syncContactPhotos } from './contact-photo-outbox';
 import { applyRemoteChild, childPayload, childTable, childReferences, pendingChildren, remoteEntity, stagePlanCompletion, discardPlanCompletionDrafts,
@@ -229,6 +230,7 @@ async function bootstrap(db: SQLiteDatabase, account: NativeAccount, fetcher: ty
     await holdDevicePoliciesForEpoch(tx, head!.epoch);
     await holdCalendarLinksForEpoch(tx, head!.epoch);
     await holdAppleCalendarForEpoch(tx, head!.epoch);
+    await discardGmailContextForEpoch(tx, head!.epoch);
     await discardContactPhotosForEpoch(tx, head!.epoch);
     await holdContactPhotosForEpoch(tx, head!.epoch);
     const legacy = old ? null : await metadata(tx, 'sync-cursor-v3') ?? await metadata(tx, 'sync-cursor-v2') ?? await metadata(tx, 'sync-cursor');

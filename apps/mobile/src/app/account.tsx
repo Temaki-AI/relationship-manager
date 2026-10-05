@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSQLiteContext } from 'expo-sqlite';
+import { readGmailContext, setGmailContextEnabled } from '@/data/gmail-context';
 import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ActionButton, Surface } from '@/components/design-system';
 import { useNativeAccount } from '@/native/account';
@@ -9,9 +11,16 @@ import { fonts, palette } from '@/theme';
 export default function AccountScreen() {
   const { account, signIn, pending, resume, disconnect } = useNativeAccount();
   const sync = useNativeSync(), router = useRouter();
+  const db = useSQLiteContext();
+  const [error, setError] = useState('');
+  const [emailEnabled, setEmailEnabled] = useState<boolean | null>(null);
+  useEffect(() => {
+    let active = true;
+    if (account) void readGmailContext(db, account).then((value) => { if (active) setEmailEnabled(value.enabled); }, () => { if (active) setError('Could not read email storage settings.'); });
+    return () => { active = false; };
+  }, [db, account, sync.revision]);
   const [server, setServer] = useState(process.env.EXPO_PUBLIC_EVERCLOSE_API_URL || 'https://everclosecrm.com');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
   async function run(action: () => Promise<unknown>) {
     setBusy(true); setError('');
     try { await action(); }
@@ -38,8 +47,13 @@ export default function AccountScreen() {
         {sync.summary.conflicts > 0 && <ActionButton label={`Review ${sync.summary.conflicts} offline changes`} variant="secondary" onPress={() => router.push('/sync-review')} />}
         <ActionButton label="Manage phones on the web" variant="secondary" disabled={busy} onPress={() => { void Linking.openURL(`${account.origin}/settings/devices`); }} />
         <ActionButton label="Sign in again" variant="secondary" disabled={busy} onPress={() => { void run(() => signIn(account.origin)); }} />
+        <Text style={styles.body}>Email metadata stays private to this account on this phone. Subjects appear only if you retained them on the web. Offline permission review lasts at most 24 hours; reconnect to learn about revocations.</Text>
+        <ActionButton label={emailEnabled ? 'Disable and clear saved email metadata' : 'Save reviewed email metadata on this phone'} variant="secondary" disabled={busy || emailEnabled === null} onPress={() => { void run(async () => {
+          await setGmailContextEnabled(db, account, !emailEnabled); setEmailEnabled(!emailEnabled); await sync.run();
+        }); }} />
+        {sync.gmailError && <Text accessibilityRole="alert" style={styles.error}>{sync.gmailError}</Text>}
         <ActionButton label="Disconnect this phone" variant="quiet" disabled={busy} onPress={() => Alert.alert('Disconnect this phone?',
-          'Its offline data will stay on this phone. Cloud access will be revoked when reachable.', [
+          'Offline CRM data will stay on this phone. Saved email metadata will be cleared. Cloud access will be revoked when reachable.', [
             { text: 'Cancel', style: 'cancel' }, { text: 'Disconnect', style: 'destructive', onPress: () => { void run(confirmDisconnect); } },
           ])} />
       </> : <>

@@ -34,7 +34,7 @@ Google Calendar now has locally verified separate resource consent, encrypted cr
 
 The installed personal iPhone release preserves contact and journal drafts, pages through People and older timeline entries, and safely orders reminder scheduling. Hosted-photo downloads and a 64-image account cache are deployed. Native photo selection, explicit preview/save, offline drafts, a durable upload outbox and conflict review now pass 796 root tests; all 15 photo/recovery journeys also pass against real D1. Build 2 was withdrawn after a native framework ABI mismatch was confirmed. Build 3 compiles the modules from matching sources and adds a linkage check before distribution. Both Release builds and isolated SQLite/Keychain startup pass in run 37263450401; the signed build is installed. The preceding database was preserved exactly through rollback, while a fresh post-build-3 database comparison awaits permission for a private local verification copy. Physical post-upgrade launch/photo selection, Calendar/reminder delivery, TestFlight and the complete integration pilot remain release requirements.
 
-Gmail now has fixture-verified separate consent, encrypted grants, reviewed labels/aliases/retention, durable full/incremental metadata downloads, reviewed correspondent matching and per-person web context. Existing and later-created people match retained email methods without another provider read; shared addresses, exclusions, stale identities, merges and uncertain saves require or preserve explicit review. No message bodies or attachments are retained; subjects remain default-off. This is not yet a verified personal integration: actual clients/consent, recurring jobs, general profile/native context and real-account evidence remain required. [Gmail implementation](gmail.md) records the provider contract and remaining work. Compatible security patches reduce the audit findings while preserving native framework versions; unpatched and incompatible-update findings remain a public-release gate. [Dependency security](dependency-security.md) records the exact evidence.
+Gmail now has fixture-verified separate consent, encrypted grants, reviewed labels/aliases/retention, durable full/incremental metadata downloads, reviewed correspondent matching and per-person web context. Existing and later-created people match retained email methods without another provider read; shared addresses, exclusions, stale identities, merges and uncertain saves require or preserve explicit review. No message bodies or attachments are retained; subjects remain default-off. This is not yet a verified personal integration: actual clients/consent, recurring jobs, delivery and physical validation of the implemented general profile/native context, and real-account evidence remain required. [Gmail implementation](gmail.md) records the provider contract and remaining work. Compatible security patches reduce the audit findings while preserving native framework versions; unpatched and incompatible-update findings remain a public-release gate. [Dependency security](dependency-security.md) records the exact evidence.
 
 ## What exists and what remains
 
@@ -325,8 +325,11 @@ downloads, reviewed correspondent matching and per-person web metadata context.
 Migrations 45–47 preserve prior data and add private, bounded source/matching caches.
 Full/incremental staging, atomic publication, owner/recovery/revocation fences,
 later-created people, ambiguous/excluded addresses and desktop/mobile cached review
-pass synthetic checks. Real client configuration, recurring downloads, general
-profile/native context and activity/cross-account review remain required. Local D1
+pass synthetic checks. General profile cards and native schema-15 offline context
+now have a separate read-only source implementation with default-off storage,
+bounded pages and owner/device/catalog/identity/recovery fences. Matching release
+delivery, real client configuration, recurring downloads and activity/cross-account
+review remain required. Local D1
 has migration 47. Production was last verified at migration 44; personal iOS build 4 is signed and installed,
 with native startup and physical process launch/stability verified. Physical
 UI/data confirmation remains pending. See [Gmail implementation](gmail.md) and the

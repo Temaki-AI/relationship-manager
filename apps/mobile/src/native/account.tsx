@@ -10,6 +10,7 @@ import {
   type NativeAccount,
 } from '../../../../packages/domain/src/devices';
 import { selectNotificationAccount } from './notifications';
+import { clearPrivateAccountCaches } from './private-account-cache';
 
 const ACCOUNT_KEY = 'everclose.active-account';
 const PENDING_KEY = 'everclose.pending-sign-in';
@@ -61,6 +62,11 @@ async function exchange(pending: PendingSignIn): Promise<NativeAccount> {
   if (!response.ok) throw new Error(body.error || 'Unable to finish phone sign-in.');
   const identity = deviceIdentity(body.identity);
   const account = readNativeAccount({ ...identity, origin: pending.origin, token: pending.token }, __DEV__);
+  const previous = await SecureStore.getItemAsync(ACCOUNT_KEY, storageOptions);
+  if (previous) {
+    const old = readNativeAccount(JSON.parse(previous), __DEV__);
+    if (accountScope(old) !== accountScope(account)) await clearPrivateAccountCaches(accountScope(old));
+  }
   await selectNotificationAccount(null);
   await SecureStore.setItemAsync(ACCOUNT_KEY, JSON.stringify(account), storageOptions);
   await SecureStore.deleteItemAsync(PENDING_KEY, storageOptions);
@@ -126,6 +132,7 @@ export function NativeAccountProvider({ children }: { children: ReactNode }) {
     if (result.type === 'success') await finishCallback(result.url);
   }
   async function disconnect() {
+    if (account) await clearPrivateAccountCaches(accountScope(account));
     let revoked = !account;
     if (account) {
       try {

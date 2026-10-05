@@ -27,11 +27,11 @@ function load(filename: string): Record<string, unknown> {
 }
 const middleware = load(path.resolve('middleware.ts')).middleware as (request: InstanceType<typeof NextRequest>) => Promise<Response>;
 
-test('Google-mode middleware permits only the native sync/session candidates and keeps security controls', async () => {
+test('Google-mode middleware permits only the allowed native endpoints and keeps security controls', async () => {
   const previous = process.env.AUTH_MODE; process.env.AUTH_MODE = 'google';
   const credential = `Bearer everclose_device_${randomBytes(32).toString('base64url')}`;
   try {
-    for (const suffix of ['sync/bootstrap', 'sync/pull', 'sync/push', 'devices/session', 'calendar-event-links/push']) {
+    for (const suffix of ['gmail-context', 'sync/bootstrap', 'sync/pull', 'sync/push', 'devices/session', 'calendar-event-links/push']) {
       const response = await middleware(new NextRequest(`https://everclosecrm.com/api/v1/${suffix}`, { headers: { Authorization: credential } }));
       assert.equal(response.status, 200);
       assert.equal(response.headers.get('x-middleware-rewrite'), `https://everclosecrm.com/api/cloud/v1/${suffix}`);
@@ -43,7 +43,7 @@ test('Google-mode middleware permits only the native sync/session candidates and
       assert.equal(response.headers.get('x-middleware-rewrite'), `https://everclosecrm.com/api/cloud/v${version}/sync/${action}`);
     }
     for (const pathname of ['/api/settings/erase', '/api/settings/backups', '/api/v1/devices',
-      '/api/v1/devices/authorize', '/api/contacts', '/api/cloud/v1/sync/push', '/api/v1/sync/unknown', '/api/v1/calendar-event-links/pull', '/api/v1/calendar-event-links/push/extra', '/api/v3/sync/unknown', '/api/v4/sync/unknown', '/api/v5/sync/push']) {
+      '/api/v1/devices/authorize', '/api/contacts', '/api/cloud/v1/sync/push', '/api/v1/gmail-context/extra', '/api/connections/00000000-0000-4000-8000-000000000001/gmail/matches', '/api/v1/sync/unknown', '/api/v1/calendar-event-links/pull', '/api/v1/calendar-event-links/push/extra', '/api/v3/sync/unknown', '/api/v4/sync/unknown', '/api/v5/sync/push']) {
       assert.equal((await middleware(new NextRequest(`https://everclosecrm.com${pathname}`, { headers: { Authorization: credential } }))).status, 401, pathname);
     }
     assert.equal((await middleware(new NextRequest('https://everclosecrm.com/api/v1/sync/pull', { headers: { Authorization: 'Bearer invalid' } }))).status, 401);

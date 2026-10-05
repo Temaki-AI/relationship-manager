@@ -96,7 +96,15 @@ covered. All 853 root tests and 20 desktop/mobile Gmail browser journeys pass, w
 TypeScript/lint and standalone/Cloudflare builds. The 38 focused checks include
 34 disposable D1 tests, three prior-data SQLite migration checks and pure matching
 rules. Mobile rendering, WCAG and viewport checks pass. General profile/native
-correspondence, cross-account/activity review and consented recurring jobs remain
-engineering work. Real clients/vault and a controlled mailbox pilot remain required.
+correspondence now has a source implementation: a separate read-only protocol,
+schema-15 default-off offline cache and owner/session/catalog/identity fences.
+All 868 root tests, 15 focused D1/mobile SQLite transport tests and eight
+desktop/mobile profile/Calendar journeys pass. Root/native TypeScript and lint,
+five native package tests, the production Hermes export and standalone/Cloudflare
+builds pass. The native configuration now requests build 5; its compiled release
+validation is pending. This source is not in installed build 4.
+Cross-account/activity review and consented recurring jobs remain engineering work.
+Real clients/vault and a controlled mailbox pilot remain required.
 Readiness requires migrations 45–47 before any source deploy; production was last
-verified at migration 44, local D1 has 47, and mobile remains schema 14.
+verified at migration 44 and local D1 has 47. Installed mobile remains schema 14;
+current native development source has schema 15.

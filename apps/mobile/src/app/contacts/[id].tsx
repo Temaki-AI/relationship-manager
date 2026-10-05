@@ -1,5 +1,6 @@
 import { DeviceSavedSources } from '@/components/device-saved-sources';
 import { PersonCalendarContext } from '@/components/person-calendar-context';
+import { PersonGmailContext } from '@/components/person-gmail-context';
 import { Stack, useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useRef, useState } from 'react';
@@ -232,6 +233,7 @@ function ContactDetail({ id }: { id: string }) {
         )}
 
         <PersonCalendarContext contactId={id} />
+        <PersonGmailContext key={contact.id} contactId={contact.id} />
         <View style={styles.section}>
           <SectionHeading title="Open reminders" />
           {reminders.length === 0 ? (
