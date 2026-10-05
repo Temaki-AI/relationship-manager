@@ -1,0 +1,38 @@
+name: EvercloseNativeQA
+options:
+  bundleIdPrefix: com.everclose.qa
+  deploymentTarget:
+    iOS: '16.4'
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    GENERATE_INFOPLIST_FILE: YES
+    CODE_SIGN_IDENTITY: '-'
+    DEVELOPMENT_TEAM: 628QH4492F
+    TARGETED_DEVICE_FAMILY: '1'
+targets:
+  TestHost:
+    type: application
+    platform: iOS
+    sources: TestHost
+    settings:
+      base:
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+  NativeJourneys:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: NativeJourneys
+    dependencies:
+      - target: TestHost
+schemes:
+  EvercloseNativeQA:
+    build:
+      targets:
+        TestHost: all
+        NativeJourneys: [test]
+    test:
+      targets:
+        - name: NativeJourneys
+          parallelizable: false
+      captureScreenshotsAutomatically: true
+      deleteScreenshotsWhenEachTestSucceeds: false

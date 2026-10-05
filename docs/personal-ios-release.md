@@ -9,12 +9,15 @@ package hash and checks. After the owner unlocked the phone, the physical launch
 and process-stability checks passed. Confirmation that People shows the existing
 contacts remains pending.
 
-**Build 6 is signed and ready to install.** Both native Release builds, linkage,
+**Build 6 runs in a dedicated local iPhone simulator and is signed for the phone.** Both native Release builds, linkage,
 isolated SQLite/Keychain startup and strict signed-package verification pass. It
 adds an optional device-wide Face ID/Touch ID/passcode gate. The phone remains
 unreachable; direct USB reconnection and Trust confirmation with both devices
-unlocked are pending. See [the build-6 release record](personal-ios-build6.md) for
-exact source, checksum, validation and outstanding physical checks.
+unlocked are pending for physical installation. At the owner's request, local
+simulator installation, startup and an actual native offline contact/restart
+journey now pass, with a separate synthetic QA device. See
+[the build-6 release record](personal-ios-build6.md) for exact source, checksum,
+validation and outstanding account/physical checks.
 
 **Build 5 remains separately signed and verified.** Both native Release builds,
 linkage and isolated simulator SQLite/Keychain startup pass. Installation could
@@ -93,8 +96,8 @@ copy is pending. Installation success is separate from data-continuity evidence.
 Physical post-upgrade data visibility, photo selection/rendering,
 phone-edit/web round trips, Calendar permissions
 and editor actions, closed-app reminder delivery and broader accessibility remain
-unverified. The shared local Simulator is in use by another project and switching
-it awaits the existing permission request. Google Contacts/Calendar provider
+unverified. The owner's Simulator instruction is fulfilled using dedicated local
+Everclose devices; other projects' simulators remain untouched. Google Contacts/Calendar provider
 clients and vault configuration, Gmail, Sign in with Apple and TestFlight/App Store
 work remain part of the complete integration/public-release plan.
 

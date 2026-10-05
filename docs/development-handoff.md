@@ -2,7 +2,7 @@
 
 Everclose's personal web release is deployed at everclosecrm.com. Personal iOS build 4 is signed and installed on TIE Fighter; the actual receipt and installed-app metadata confirm it. Both native Release binaries, linkage verification and isolated first launch with SQLite/Keychain initialization pass in [run 37278926485](https://github.com/Temaki-AI/relationship-manager/actions/runs/37278926485). Exact source, hash, installation evidence and remaining checks are in the [build-4 release record](personal-ios-build4.md). After the owner reported the phone unlocked again, a fresh launch at 10:56 UTC succeeded as process 9346 and a separate stability check passed. Owner confirmation of the UI and contacts remains pending.
 
-**Build 6 is signed and ready to install**, adding an optional device-wide
+**Build 6 is running in a dedicated local iPhone simulator and is signed for the phone**, adding an optional device-wide
 Face ID/Touch ID/passcode gate to schema 15 and the default-off Gmail cache. Both
 native Release jobs and isolated SQLite/Keychain startup pass in run 37321546205.
 The current source passes 878 root tests, 398 D1 tests with 11 documented skips,
@@ -14,7 +14,13 @@ Trust confirmation with both devices unlocked. A documentation commit does not
 require rebuilding or resigning it. Verify installation, exact bundle/build metadata
 and launch/stability before claiming physical delivery. The earlier signed
 [build 5](personal-ios-build5.md) remains separately preserved. Private database
-copying and switching the shared Simulator still require the pending explicit permissions.
+copying remains subject to the pending explicit permission. The owner's later
+instruction to use Simulator is fulfilled with two new Everclose devices. Actual
+native offline contact creation, exact email/notes after restart and the default-off
+lock control pass in the synthetic QA device. The clean device starts with zero
+contacts. Hosted Google-login navigation and cancellation also pass, stopping
+before account selection or device authorization. Existing simulators were not changed; the Mac remains locked, so UI
+verification uses headless XCTest and simulator screenshots.
 
 ## Delivered personal iOS implementation
 
@@ -64,9 +70,10 @@ Calendar permission/editor journeys and broader accessibility remain unverified.
 4. Complete the real Gmail client/vault/pilot, reviewed activity and operational validation of recurring jobs. Download/matching and web/native context now have tested source implementations. LinkedIn currently supports reviewed profile URLs/export imports; continuous LinkedIn account synchronization is unavailable.
 5. Complete Sign in with Apple/account management, dependency security, public provider approvals, TestFlight/App Store distribution, operational checks and the daily-use pilot.
 
-Local development OAuth still needs its own configured credentials. The shared
-local Simulator belongs to another active project; permission to switch it remains
-pending. The installed personal build and successful isolated CI simulator do not
+Local development OAuth still needs its own configured credentials. Native sign-in
+uses the hosted production login and does not require a localhost OAuth client.
+Local Everclose simulators are now installed and verified at the owner's request.
+The installed personal build and successful isolated CI/local simulators do not
 complete the integrated personal beta or public release.
 
 The saved Gmail stash `3473e7443855718e3aaee489d4ce1aa739add78e` has been restored
@@ -176,5 +183,8 @@ The owner has been asked to choose between approving the new development project
 and creating a localhost client in the existing Everclose project. Do not retry
 creation or create the alternate client until that reply arrives. No Google project,
 client, grant or credential change was made. The prepared browser tab is marked for
-handoff. The Mac was reported locked; both Mac and iPhone should be unlocked and
-connected by USB for the next installation check.
+handoff. The Mac was reported locked. The owner is away and asked to use Simulator;
+the local build-6 offline journey now passes without unlocking the Mac. Both Mac
+and iPhone should be unlocked and connected by USB only for a later physical
+installation check. See the build-6 record and `tests/native-ui/README.md` for the
+local evidence and repeatable test scope.
