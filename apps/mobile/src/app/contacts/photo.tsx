@@ -22,6 +22,7 @@ function PhotoEditor({ id, account }: { id: string; account: NativeAccount }) {
   const active = useRef(true), running = useRef(false);
   useLayoutEffect(() => { active.current = true; return () => { active.current = false; }; }, [db, scope]);
   const [name, setName] = useState('Contact photo'), [opening, setOpening] = useState<PhotoOpening | null>(null);
+  const [personId, setPersonId] = useState<string | null>(null);
   const [current, setCurrent] = useState<string | null>(null), [selection, setSelection] = useState<string | null>(null);
   const [queue, setQueue] = useState<PhotoQueue | null>(null), [hasDraft, setHasDraft] = useState(false);
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
@@ -29,6 +30,7 @@ function PhotoEditor({ id, account }: { id: string; account: NativeAccount }) {
   async function read(reviewCurrent = false) {
     const person = await getContact(db, id);
     if (!isCurrent()) return;
+    setPersonId(person?.id ?? null);
     if (person) setName(person.name);
     let photo = await cachedContactPhoto(db, id, scope);
     try { photo = await loadContactPhoto(db, account, id, { isCurrent }); }
@@ -67,6 +69,7 @@ function PhotoEditor({ id, account }: { id: string; account: NativeAccount }) {
     <Text style={styles.title}>{name}</Text>
     {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     {!!notice && <Text style={styles.body}>{notice}</Text>}
+    {personId && personId !== id && <ActionButton label="Open combined person" variant="secondary" onPress={() => router.push({ pathname: '/contacts/[id]', params: { id: personId } })} />}
     <Surface style={styles.card}><Text style={styles.body}>Current cloud photo</Text><Avatar name={name} photo={current} size={112} /></Surface>
     <Surface style={styles.card}><Text style={styles.body}>{hasDraft ? 'Your unfinished selection' : queue ? 'Photo saved on this phone' : 'Selected photo'}</Text>
       <Avatar name={name} photo={selection} size={160} />
@@ -74,9 +77,9 @@ function PhotoEditor({ id, account }: { id: string; account: NativeAccount }) {
     </Surface>
     {queue && <Text style={styles.body}>{queue.status === 'conflict' ? 'The photo or account data changed. Your phone photo is held for review.'
       : unconfirmed ? 'The previous upload is unconfirmed. Retry it unchanged before replacing or discarding it.' : 'Saved on this phone. It will upload when you are online.'}</Text>}
-    <ActionButton label="Choose from Photos" disabled={busy || !opening || unconfirmed} onPress={() => { void perform(async () => { const photo = await chooseContactPhoto(isCurrent); if (photo !== null) await select(photo); }); }} />
-    <ActionButton label="Remove photo" variant="quiet" disabled={busy || !opening || unconfirmed || selection === null} onPress={() => { void perform(() => select(null)); }} />
-    <ActionButton label="Save photo" disabled={busy || !opening || !hasDraft || unconfirmed} onPress={() => { void perform(async () => {
+    <ActionButton label="Choose from Photos" disabled={busy || !opening || unconfirmed || personId !== id} onPress={() => { void perform(async () => { const photo = await chooseContactPhoto(isCurrent); if (photo !== null) await select(photo); }); }} />
+    <ActionButton label="Remove photo" variant="quiet" disabled={busy || !opening || unconfirmed || selection === null || personId !== id} onPress={() => { void perform(() => select(null)); }} />
+    <ActionButton label="Save photo" disabled={busy || !opening || !hasDraft || unconfirmed || personId !== id} onPress={() => { void perform(async () => {
       await queueContactPhoto(db, opening!, selection, isCurrent); if (isCurrent()) router.back();
     }); }} />
     <ActionButton label="Review latest cloud photo" variant="secondary" disabled={busy || unconfirmed} onPress={() => { void perform(async () => {
