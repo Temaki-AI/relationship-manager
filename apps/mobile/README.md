@@ -165,8 +165,17 @@ resumes its saved draft. Closing flushes pending writes; explicit discard remove
 only that form. Successful save clears it in the same transaction as the person
 and outbox change. The original edit base is retained across restart and cloud
 edits, including merges, so sync compares the actual original fields. Drafts do
-not enter the sync outbox before Save. Other plan/reminder forms do not yet have
-this unfinished-form recovery behavior.
+not enter the sync outbox before Save.
+
+Plan, family, relationship and reminder-creation forms also resume local drafts.
+Closing or navigating back waits for queued writes; explicit discard removes only
+that form. Context edits retain exact original fields/revisions. A resumed reminder
+keeps its selected absolute time and timezone; an expired time needs a new choice.
+The reminder and outbox commit before notification permission/scheduling begins,
+so a scheduling failure reports a saved reminder rather than creating it again.
+Alert identities include account, reminder and date. Scheduling, account refresh
+and cancellation are ordered to prevent a late response undoing a newer alert.
+Actual permission and closed-app delivery checks on the phone remain required.
 
 ## Native capabilities and verification
 

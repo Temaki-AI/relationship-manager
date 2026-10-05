@@ -5,6 +5,7 @@ import { normalizeReminderDraft, type ReminderDraft } from '@/domain/reminder';
 import { enqueueSyncIntent } from './sync-queue';
 import { signalSyncChange } from './sync-signals';
 import { canonicalContactId } from './contact-aliases';
+import { clearJournalDraft } from './journal-drafts';
 
 export type ReminderRecord = {
   id: string;
@@ -52,7 +53,8 @@ export async function getNextReminder(db: SQLiteDatabase): Promise<ReminderRecor
 export async function createReminder(
   db: SQLiteDatabase,
   draft: ReminderDraft,
-  notificationId: string | null
+  notificationId: string | null,
+  draftKey?: string
 ): Promise<ReminderRecord> {
   const input = normalizeReminderDraft(draft);
   input.contactId = await canonicalContactId(db, input.contactId);
@@ -84,6 +86,7 @@ export async function createReminder(
     now,
     now);
     await enqueueSyncIntent(transaction, 'reminder', id, 'create', input, now);
+    if (draftKey) await clearJournalDraft(transaction, draftKey);
   });
 
   signalSyncChange(db);
@@ -124,4 +127,12 @@ export async function completeReminder(
   });
   signalSyncChange(db);
   return notificationId;
+}
+
+export async function saveReminderNotification(db: SQLiteDatabase, reminder: ReminderRecord, notificationId: string | null): Promise<boolean> {
+  const result = await db.runAsync(`UPDATE reminders SET notification_id = ? WHERE id = ? AND remind_at = ?
+    AND completed_at IS NULL AND deleted_at IS NULL
+    AND EXISTS (SELECT 1 FROM contacts WHERE contacts.id = reminders.contact_id AND deleted_at IS NULL)`,
+    notificationId, reminder.id, reminder.remind_at);
+  return result.changes > 0;
 }

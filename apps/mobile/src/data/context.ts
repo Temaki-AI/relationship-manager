@@ -6,6 +6,7 @@ import { childTable, remoteEntity, stagePlanCompletion } from './sync-entities';
 import { enqueueSyncIntent } from './sync-queue';
 import { signalSyncChange } from './sync-signals';
 import { canonicalContactId } from './contact-aliases';
+import { clearJournalDraft } from './journal-drafts';
 
 export type ContextRecord = Record<string, SyncValue> & { id: string; contact_id: string; remote_revision: number | null };
 
@@ -49,7 +50,7 @@ async function validateReferences(db: SQLiteDatabase, entity: ContextEntity, con
   }
 }
 
-export async function createContext(db: SQLiteDatabase, entity: ContextEntity, contactId: string, input: Record<string, unknown>) {
+export async function createContext(db: SQLiteDatabase, entity: ContextEntity, contactId: string, input: Record<string, unknown>, draftKey?: string) {
   const fields = normalizeContextFields(entity, input), id = Crypto.randomUUID(), now = new Date().toISOString();
   await db.withExclusiveTransactionAsync(async (tx) => {
     contactId = await canonicalContactId(tx, contactId);
@@ -59,18 +60,20 @@ export async function createContext(db: SQLiteDatabase, entity: ContextEntity, c
     await tx.runAsync(`INSERT INTO ${childTable(entity)} (id, contact_id, ${columns.join(', ')}, created_at, updated_at, sync_state)
       VALUES (?, ?, ${columns.map(() => '?').join(', ')}, ?, ?, 'pending')`, id, contactId, ...Object.values(fields), now, now);
     await enqueueSyncIntent(tx, entity, id, 'create', { contact_id: contactId, ...fields }, now);
+    if (draftKey) await clearJournalDraft(tx, draftKey);
   });
   signalSyncChange(db); return id;
 }
 
-export async function updateContext(db: SQLiteDatabase, entity: ContextEntity, original: ContextRecord, input: Record<string, unknown>) {
+export async function updateContext(db: SQLiteDatabase, entity: ContextEntity, original: ContextRecord, input: Record<string, unknown>, draftKey?: string) {
   const fields = normalizeContextFields(entity, input);
   if (entity === 'relationship' && fields.related_contact_id !== original.related_contact_id) throw new Error('Create a separate relationship to connect a different person.');
   const changed = Object.keys(fields).filter((key) => fields[key] !== original[key]);
-  if (!changed.length) return;
   const patch = Object.fromEntries(changed.map((key) => [key, fields[key]])), now = new Date().toISOString();
   await db.withExclusiveTransactionAsync(async (tx) => {
     if (!await contextForEditing(tx, entity, original.id)) throw new Error('This item is no longer available. Your form is still here.');
+    if (draftKey) await clearJournalDraft(tx, draftKey);
+    if (!changed.length) return;
     const parent = await canonicalContactId(tx, original.contact_id);
     const references = { ...fields };
     for (const key of ['linked_contact_id', 'related_contact_id']) if (typeof references[key] === 'string') references[key] = await canonicalContactId(tx, references[key]);

@@ -70,7 +70,7 @@ function AppNavigator() {
       for (const reminder of reminders) {
         if (!active) return;
         const result = await scheduleReminderNotification({ reminderTitle: reminder.title, contactId: reminder.contact_id,
-          contactName: reminder.name, remindAt: new Date(reminder.remind_at), accountScope: scope, requestPermission: false });
+          contactName: reminder.name, remindAt: new Date(reminder.remind_at), accountScope: scope, requestPermission: false, reminderId: reminder.id });
         if (!active) { await cancelReminderNotification(result.id); return; }
         const saved = await db.runAsync(`UPDATE reminders SET notification_id = ? WHERE id = ? AND remind_at = ?
           AND completed_at IS NULL AND deleted_at IS NULL`, result.id, reminder.id, reminder.remind_at);

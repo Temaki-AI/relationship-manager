@@ -45,6 +45,7 @@ export async function createMobileHarness(account: NativeAccount, sqlite = new D
   const database = load(path.join(repository, 'apps/mobile/src/data/database.ts')) as typeof import('../../apps/mobile/src/data/database.ts');
   const contacts = load(path.join(repository, 'apps/mobile/src/data/contacts.ts')) as typeof import('../../apps/mobile/src/data/contacts.ts');
   const contactDrafts = load(path.join(repository, 'apps/mobile/src/data/contact-drafts.ts')) as typeof import('../../apps/mobile/src/data/contact-drafts.ts');
+  const journalDrafts = load(path.join(repository, 'apps/mobile/src/data/journal-drafts.ts')) as typeof import('../../apps/mobile/src/data/journal-drafts.ts');
   const reminders = load(path.join(repository, 'apps/mobile/src/data/reminders.ts')) as typeof import('../../apps/mobile/src/data/reminders.ts');
   const context = load(path.join(repository, 'apps/mobile/src/data/context.ts')) as typeof import('../../apps/mobile/src/data/context.ts');
   const deviceContacts = load(path.join(repository, 'apps/mobile/src/data/device-contacts.ts')) as typeof import('../../apps/mobile/src/data/device-contacts');
@@ -59,5 +60,5 @@ export async function createMobileHarness(account: NativeAccount, sqlite = new D
   await database.migrateDatabase(typedDb);
   await database.bindDatabaseAccount(typedDb, accountScope(account));
   await deviceSourceSync.bindDeviceInstallation(typedDb, await deviceSourceSync.installationId(typedDb) ?? crypto.randomUUID());
-  return { db: typedDb, sqlite, faults, database, contacts, contactDrafts, reminders, context, methods, deviceContacts, deviceSourceSync, deviceReconciliation, calendarEvents, calendarLinks, appleCalendar, sync, queue, close: () => sqlite.close() };
+  return { db: typedDb, sqlite, faults, database, contacts, contactDrafts, journalDrafts, reminders, context, methods, deviceContacts, deviceSourceSync, deviceReconciliation, calendarEvents, calendarLinks, appleCalendar, sync, queue, close: () => sqlite.close() };
 }

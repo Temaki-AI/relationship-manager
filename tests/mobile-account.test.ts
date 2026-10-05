@@ -101,8 +101,9 @@ test('notifications omit personal lock-screen content and discard a schedule tha
   const old = notifications.scheduleReminderNotification({ accountScope: 'account-a', contactName: 'Private Name',
     reminderTitle: 'Sensitive topic', contactId: crypto.randomUUID(), remindAt: new Date('2030-01-01') });
   while (!releaseSchedule) await new Promise((resolve) => setImmediate(resolve));
-  await notifications.selectNotificationAccount('account-b');
+  const switched = notifications.selectNotificationAccount('account-b');
   releaseSchedule();
+  await switched;
   assert.deepEqual(await old, { id: null, permission: 'denied' });
   assert.deepEqual(cancelled, ['delayed-old-account']);
   assert.equal(cleared, 2);
@@ -130,8 +131,68 @@ test('a reminder refresh cancels a late schedule in the same account while prese
   const pending = notifications.scheduleReminderNotification({ accountScope: 'same-account', contactName: 'Ana',
     reminderTitle: 'Reminder', contactId: crypto.randomUUID(), remindAt: new Date('2030-01-01'), requestPermission: false });
   while (!release) await new Promise((resolve) => setImmediate(resolve));
-  await notifications.selectNotificationAccount('same-account', { dismissDelivered: false });
+  const refreshed = notifications.selectNotificationAccount('same-account', { dismissDelivered: false });
   release();
+  await refreshed;
   assert.deepEqual(await pending, { id: null, permission: 'denied' });
   assert.deepEqual(cancelled, ['stale-time']); assert.equal(dismissed, 1);
+});
+
+test('stable reminder/date identifiers replace repeats while serialized refresh cannot cancel a newer schedule', async () => {
+  const requests = new Map<string, unknown>();
+  let release: (() => void) | undefined, calls = 0;
+  const notifications = loadTypescript('../apps/mobile/src/native/notifications.ts', {
+    'expo-notifications': {
+      setNotificationHandler() {}, async cancelAllScheduledNotificationsAsync() { requests.clear(); },
+      async dismissAllNotificationsAsync() {}, async setBadgeCountAsync() {},
+      async getPermissionsAsync() { return { status: 'granted' }; }, SchedulableTriggerInputTypes: { DATE: 'date' },
+      async scheduleNotificationAsync(input: { identifier: string }) {
+        if (++calls === 1) await new Promise<void>((resolve) => { release = resolve; });
+        requests.set(input.identifier, input); return input.identifier;
+      },
+      async cancelScheduledNotificationAsync(id: string) { requests.delete(id); },
+    },
+  });
+  await notifications.selectNotificationAccount('same-account');
+  const options = { accountScope: 'same-account', reminderId: crypto.randomUUID(), contactId: crypto.randomUUID(),
+    contactName: 'Person', reminderTitle: 'Private reminder', remindAt: new Date('2030-01-01'), requestPermission: false };
+  const old = notifications.scheduleReminderNotification(options);
+  while (!release) await new Promise((resolve) => setImmediate(resolve));
+  const transition = notifications.selectNotificationAccount('same-account', { dismissDelivered: false });
+  const fresh = notifications.scheduleReminderNotification(options);
+  release(); await transition;
+  assert.deepEqual(await old, { id: null, permission: 'denied' });
+  const result = await fresh as { id: string; permission: string };
+  assert.equal(result.permission, 'granted'); assert.equal(requests.size, 1); assert.ok(requests.has(result.id));
+  assert.equal((await notifications.scheduleReminderNotification(options) as { id: string }).id, result.id);
+  assert.equal(requests.size, 1);
+  const newDate = await notifications.scheduleReminderNotification({ ...options, remindAt: new Date('2030-01-02') }) as { id: string };
+  assert.notEqual(newDate.id, result.id);
+  await notifications.selectNotificationAccount('another-account');
+  const other = await notifications.scheduleReminderNotification({ ...options, accountScope: 'another-account' }) as { id: string };
+  assert.notEqual(other.id, result.id); assert.equal(requests.size, 1);
+});
+
+test('explicit cancellation waits for an in-flight schedule instead of letting its late reply recreate the alert', async () => {
+  const requests = new Set<string>();
+  let release: (() => void) | undefined, identifier = '';
+  const notifications = loadTypescript('../apps/mobile/src/native/notifications.ts', {
+    'expo-notifications': {
+      setNotificationHandler() {}, async cancelAllScheduledNotificationsAsync() { requests.clear(); },
+      async dismissAllNotificationsAsync() {}, async setBadgeCountAsync() {},
+      async getPermissionsAsync() { return { status: 'granted' }; }, SchedulableTriggerInputTypes: { DATE: 'date' },
+      async scheduleNotificationAsync(input: { identifier: string }) {
+        identifier = input.identifier; await new Promise<void>((resolve) => { release = resolve; });
+        requests.add(identifier); return identifier;
+      },
+      async cancelScheduledNotificationAsync(id: string) { requests.delete(id); },
+    },
+  });
+  await notifications.selectNotificationAccount('account');
+  const pending = notifications.scheduleReminderNotification({ accountScope: 'account', reminderId: crypto.randomUUID(),
+    contactId: crypto.randomUUID(), contactName: 'Person', reminderTitle: 'Reminder', remindAt: new Date('2030-01-01'), requestPermission: false });
+  while (!release) await new Promise((resolve) => setImmediate(resolve));
+  const cancelled = notifications.cancelReminderNotification(identifier);
+  release(); await pending; await cancelled;
+  assert.equal(requests.size, 0);
 });
