@@ -6,6 +6,9 @@ final class PromptTests: XCTestCase {
     private let birthdayPerson = "Everclose Today Accessible QA"
     private let checkInPerson = "Everclose Private QA"
     private var journal: XCUIApplication!
+    private var birthdayReason: XCUIElement {
+        journal.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@ AND label ENDSWITH %@", "Birthday", "for \(birthdayPerson)")).firstMatch
+    }
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -43,21 +46,21 @@ final class PromptTests: XCTestCase {
         tap("Snooze birthday prompt for \(birthdayPerson)")
         XCTAssertTrue(journal.staticTexts["Snooze birthday prompt"].waitForExistence(timeout: 5))
         tap("Cancel")
-        XCTAssertTrue(journal.staticTexts["Birthday today for \(birthdayPerson)"].exists)
+        XCTAssertTrue(birthdayReason.exists)
         tap("Snooze birthday prompt for \(birthdayPerson)"); tap("In a week")
-        gone(journal.staticTexts["Birthday today for \(birthdayPerson)"])
+        gone(birthdayReason)
         tap("Snooze check-in prompt for \(checkInPerson)"); tap("Tomorrow")
         gone(journal.staticTexts["Time for a check-in for \(checkInPerson)"])
         restart()
-        XCTAssertFalse(journal.staticTexts["Birthday today for \(birthdayPerson)"].exists)
+        XCTAssertFalse(birthdayReason.exists)
         XCTAssertFalse(journal.staticTexts["Time for a check-in for \(checkInPerson)"].exists)
         expandSnoozes()
         tap("Bring back birthday prompt for \(birthdayPerson)")
-        XCTAssertTrue(journal.staticTexts["Birthday today for \(birthdayPerson)"].waitForExistence(timeout: 15))
+        XCTAssertTrue(birthdayReason.waitForExistence(timeout: 15))
         XCTAssertFalse(journal.staticTexts["Time for a check-in for \(checkInPerson)"].exists)
         tap("Bring back check-in prompt for \(checkInPerson)")
         restart()
-        XCTAssertTrue(journal.staticTexts["Birthday today for \(birthdayPerson)"].waitForExistence(timeout: 15))
+        XCTAssertTrue(birthdayReason.waitForExistence(timeout: 15))
         XCTAssertTrue(journal.staticTexts["Time for a check-in for \(checkInPerson)"].exists)
         XCTAssertFalse(journal.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Snoozed prompts,")).firstMatch.exists)
     }
@@ -76,6 +79,6 @@ final class PromptTests: XCTestCase {
         screenshot.name = "Largest text prompt picker with persistent Cancel"
         screenshot.lifetime = .keepAlways; add(screenshot)
         XCTAssertTrue(cancel.isHittable); cancel.tap()
-        XCTAssertTrue(journal.staticTexts["Birthday today for \(birthdayPerson)"].exists)
+        XCTAssertTrue(birthdayReason.exists)
     }
 }

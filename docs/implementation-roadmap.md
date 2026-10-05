@@ -913,3 +913,18 @@ remains active; this completed engineering slice does not close those gates.
 - The actual unmodified compiled build 8 passes two local QA checks: background closure in 29.047 seconds and largest-text controls/persistent Cancel in 32.289 seconds. The picker screenshot was inspected. All 21 data tables are unchanged; metadata keys/values are preserved, and only the installation marker's refresh timestamp changes. The retained QA device is restored and shut down.
 - Build 8 upgrades the owner phone in place and runs as process 14545. Installed metadata, installation, launch and later process stability pass. The user-ready **Everclose Build 8** simulator runs the same compiled source as process 63529 with its original empty schema-15 cache and installation identity. No personal database was copied or reset. Existing contact visibility was confirmed by the owner on preceding build 7; current-build visibility and fresh sync remain unverified.
 - Source checks collectively verify all 898 root cases; 17 mobile tests, both type checks and full lint pass. General runs 37371940769 and 37371935667 pass Cloudflare validation but fail to acquire hosted validation runners before any step. Complete general CI, dependencies, shared prompts, physical privacy/accessibility, provider pilots and public release remain open. [The build-8 record](personal-ios-build8.md) preserves the exact packages and private receipts. The full development goal remains active.
+
+
+### Shared Today preferences — 5 October 2026
+
+Implemented the separate web/native snooze extension and schema-16 offline cache,
+with preserved frozen operations, stable identities, per-reason controls and
+explicit conflict/recovery review. Final validation passes 913 root tests,
+15 real D1 journeys, 17 native package checks, types/lint/export and native
+save/restart/bring-back plus largest-text tests. All 21 existing synthetic data
+tables and private source/CRM intents remain unchanged. The guarded build-8
+JavaScript preview is distinct from the prepared clean build 9; phone/user-ready
+build 8 remains installed. Live endpoint deployment is pending and must avoid
+unrelated undeployed Gmail migrations/queue requirements. See Native Today for
+source, hashes and private evidence locations. General CI's latest failure is the
+unchanged dependency-audit gate; public/account/physical pilots remain open.

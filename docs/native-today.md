@@ -26,7 +26,7 @@ that reminder to tomorrow, three days or next week at 9 AM. Both screens use the
 same reminder action implementation, preserving stale-date/account guards and
 the distinction between a durable CRM save and unconfirmed native delivery.
 A separate birthday/check-in reason stays visible after a reminder is completed
-or moved. Native birthday/check-in prompt snoozes shared with web remain open.
+or moved. The shared birthday/check-in preference implementation below is verified in a separate preview and awaits clean-build delivery and server rollout.
 
 Choice lists scroll with a persistent Cancel control. At the largest accessibility
 text size, the earlier UIAlert put Cancel below the visible area and XCTest
@@ -100,3 +100,76 @@ The broader product plan remains active: real OAuth/staging and provider pilots,
 shared prompt preferences, shorter profiles/calendar editing, the personal-use
 pilot, physical privacy/accessibility checks, dependency remediation and public
 release gates remain documented in the product plan and implementation roadmap.
+
+
+## Shared web and iPhone prompt choices — verified preview
+
+Source `059a5d7f4ee063e2db53153dad6c44d4433a9066` adds separate birthday and
+check-in snoozes to native Today, with Tomorrow, In a week, In 30 days and Bring
+back. Snoozing a reason leaves other reasons and reminders available and creates
+no interaction. The expanded Snoozed prompts list includes pending choices and
+held choices requiring explicit web/iPhone review.
+
+`GET/POST /api/v1/today-snoozes` maps existing web `daily_snoozes` to stable public
+person/reminder UUIDs. This extension uses existing mutation receipts, owner
+membership, active device authorization, recovery epochs and atomic D1 guards.
+It adds no cloud migration and leaves the version-4 CRM contract unchanged. A
+lost reply retries the original operation byte for byte without reapplying it
+over later web choices. Concurrent web choices hold the iPhone intent for a fresh
+explicit review. New choices after travel use the current civil day/time zone.
+
+Native schema 16 adds a bounded preference cache and durable intent queue. Local
+choices save atomically before syncing; a new person's choice waits for its core
+CRM acknowledgement. Frozen requests remain unchanged through uncertainty,
+restart and later local edits. Restore holds earlier-epoch choices, and invalid
+or incomplete downloads cannot replace the cache. Local-only use creates no
+shared preference outbox. The existing reminder-date Snooze action remains a
+separate reminder edit; a web reminder-preference snooze hides only that due task
+and reveals the next due task without moving either reminder.
+
+Verification completed:
+
+- All **913 root tests pass**, with zero failures/skips, in the permitted final
+  full run. The preceding run's seven migration-fixture failures remain recorded;
+  those simulated older schemas still contained the two new tables. Corrected
+  fixture setup, its 48 focused checks and the final full run pass.
+- All **15 shared journeys pass against disposable Worker/D1**, including lost
+  replies, conflicting choices, invalid acknowledgements/downloads, account
+  changes, restore, revocation during a write, the 500-active-choice boundary,
+  pre-publication people, travel and reminder ordering.
+- Seventeen native package tests, root/mobile TypeScript and lint, and the iOS
+  Hermes export pass.
+- Actual native preview actions pass in **40.827 seconds**, including Cancel,
+  save, restart and reason-specific Bring back. Largest-text picker controls pass
+  in **27.397 seconds**; the screenshot was inspected with all three choices and
+  persistent Cancel visible and reachable, each at least 44 points tall.
+- The retained synthetic cache migrated from 15 to 16 with SQLite integrity
+  intact and all **21 existing data tables unchanged**. Only schema-version
+  metadata and the installation refresh timestamp changed. Two local-only
+  choices were saved and brought back, with zero shared intents or new history.
+  One explicitly guarded synthetic birthday was moved to the next day before
+  the baseline so checks remained valid across local midnight; every other row
+  was checked unchanged. No owner/provider data was accessed.
+
+This is a guarded JavaScript preview over compiled build 8, **not a clean build
+9**. Native source is `3d39dcd1334874544bc4e41505ab4717745ab9ac`; JavaScript source
+is `059a5d7f4ee063e2db53153dad6c44d4433a9066`; bundle SHA-256 is
+`98c7eafff37ff7e9dcf8e67ecced94b7a9cf2f177b8feb47cb2434c46eaeed82`.
+Private receipts remain in `apps/mobile/build/releases/build8-shared-prompt-preview/`
+and the `build8-shared-prompts-actions` / `build8-shared-prompts-largest-text`
+result bundles under `apps/mobile/build/native-ui/`. The QA simulator retains
+schema 16, normal text size and its four synthetic people, and is shut down.
+
+Build 9 is prepared for a clean compile; build 8 remains installed on the phone
+and user-ready simulator. The shared server endpoint is **not deployed yet**.
+Production remains migration 44, while this branch contains separate undeployed
+Gmail migrations 45–48; deploying the entire branch would change unrelated
+readiness/queue requirements. A production-compatible, bounded server rollout is
+required before claiming live shared behavior. Until then, the client preserves
+choices locally and reports that shared prompt sync is unavailable.
+
+Latest general CI `37374856861` passes cloud validation but fails at the existing
+`npm audit --audit-level=moderate` gate. This is an actual audit failure, distinct
+from earlier unavailable-runner cancellations. No audit threshold was weakened;
+public release remains gated by dependency remediation and the account/physical
+pilots already recorded in the product plan.

@@ -5,7 +5,7 @@ Everclose's personal web release is deployed at everclosecrm.com. Personal iOS
 process 14545). Installation, fresh metadata, launch and subsequent process
 stability pass. The **Everclose Build 8** simulator runs the unmodified compiled
 release at welcome, with its original empty schema-15 cache and installation
-identity. The separate synthetic QA simulator is restored and shut down.
+identity. The separate synthetic QA simulator is shut down with its four guarded people and the schema-16 shared-prompt preview.
 [The build-8 record](personal-ios-build8.md) preserves source, checksums and receipts.
 
 Native Today has a per-person queue, combined reasons/latest history and explicit
@@ -48,6 +48,20 @@ lock control pass in the synthetic QA device. The clean device starts with zero
 contacts. Hosted Google-login navigation and cancellation also pass, stopping
 before account selection or device authorization. Existing simulators were not changed; the Mac remains locked, so UI
 verification uses headless XCTest and simulator screenshots.
+
+## Current shared-prompt development
+
+Shared web/iPhone birthday, check-in and reminder-preference snoozes are implemented
+at `059a5d7`, with durable offline choices, exact retries, reason-specific Bring
+back and explicit conflict review. All 913 root tests, 15 disposable D1 journeys,
+17 native package tests, types/lint/export and two actual native preview checks
+pass. The inspected largest-text picker keeps Cancel and all choices reachable;
+migration preserves all 21 existing synthetic data tables and private intents.
+[Native Today](native-today.md#shared-web-and-iphone-prompt-choices--verified-preview)
+contains exact provenance and scope. Build 9 is prepared for clean compilation;
+the phone and user-ready simulator retain build 8. The new server extension is
+not deployed, and no Gmail migration/queue rollout is implied. Latest general CI
+37374856861 passes cloud validation but fails its unchanged dependency-audit gate.
 
 ## Delivered personal iOS implementation
 
