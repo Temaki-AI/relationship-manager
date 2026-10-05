@@ -83,3 +83,12 @@ No schema migration is introduced. The fresh device binary from run 37260071983 
 Every original phone table and field is preserved, including all 12 contacts.
 Its private verification record and the personal iOS release document record the
 actual source/hash/install evidence. Simulator compilation passed, but the database startup deadline failed. A focused rerun with console/screenshot diagnostics is underway.
+
+## Native framework correction
+
+The new photo-picker binary compiled but failed before JavaScript startup: its
+precompiled ExpoFileSystem framework required a Core Swift symbol absent on both
+architectures. Diagnostic run 37262303397 captured the error. The verified
+photo-download phone app is restored; the invalid picker package is withdrawn.
+Build 3 opts iOS Expo modules into source compilation, with a native linkage gate
+that rejects the actual bad binary. Installation awaits startup and linkage checks.
