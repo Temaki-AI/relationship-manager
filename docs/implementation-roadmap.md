@@ -893,3 +893,16 @@ Final release follow-up: version `4222b1a6-c7ba-47e1-b8cb-3f78adeaff17` corrects
 - The owner subsequently requested delivery to the phone. CoreDevice found the paired TIE Fighter iPhone 13 available; prior installed metadata reported build 4. The exact signed build-7 IPA checksum and normal-context strict signature/linkage checks passed, then an in-place install returned success. Fresh metadata reports 1.0.0/build 7, launch succeeded at 19:37 UTC as process 13565, and a later process query confirms stability. The owner directly confirmed existing contacts are visible in People after the upgrade.
 - This closes physical installation/launch and establishes owner-confirmed contact visibility. No personal database was copied or reset. Exact field equality, a fresh phone/web sync round trip, all physical provider/photo/Calendar/notification/biometric/accessibility journeys and TestFlight remain separate unverified requirements. The installed phone package has application source `e096551`; the label update remains separately tested on QA.
 - Documentation synchronization cancelled native run 37363077696; replacement 37363883290 is confirmed live for `3c37a02`, whose application source matches the label fix. Further documentation pushes are held while the healthy native compilation finishes. The broader implementation goal remains active, including the native Today queue and remaining integration/release work.
+
+
+### Native Today queue and accessible actions — 5 October 2026
+
+Implemented the bounded per-person native queue, combined reasons, latest confirmed
+history, explicit Reach out/Log and shared durable reminder Done/Snooze handlers.
+The final JavaScript preview passes largest-text cancellation/background checks
+and the restart action journey; prior synthetic source/contact/outbox facts remain
+unchanged. Build 8 is configured for a clean compile. The installed phone remains
+verified build 7 with owner-confirmed contact visibility. [Native Today](native-today.md)
+records exact source/results, the real hosted-runner capacity failure and the
+remaining shared-prompt/provider/physical/public gates. The full development goal
+remains active; this completed engineering slice does not close those gates.

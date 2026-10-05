@@ -135,6 +135,11 @@ final class TodayTests: XCTestCase {
         }
         tap("Log conversation with \(person)")
         XCTAssertTrue(journal.staticTexts["Record a conversation"].waitForExistence(timeout: 5))
+        let cancel = journal.buttons["Cancel"].firstMatch
+        XCTAssertTrue(cancel.isHittable, "Cancel must stay visible while the choices scroll")
+        XCTAssertGreaterThanOrEqual(cancel.frame.height, 44)
+        let picker = XCTAttachment(screenshot: journal.screenshot())
+        picker.name = "Scrollable Log picker with persistent Cancel"; picker.lifetime = .keepAlways; add(picker)
         tap("Cancel")
         XCTAssertTrue(journal.staticTexts["Birthday today for \(person)"].exists)
     }

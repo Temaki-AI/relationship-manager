@@ -10,6 +10,17 @@ remain unverified. Exact source, hash and private receipts are in the
 [build-7 record](personal-ios-build7.md); the previous
 [build-4 record](personal-ios-build4.md) remains historical evidence.
 
+Native Today now has a per-person queue, explicit reasons/history and direct
+conversation/reminder actions. Four final native journeys pass, including the
+largest accessibility text size, restart persistence and background closure;
+the inspected choice picker keeps Cancel visible. [Native Today](native-today.md)
+records exact JavaScript-preview provenance. Build 8 is configured for the next
+clean compilation; it has not replaced the phone or user-ready simulator.
+Contact-label native CI 37363883290 is now fully green. The subsequent Today
+simulator job could not acquire a GitHub hosted runner; its device compile passed.
+The earlier project CI failed repository lint in a notification test helper;
+that naming issue is fixed and full local lint passes. Audit findings remain open.
+
 **Build 7 is running in the dedicated Everclose Build 7 simulator and is signed for the phone.**
 The unmodified compiled release passes six separate native journeys: offline
 contacts/drafts/plans/reminders with restarts, first notification permission,
@@ -23,7 +34,8 @@ The Contacts display issue found during QA has a follow-up source fix `38e2084`:
 47 focused regressions, mobile package/types/lint and a 21.626-second native
 JS-preview display test pass with unchanged CRM/source-table hashes. Clean native
 CI run 37363077696 was cancelled by documentation synchronization; replacement
-37363883290 is live for source-equivalent `3c37a02`. The preview is confined to QA; do not
+37363883290 passes both Release builds and its 378.128-second offline journey
+for source-equivalent `3c37a02`. The preview is confined to QA; do not
 attribute it to the earlier compiled artifact in the user-ready simulator.
 
 The preceding **build 6** added an optional device-wide

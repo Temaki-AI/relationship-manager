@@ -1,8 +1,9 @@
 # Dependency security — 5 October 2026
 
 The remaining security gate is active; no advisory is suppressed and no audit
-severity threshold is lowered. Signed personal iOS build 4 is the installed
-release. These changes affect subsequent source builds.
+severity threshold is lowered. Signed personal iOS build 7 is the installed
+release; its earlier source/provenance is recorded separately. The public audit
+gate remains open. A fresh root audit still reports seven high findings.
 
 ## Compatible patches applied
 

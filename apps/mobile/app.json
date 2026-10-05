@@ -10,7 +10,7 @@
     "ios": {
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.fernandoamaral.bonds",
-      "buildNumber": "7",
+      "buildNumber": "8",
       "supportsTablet": true
     },
     "android": {

@@ -111,8 +111,8 @@ directories. This preview ran only on QA; the user-ready simulator retains the
 unmodified compiled release. Clean native compilation of the follow-up is in
 [run 37363077696](https://github.com/Temaki-AI/relationship-manager/actions/runs/37363077696),
 which was later cancelled by documentation synchronization. Its replacement is
-recorded with the physical installation below. A completed successful result is
-required before replacing the user-ready release with that artifact.
+recorded with the physical installation below and now passes both Release builds
+and the complete offline journey. The user-ready release keeps its earlier source.
 
 The closed-app notification screenshot was inspected. The empty user-ready cache
 also passes read-only schema-15 and SQLite integrity checks, and the launched
@@ -170,8 +170,12 @@ this installed package.
 The label-build run 37363077696 was cancelled by the subsequent documentation
 synchronization. Its replacement
 [37363883290](https://github.com/Temaki-AI/relationship-manager/actions/runs/37363883290)
-is confirmed live for `3c37a02`, with both native jobs running. Documentation-only
-pushes are held until it finishes so they do not cancel another healthy build.
+now passes both Release binaries, linkage/startup and the complete native offline
+journey (378.128 seconds, one test, zero failures/skips) for `3c37a02`. Its
+application source matches the contact-label fix in `38e2084`. This result does
+not change the source already installed on the owner phone/user-ready simulator.
+The subsequent [native Today work](native-today.md) is verified separately in a
+JavaScript preview and is prepared as build 8 for clean compilation.
 
 Private compiled artifacts, screenshots, result bundles and signing receipts stay
 under the ignored mobile build directory. When back at the Mac, select the

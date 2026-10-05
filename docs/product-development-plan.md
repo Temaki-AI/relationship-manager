@@ -18,6 +18,13 @@ Build around the owner's existing Everclose account and contact database. Local 
 | Integrated personal beta | The alpha plus Google Contacts, iPhone Contacts, Google Calendar, Gmail context and LinkedIn profile linking/export import | Both connecting before contact creation and linking afterwards work; recurring sync preserves notes and identity; revocation, duplicate sources and uncertain responses pass controlled real-account tests |
 | Public release | The beta plus public authentication/account management, provider approvals where required, App Store distribution, accessibility, deletion, monitored delivery/recovery and support | Release checks pass at the advertised dataset size; permissions, retention, supported integrations and operational ownership are documented |
 
+Native Today’s per-person queue, birthday/reminder/check-in reasons, explicit
+conversation logging and direct reminder Done/Snooze now have passing native
+preview checks, including the largest text size and restarts. Build 8 is prepared
+for clean compilation; installed build 7 remains the owner-confirmed phone
+release. Shared birthday/check-in prompt snoozes, current-account sync/provider
+pilots and physical accessibility/privacy checks remain open. See [Native Today](native-today.md).
+
 The personal beta is the first complete product target. General sales workflows, teams and additional providers do not delay that target. LinkedIn automatic connection sync is conditional on approved access; useful profile links and export import remain part of the beta. A personal pilot may qualify for Google's verification exception, but that exception must be checked against the actual use and does not establish readiness for a public service. [Google verification exceptions](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification).
 
 The owner's audience choice is confirmed: personal use first, public release later. Prioritize making the existing hosted relationships usable on the owner's iPhone before adding public onboarding or billing. A personal beta is complete when the owner can use web and iPhone for a week with the same relationships, connect each of the five priority sources, review matches, capture offline, see upcoming meetings and correspondence context, and act on reminders without losing notes or creating duplicate people. Record problems from that week before widening access. Optional contact write-back, AI summaries, widgets, Android and additional social networks can follow this beta; they do not define its completion.
@@ -332,9 +339,9 @@ bounded pages and owner/device/catalog/identity/recovery fences. Matching releas
 delivery, real client configuration, recurring-job operation and activity/cross-account
 review remain required. Consented daily/hourly download jobs now have source tests
 for cancellation, queue interruption and bounded history repair. Local D1
-has migration 48. Production was last verified at migration 44; personal iOS build 4 is signed and installed,
-with native startup and physical process launch/stability verified. Physical
-UI/data confirmation remains pending. See [Gmail implementation](gmail.md) and the
+has migration 48. Production was last verified at migration 44; personal iOS build 7 is signed and installed with verified launch/stability
+and owner-confirmed contact visibility. Exact personal data equality, a fresh
+phone/web sync round trip and current provider journeys remain unverified. See [Gmail implementation](gmail.md) and the
 [personal iOS release record](personal-ios-release.md).
 
 The provider and audience choices are confirmed: Google Contacts, Gmail, Google Calendar, iPhone Contacts and LinkedIn, for personal use first and a public release later. Use the personal-beta defaults above for planning, then adjust them from actual usage. Set the operating budget and service limits before activating recurring provider jobs or opening public registration. The proposed native stack remains Expo/React Native; a full SwiftUI rewrite, Android, direct iCloud access and team sharing are separate scope decisions. Broad email-content ingestion, autonomous outreach, sales campaigns and universal social-history synchronization are outside the initial release.

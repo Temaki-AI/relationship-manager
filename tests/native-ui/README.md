@@ -118,3 +118,18 @@ Passing results and release archives must remain available.
 Execution evidence and the remaining physical checks are recorded in the
 [build-6 release record](../../docs/personal-ios-build6.md) and
 [build-7 source/release record](../../docs/personal-ios-build7.md).
+
+
+`TodayTests` checks a separately named synthetic Today person. Prepare its two
+reminders through the real UI, then retime only those exact rows and their unsent
+create intents in the guarded local-only QA cache and set a synthetic birthday.
+Preserve all earlier fixture rows. Run cancellation before the durable action
+journey; verify that only explicit Log creates history and an outbox intent.
+Run read-only background/larger-text checks at
+`simctl ui <QA-ID> content_size accessibility-extra-extra-extra-large`, restoring
+the previous size afterward. The Log/Reach out/Snooze pickers scroll with a fixed
+Cancel footer; the offline harness now selects the preset as a normal button.
+Use `-collect-test-diagnostics never` for these targeted checks to avoid large OS
+sysdiagnoses; explicit screenshots and accessibility attachments remain enabled.
+[Native Today](../../docs/native-today.md) distinguishes the verified JavaScript
+preview from the pending clean build-8 compilation and physical delivery.
