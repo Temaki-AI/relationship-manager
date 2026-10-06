@@ -33,7 +33,7 @@ build-11 candidate's shared Calendar reservations pass native Release validation
 Build-12 source adds explicit legacy/recovery verification and durable immutable
 review requests; its compilation and matching server rollout remain pending.
 Google/EventKit identity and arbitrary selected Apple event context remain beta work.
-The two remaining underlying dependency advisories still block public release. See
+Unresolved dependency advisories still block public release. See
 [Calendar coordination](calendar-publication-coordination.md),
 [Native Today](native-today.md) and [Dependency security](dependency-security.md).
 

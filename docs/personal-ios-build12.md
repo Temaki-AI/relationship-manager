@@ -1,7 +1,10 @@
 # Personal iOS build 12 candidate
 
-Status on 6 October 2026: source implementation and local validation pass; native
-Release compilation, local signing and installation have not started. The phone
+Status on 6 October 2026: source implementation and local validation pass. The
+iPhone Release job passes and its exact artifact is signed locally; simulator
+Release/startup/offline validation continues in
+[CI 37402857771](https://github.com/Temaki-AI/relationship-manager/actions/runs/37402857771).
+Build 12 has not been installed. The phone
 and user-ready simulator retain build 10. Its current phone launch is denied by
 iOS because the device is locked. No personal database has been copied or reset.
 
@@ -39,11 +42,30 @@ middleware/dispatcher routing, not real Apple or Google account effects.
 
 The independently verified [build-11 binaries](personal-ios-build11.md) cover the
 preceding schema-17 reservation implementation. They do not contain schema 18.
-Build 12 requires its own native artifacts and provenance before installation.
+The build-12 device artifact reports version 1.0.0/build 12 and Xcode 26.4.1/build
+17E202. CI merge `130e649947d17fba2871eeef6a2810ca280c2546` has no file differences
+from source `3c5e6cce21889aded7ce6e4cacef722c3461ff85`. Archive checksum and native
+linkage pass. Local signing uses the existing profile (four eligible devices,
+expiry 25 July 2027), without exporting keys or creating developer resources.
+Strict verification passes again after extracting the final IPA, and the original
+JavaScript bundle retains SHA-256
+`7b4f442096f0f346ebead8e6131038757003628555230274dc67a4273957c271`.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Device archive | `a32f2cc13ce4260f97f0338196044e7cb250dc2a02fa0d5a1dc6465297724849` |
+| Signed IPA | `5e3698a531beaf6cf52c938138cbc7b850cbdf4fb914944839a160c861a16098` |
+
+Final simulator evidence and compatible server rollout remain required before installation.
 Production remains on migration 44; migrations 45–50 and the matching Calendar
 endpoint remain undeployed. The unavailable-server gate retains the original draft
 and receipt. A verified matching server rollout is required before replacing the
-working personal installation.
+working personal installation. A verified Calendar-only server candidate on the
+actual deployed baseline is saved as local commit
+`d8fb137eb1096203f743dfb7c91a71718f1fab99`. Its 814 cases pass collectively, along
+with 31 Calendar and three Today cases on real D1, types/lint, compilation and
+dry run. The fresh production backup and migration rehearsal await explicit
+backup permission. See [the prepared rollout](calendar-server-rollout.md).
 
 Google/EventKit identity review of the same event, arbitrary selected Apple event
 context, real provider and physical Calendar pilots, owner field continuity and

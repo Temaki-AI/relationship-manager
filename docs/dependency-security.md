@@ -1,13 +1,16 @@
 # Dependency security — 6 October 2026
 
 The remaining security gate is active; no advisory is suppressed and no audit
-severity threshold is lowered. Signed personal iOS build 9 is the installed
-release; its earlier source/provenance is recorded separately. The public audit
-gate remains open. A fresh root audit still reports seven high findings.
+severity threshold is lowered. Signed personal iOS build 10 is installed; its
+provenance is recorded separately. The public audit gate remains open. The
+6 October root audit in CI 37399778819 reports nine affected packages: seven high
+and two moderate. The additional moderate findings involve postcss-selector-parser
+and its parent; this does not negate the successful native Release checks.
 
-The new parser adapters below are a **build-10 source candidate**, not part of
-installed build 9. Actual native compilation/startup and offline validation are
-required before distributing that candidate.
+The parser adapters below are included in installed build 10. Its native
+compilation/startup and offline validation pass; current phone launch is blocked
+by the device lock. Build 12 retains these dependency versions and is undergoing
+its own native validation.
 
 ## Compatible patches applied
 
@@ -77,9 +80,10 @@ the patch tool and its workspace helper add two parents affected by the existing
 braces advisory. They introduce no additional advisory. These are dependency
 graph counts, not independent vulnerability counts.
 
-The root audit remains seven high findings. Braces 3.0.3 and node-forge 1.4.0 are
-still the latest published releases and still have no patched versions in the
-reviewed advisories. Both audit commands continue to fail at the unchanged gate.
+The preceding root audit reported seven high findings; the later CI result above
+adds two moderate affected packages. Braces 3.0.3 and node-forge 1.4.0 remained
+unpatched in the preceding review. Dependency versions and audit thresholds have
+not changed in the Calendar work; the public security gate remains open.
 No root dependency, production Worker, provider grant or database migration changes
 in this slice. Native build-10 run 37391200805 now passes both Release builds,
 linkage/startup and its complete offline journey (452.447 seconds, one pass and
