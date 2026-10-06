@@ -47,9 +47,18 @@ See [Calendar coordination](calendar-publication-coordination.md) and
 installed build 10 are unchanged. Real Calendar effects, cross Google/EventKit
 identity and arbitrary selected Apple event context still require completion.
 
+Direct plan and reminder rescheduling is implemented for desktop/mobile web in
+month details and agenda. Date-only reviews preserve private notes and history,
+reject concurrent edits or a changed recovery epoch, and confirm an unchanged
+lost-reply retry without another journal write. Five real D1 cases and four
+desktop/mobile browser cases pass, including the existing capture/completion
+journey. Types, full lint, Cloudflare build and Worker dry run pass. These changes
+are local and do not change the compiled native build or production. See
+[Calendar rescheduling](calendar-rescheduling.md).
+
 A scoped root CSS-parser patch removes the two moderate audit findings, leaving
 seven high and zero moderate. Tailwind and native package versions are unchanged;
-only postcss-selector-parser changes to 7.1.6. The complete app stylesheet remains
+only postcss-selector-parser changes to 7.1.6. The app stylesheet from source `4151d70` remains
 byte-identical to the original parser, as do interactive/nested selector fixtures.
 Both new compatibility/security cases, types, full lint, Cloudflare build and
 Worker dry run pass. This does not deploy production or change native build 12.

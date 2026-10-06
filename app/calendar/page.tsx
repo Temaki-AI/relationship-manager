@@ -33,7 +33,7 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react';
-import type { CalendarEvent, CalendarEventKind } from '@/lib/calendar-directory';
+import type { CalendarEvent, CalendarEventKind, CoreCalendarEvent } from '@/lib/calendar-directory';
 import { calendarEventDates, calendarEventPeople } from '@/lib/calendar-directory';
 import { createIdempotencyKey, getResponseErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { LoadError } from '@/components/ui/load-error';
 import { useToast } from '@/components/ui/toast';
 import { SavedCalendarEventCard } from '@/components/saved-calendar-event-card';
+import { CalendarReschedule } from '@/components/calendar-reschedule';
 
 type CalendarResponse = {
   events: CalendarEvent[];
@@ -121,10 +122,11 @@ function CalendarSkeleton() {
   );
 }
 
-function EventDetail({ event, completing, onComplete }: {
+function EventDetail({ event, completing, onComplete, onReschedule }: {
   event: CalendarEvent;
   completing: boolean;
   onComplete: (event: CalendarEvent) => void;
+  onReschedule: (event: CoreCalendarEvent) => void;
 }) {
   if (event.kind === 'source_event') return <SavedCalendarEventCard event={event.source} />;
   const style = EVENT_STYLES[event.kind];
@@ -159,16 +161,19 @@ function EventDetail({ event, completing, onComplete }: {
           </div>
           {event.detail && <p className="mt-2 line-clamp-2 text-xs leading-relaxed">{event.detail}</p>}
           {!event.completed && (event.kind === 'reminder' || event.kind === 'plan') && (
-            <button
+            <div className="mt-3 flex flex-wrap gap-2"><button
               type="button"
               disabled={completing}
               onClick={() => onComplete(event)}
-              className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-current/20 bg-white/70 px-3 text-xs font-semibold hover:bg-white disabled:opacity-50"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-current/20 bg-white/70 px-3 text-xs font-semibold hover:bg-white disabled:opacity-50"
               aria-label={`Mark ${event.kind} ${event.title} done`}
             >
               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
               {completing ? 'Saving...' : 'Mark done'}
-            </button>
+            </button><button type="button" disabled={completing} onClick={() => onReschedule(event)} aria-label={`Reschedule ${event.kind} ${event.title}`}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-current/20 bg-white/70 px-3 text-xs font-semibold hover:bg-white disabled:opacity-50">
+              <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />Reschedule
+            </button></div>
           )}
         </div>
       </div>
@@ -211,6 +216,7 @@ export default function CalendarPage() {
   const [reminderAt, setReminderAt] = useState('');
   const [creating, setCreating] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [rescheduling, setRescheduling] = useState<CoreCalendarEvent | null>(null);
   const createAttempt = useRef<{ payload: string; key: string } | null>(null);
   const focusReminderOnOpen = useRef(false);
   const { toast } = useToast();
@@ -810,7 +816,7 @@ export default function CalendarPage() {
               <CardContent className="p-4">
                 {selectedEvents.length > 0 ? (
                   <div className="space-y-3">
-                    {selectedEvents.map((event) => <EventDetail key={event.id} event={event} completing={completingId === event.id} onComplete={(item) => void completeEvent(item)} />)}
+                    {selectedEvents.map((event) => <EventDetail key={event.id} event={event} completing={completingId === event.id} onComplete={(item) => void completeEvent(item)} onReschedule={setRescheduling} />)}
                   </div>
                 ) : (
                   <div className="py-8 text-center">
@@ -846,7 +852,7 @@ export default function CalendarPage() {
                         <p className="mt-1 text-lg font-bold">{format(day, 'MMM d')}</p>
                       </div>
                       <div className="grid gap-3 lg:grid-cols-2">
-                        {dayEvents.map((event) => <EventDetail key={event.id} event={event} completing={completingId === event.id} onComplete={(item) => void completeEvent(item)} />)}
+                        {dayEvents.map((event) => <EventDetail key={event.id} event={event} completing={completingId === event.id} onComplete={(item) => void completeEvent(item)} onReschedule={setRescheduling} />)}
                       </div>
                     </section>
                   );
@@ -878,6 +884,12 @@ export default function CalendarPage() {
           </Link>
         </div>
       </div>
+      {rescheduling && <CalendarReschedule key={rescheduling.id} event={rescheduling} onCancel={() => setRescheduling(null)} onSaved={(at) => {
+        const date = rescheduling.kind === 'plan' ? parseISO(at) : new Date(at);
+        setCurrentMonth(startOfMonth(date)); setSelectedDate(format(date, 'yyyy-MM-dd'));
+        setRescheduling(null); setReloadToken((value) => value + 1);
+        toast({ message: rescheduling.kind === 'plan' ? 'Plan date saved' : 'Reminder date saved' });
+      }} />}
     </div>
   );
 }

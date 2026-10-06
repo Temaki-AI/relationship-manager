@@ -3,11 +3,26 @@ import db, { backupDirectory } from '@/lib/db';
 import { parseDateTime, parseOptionalText, parsePositiveInteger } from '@/lib/relationship-validation';
 import { readJsonBody, RequestBodyError } from '@/lib/request-body';
 import { logRouteError } from '@/lib/observability';
+import { CalendarScheduleError, readCalendarScheduleInput, rescheduleLocalCalendarEvent, withCalendarScheduleRevision, localCalendarScheduleRecord } from '@/lib/calendar-schedule';
 import { completeReminderRecord } from '@/lib/relationship-mutations';
 import {
   DatabaseMaintenanceBusyError,
   withDatabaseMutationLock,
 } from '@/lib/database-maintenance-lock';
+
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const id = parsePositiveInteger((await params).id);
+    const reminder = id ? withDatabaseMutationLock(backupDirectory, () => localCalendarScheduleRecord(db, 'reminder', id)) : undefined;
+    return reminder
+      ? NextResponse.json({ reminder: withCalendarScheduleRevision('reminder', reminder) }, { headers: { 'Cache-Control': 'no-store' } })
+      : NextResponse.json({ error: 'Reminder not found' }, { status: 404 });
+  } catch (error) {
+    if (error instanceof DatabaseMaintenanceBusyError) return NextResponse.json({ error: error.message }, { status: 409 });
+    logRouteError('reminders.read_failed', error, _request, '/api/reminders/[id]');
+    return NextResponse.json({ error: 'Unable to load this reminder' }, { status: 500 });
+  }
+}
 
 export async function PATCH(
   request: Request,
@@ -18,6 +33,11 @@ export async function PATCH(
     const reminderId = parsePositiveInteger(id);
     if (!reminderId) return NextResponse.json({ error: 'Reminder not found' }, { status: 404 });
     const body = await readJsonBody<Record<string, unknown>>(request);
+    if (Object.hasOwn(body, 'calendar_schedule')) {
+      const input = readCalendarScheduleInput('reminder', body);
+      const result = withDatabaseMutationLock(backupDirectory, () => rescheduleLocalCalendarEvent(db, 'reminder', reminderId, input));
+      return NextResponse.json({ reminder: result.record, dateChanged: result.dateChanged });
+    }
 
     if (body.completed === true) {
       const completion = withDatabaseMutationLock(
@@ -55,6 +75,7 @@ export async function PATCH(
       return NextResponse.json({ reminder });
     }
   } catch (error) {
+    if (error instanceof CalendarScheduleError) return NextResponse.json({ error: error.message }, { status: error.status });
     if (error instanceof RequestBodyError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }

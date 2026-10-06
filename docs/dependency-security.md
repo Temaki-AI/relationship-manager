@@ -104,7 +104,7 @@ The patch closes the [flat-selector CPU-exhaustion advisory](https://github.com/
 Upstream 7.0 changed insertion during iteration, so compatibility is verified
 through the actual styling pipeline rather than inferred from the patch version.
 
-The complete stylesheet generated from the current app sources is byte-identical
+The complete stylesheet generated from app source `4151d70` is byte-identical
 with the previous 6.1.4 parser and patched 7.1.6 parser: 74,018 bytes, SHA-256
 `c979eea17bbcd9e76c57615508ca95192c3aceeef94d81cc5514eeceb230ce2e`.
 Separate interactive/responsive utility and nested-selector fixtures also retain
