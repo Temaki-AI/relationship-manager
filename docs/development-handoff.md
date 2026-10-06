@@ -1,5 +1,24 @@
 # Development handoff — 6 October 2026
 
+Current delivery: personal iOS **build 12** is installed in place on TIE Fighter;
+fresh metadata confirms 1.0.0/build 12. Its launch is blocked by the phone lock.
+The user-ready simulator runs the exact compiled Release as process 62204 and
+shows the account welcome screen. Its original 23 data tables and identity values
+are preserved through schema 16-to-18; integrity and foreign keys pass. The owner
+approved the private production backup. Both exact Calendar migrations 49–50 are
+applied, with all original rows verified unchanged across 69 production tables.
+The compatible server source `d8fb137` is deployed as Worker
+`ac198899-e378-48d1-b9c4-3fea9a83d436`; live readiness, unauthenticated endpoint
+protection and the existing signed-in web session pass. Google data OAuth,
+Gmail migrations 45–48, provider pilots and the phone/web owner round trip remain
+open. No personal phone database was copied or reset. See the updated
+[build-12 delivery](personal-ios-build12.md) and
+[Calendar server rollout](calendar-server-rollout.md).
+
+The records below describe the preceding preparation and builds. Where they
+refer to pending backup permission, migration 44 or personal build 10, the
+current delivery above supersedes that historical state.
+
 Everclose's personal web release is deployed at everclosecrm.com. Personal iOS
 **build 10** is signed and installed in place over build 9 on TIE Fighter.
 Fresh installed metadata reports 1.0.0/build 10. iOS blocks its launch because the

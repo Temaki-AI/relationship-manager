@@ -1,13 +1,16 @@
-# Personal iOS build 12 candidate
+# Personal iOS build 12
 
 Status on 6 October 2026: source implementation and local validation pass. The
 iPhone and simulator Release jobs, native startup and the full offline journey
 pass in
 [CI 37402857771](https://github.com/Temaki-AI/relationship-manager/actions/runs/37402857771).
-The exact iPhone artifact is signed locally. Build 12 was installed and launched
-only on the isolated synthetic QA simulator. The phone
-and user-ready simulator retain build 10. Its current phone launch is denied by
-iOS because the device is locked. No personal database has been copied or reset.
+The exact signed artifact is installed in place over build 10 on TIE Fighter;
+fresh installed metadata confirms 1.0.0/build 12. The phone launch is denied
+because iOS is locked. The user-ready simulator runs the exact build-12 Release
+artifact as process 62204, and its account welcome screen was inspected. Its
+schema-16-to-18 upgrade preserves every row in all 23 existing data tables and
+all existing identity values; only the schema marker changes. Integrity and
+foreign keys pass. No personal phone database was copied or reset.
 
 Build 12 adds explicit verification and sharing of an original Apple Calendar
 publication, including legacy private receipts and receipts held after a new
@@ -73,16 +76,16 @@ and foreign keys pass. The app was verified running as process 32585;
 its Today screen was inspected before the QA simulator was shut down, preserving
 the fixtures. This proves test-cache continuity, not the owner's phone field equality.
 
-A compatible server rollout remains required before replacing the personal installation.
-Production remains on migration 44; migrations 45–50 and the matching Calendar
-endpoint remain undeployed. The unavailable-server gate retains the original draft
-and receipt. A verified matching server rollout is required before replacing the
-working personal installation. A verified Calendar-only server candidate on the
-actual deployed baseline is saved as local commit
-`d8fb137eb1096203f743dfb7c91a71718f1fab99`. Its 814 cases pass collectively, along
-with 31 Calendar and three Today cases on real D1, types/lint, compilation and
-dry run. The fresh production backup and migration rehearsal await explicit
-backup permission. See [the prepared rollout](calendar-server-rollout.md).
+The compatible Calendar-only server is deployed from
+`d8fb137eb1096203f743dfb7c91a71718f1fab99` as Worker
+`ac198899-e378-48d1-b9c4-3fea9a83d436`. The owner explicitly approved the private
+production backup. Rehearsal and post-migration comparisons preserve all original
+fields across 69 production tables. The exact Calendar migrations 49 and 50 and
+their journal entries are applied; Gmail migrations 45–48 are a separate rollout.
+Live readiness passes, native Calendar/core endpoints require authentication, and
+the existing signed-in web session opens successfully. This server's 814 cases
+pass collectively, along with 31 Calendar and three Today cases on real D1,
+types/lint, compilation and dry run. See [the completed rollout](calendar-server-rollout.md).
 
 Google/EventKit identity review of the same event, arbitrary selected Apple event
 context, real provider and physical Calendar pilots, owner field continuity and
@@ -91,4 +94,6 @@ audits and public distribution remain separate release gates. The broader
 [development plan](product-development-plan.md) remains active.
 
 Private validation logs use `/private/tmp/everclose-build12-*.log`; durable local
-receipts are kept in the ignored `apps/mobile/build/releases/` directory.
+delivery receipts are kept in the ignored `apps/mobile/build/releases/build12-personal-delivery/`
+directory. The approved raw production backup stays at its private `/private/tmp/`
+destination and is not copied into release artifacts or Git.
