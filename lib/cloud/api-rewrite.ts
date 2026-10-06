@@ -1,6 +1,7 @@
 const exactPaths = new Set([
   '/api/v1/gmail-context',
   '/api/v1/today-snoozes',
+  '/api/v1/calendar-reservations',
   '/api/v1/sync/bootstrap',
   '/api/v1/sync/pull',
   '/api/v1/sync/push',

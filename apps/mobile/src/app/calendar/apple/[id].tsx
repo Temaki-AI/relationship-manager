@@ -6,6 +6,7 @@ import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Switch, Tex
 import { ActionButton, Surface } from '@/components/design-system';
 import { appleCalendarReview, prepareAppleCalendar, discardAppleCalendar, openAppleCalendarEditor, verifyAppleCalendar, findAppleCalendar, disableAppleCalendarReads, editAppleCalendar } from '@/data/apple-calendar';
 import { appleCalendarAdapter as adapter } from '@/native/apple-calendar';
+import { readSharedCalendarReservation, syncCalendarReservations } from '@/data/calendar-reservations';
 import { useNativeAccount } from '@/native/account';
 import { useNativeSync } from '@/native/sync';
 import { accountScope } from '../../../../../../packages/domain/src/devices';
@@ -23,7 +24,7 @@ function Choice({ label, value, change }: { label: string; value: boolean; chang
 const statusLabels: Record<string, string> = { prepared: 'Ready for the system editor', unknown: 'Editor result unconfirmed', saved: 'Editor closed · verification needed', verified: 'Event verified', cancelled: 'Creation cancelled', held: 'Updates paused · review required', missing: 'Event unavailable · review required', discarded: 'Unopened review discarded' };
 
 export default function AppleCalendarScreen() {
-  const db = useSQLiteContext(), focused = useIsFocused(), router = useRouter(), { account } = useNativeAccount(), { revision } = useNativeSync();
+  const db = useSQLiteContext(), focused = useIsFocused(), router = useRouter(), { account } = useNativeAccount(), { revision, calendarError } = useNativeSync();
   const params = useLocalSearchParams<{ id: string; receipt?: string }>(), id = typeof params.id === 'string' ? params.id : '';
   const receiptId = typeof params.receipt === 'string' ? params.receipt : undefined;
   const [review, setReview] = useState<Review | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false);
@@ -32,9 +33,11 @@ export default function AppleCalendarScreen() {
   const [reads, setReads] = useState(false), [follow, setFollow] = useState(false), [calendars, setCalendars] = useState<{ id: string; title: string }[]>([]);
   const [calendarId, setCalendarId] = useState(''), [searchStart, setSearchStart] = useState(''), [searchEnd, setSearchEnd] = useState(''), [candidate, setCandidate] = useState<AppleCalendarFacts | null>(null);
   const [calendarPage, setCalendarPage] = useState(0);
-  const scope = accountScope(account), active = useRef(false), currentScope = useRef(scope), busyRef = useRef(false), initialized = useRef('');
-  useEffect(() => { currentScope.current = scope; active.current = true; return () => { active.current = false; }; }, [scope]);
-  const isCurrent = useCallback(() => active.current && currentScope.current === scope, [scope]);
+  const [sharedReview, setSharedReview] = useState<{ session: string; planId: string; text: string } | null>(null);
+  const scope = accountScope(account), session = `${scope}:${account?.deviceId ?? ''}`, active = useRef(false), currentSession = useRef(session), busyRef = useRef(false), initialized = useRef('');
+  useEffect(() => { currentSession.current = session; active.current = true; return () => { active.current = false; }; }, [session]);
+  const sharedStatus = sharedReview?.session === session && sharedReview.planId === id ? sharedReview.text : '';
+  const isCurrent = useCallback(() => active.current && currentSession.current === session, [session]);
   const load = useCallback(async () => {
     const value = await appleCalendarReview(db, id, receiptId);
     if (!isCurrent()) return;
@@ -85,6 +88,13 @@ export default function AppleCalendarScreen() {
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>{review.person?.name ?? 'Saved plan'}</Text>
       <Text style={styles.body}>Save selected event fields in Apple’s system editor. Your private CRM notes and completion history stay in Everclose. The editor lets you choose the calendar and any invitees.</Text>
+      <Text style={styles.body}>Drafts work offline. Opening the editor requires a connection to reserve this plan for Calendar across your account. Everclose shares its publication status; event details and Apple’s event identifiers stay on this phone.</Text>
+      <ActionButton label="Check shared Calendar status" variant="quiet" disabled={busy} onPress={() => { void run(async () => {
+        const shared = await readSharedCalendarReservation(db, account, id, { isCurrent });
+        if (isCurrent()) setSharedReview({ session, planId: id, text: shared ? `${shared.provider === 'google-calendar' ? 'Google Calendar' : 'System Calendar'} · ${shared.status === 'saved' ? 'Publication saved' : shared.status === 'reserved' ? 'Publication reserved' : shared.status === 'cancelled' ? 'Publication cancelled' : 'Original publication needs review'}. Review the original receipt before creating another event.` : 'No shared Calendar publication is reserved for this plan.' });
+      }); }} />
+      {!!sharedStatus && <Text style={styles.body}>{sharedStatus}</Text>}
+      {!!calendarError && <Text accessibilityRole="alert" style={styles.body}>{calendarError}</Text>}
       {!!error && <Text accessibilityRole="alert" style={styles.body}>{error}</Text>}
       {!open && <Text style={styles.body}>This plan is completed or unavailable. Its original Calendar receipt remains here; automatic date updates are paused.</Text>}
       {!!review.linkedEventId && <Text style={styles.body}>This plan already has a saved Calendar association. Review that meeting before publishing another event.</Text>}
@@ -103,8 +113,15 @@ export default function AppleCalendarScreen() {
       {receipt && <Surface style={styles.panel}>
         <Text style={styles.heading}>{statusLabels[receipt.status] ?? 'Calendar receipt'}</Text>
         <Text style={styles.body}>Last review: {title} · {start} → {end}</Text>
+        {review.publication && <>
+          <Text style={styles.body}>{review.publication.status === 'confirmed' ? 'Publication status confirmed across your account.'
+            : review.publication.status === 'released' ? 'This Calendar reservation was released.'
+              : review.publication.status === 'held' ? 'Shared publication needs review. The original event will not be recreated.'
+                : review.publication.request_json ? 'Shared publication confirmation is pending. Keep this receipt and reconnect.' : 'This plan is reserved for its original Calendar editor.'}</Text>
+          {!!review.publication.request_json && review.publication.status === 'pending' && <ActionButton label="Confirm shared publication status" variant="quiet" disabled={busy} onPress={() => { void run(() => syncCalendarReservations(db, account, { isCurrent })); }} />}
+        </>}
         {saved && <Text style={styles.body}>Last verified event: {saved.title} · {saved.start} → {saved.end} · {saved.time_zone}{saved.all_day ? ' · All day' : ''}{saved.cancelled ? ' · Cancelled' : ''}</Text>}
-        {receipt.status === 'prepared' && !receipt.attempted && <ActionButton label="Open system event editor" disabled={busy || !open} onPress={() => Alert.alert('Open Calendar’s event editor?', `${title}\n${start} → ${end}\n\nReview the calendar, visibility and invitees in Apple’s editor before saving. On iOS 16, Calendar access is required.`, [
+        {receipt.status === 'prepared' && !receipt.attempted && <ActionButton label="Open system event editor" disabled={busy || !open} onPress={() => Alert.alert('Reserve this plan and open Calendar?', `${title}\n${start} → ${end}\n\nShare this plan’s Calendar publication status with your account, then review the calendar, visibility and invitees in Apple’s editor before saving. A connection is required. On iOS 16, Calendar access is required.`, [
           { text: 'Cancel', style: 'cancel' }, { text: 'Open editor', onPress: () => { void run(() => openAppleCalendarEditor(db, account, receipt.id, receipt.revision, adapter, isCurrent)); } },
         ])} />}
         {!receipt.attempted && ['prepared', 'held'].includes(receipt.status) && <ActionButton label="Discard unopened review" variant="quiet" disabled={busy} onPress={() => { void run(() => discardAppleCalendar(db, account, receipt.id, receipt.revision, isCurrent)); }} />}

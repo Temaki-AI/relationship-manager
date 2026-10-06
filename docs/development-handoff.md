@@ -11,6 +11,25 @@ passes both Release builds, startup and the complete offline journey in 452.447
 seconds (one pass, zero failures/skips). No personal database was copied or reset.
 [The build-10 record](personal-ios-build10.md) contains exact provenance and receipts.
 
+The build-11 source candidate adds shared Calendar publication reservations and
+schema-17 native acknowledgement persistence. It coordinates new upgraded phone
+and web publishers, retaining drafts and exact uncertain requests across restart.
+All 939 regression cases and an additional actual middleware/dispatcher journey
+pass, along with 23 selected D1 cases and the actual routing journey on D1. Mobile
+package tests, types/lint, Hermes export, Cloudflare build and dry run pass.
+The endpoint/migration 49 remain undeployed, and build 11
+is not compiled or installed. Legacy Apple receipt adoption, reauthentication/
+recovery reconciliation and Google/EventKit identity review remain outstanding.
+See [Calendar coordination](calendar-publication-coordination.md) and
+[the build-11 candidate](personal-ios-build11.md). Build 10 is unchanged.
+
+The redundant doc-only-head native run 37395171458 was cancelled after confirming
+its native source matched the delivered build-10 source. Existing build-10 native
+CI remains successful. General CI 37395172147 on `efd3df3` passes 919 root tests
+and 398 D1 tests with 11 documented skips; cloud validation succeeds and the
+unchanged dependency audit still fails. These results describe the preceding
+head, not the new build-11 candidate.
+
 The preceding **build 9** was installed over build 8 and running on TIE Fighter
 (1.0.0/build 9, process 15655). Installation, fresh metadata, launch and subsequent process
 stability pass. The **Everclose Build 9** simulator runs the unmodified compiled

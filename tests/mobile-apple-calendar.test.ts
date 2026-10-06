@@ -10,10 +10,12 @@ import { DEVICE_TOKEN_PREFIX, readNativeAccount } from '../packages/domain/src/d
 import { appleCalendarDraft, appleCalendarDay, appleCalendarUrl, readAppleCalendarFacts, type AppleCalendarFacts } from '../packages/domain/src/apple-calendar.ts';
 import type { AppleCalendarAdapter } from '../apps/mobile/src/data/apple-calendar.ts';
 import * as schema from '../apps/mobile/src/data/schema.ts';
+import { calendarReservationTransport } from './helpers/calendar-reservation-transport.ts';
 
 const account = readNativeAccount({ deviceId: crypto.randomUUID(), userId: 'owner', workspaceId: 'personal', email: 'owner@example.test', name: 'Owner', origin: 'https://everclosecrm.com', expiresAt: '2030-01-01T00:00:00.000Z', token: DEVICE_TOKEN_PREFIX + randomBytes(32).toString('base64url') });
 const draft = { title: 'Coffee', location: 'Cafe', start: { date: '2026-10-05', date_time: null, time_zone: null }, end: { date: '2026-10-06', date_time: null, time_zone: null } };
 async function fixture() {
+  const shared = calendarReservationTransport();
   const folder = mkdtempSync(path.join(tmpdir(), 'everclose-apple-')), filename = path.join(folder, 'phone.sqlite');
   let phone = await createMobileHarness(account, new Database(filename));
   const epoch = crypto.randomUUID(), now = new Date().toISOString();
@@ -38,12 +40,12 @@ async function fixture() {
   };
   const review = () => phone.appleCalendar.appleCalendarReview(phone.db, planId);
   async function prepare(operationId = crypto.randomUUID()) { const r = await review(); return phone.appleCalendar.prepareAppleCalendar(phone.db, account, planId, { operationId, epoch: r.epoch, planFingerprint: r.planFingerprint, draft }); }
-  async function open() { const r = (await review()).receipt!; return phone.appleCalendar.openAppleCalendarEditor(phone.db, account, r.id, r.revision, adapter); }
+  async function open() { const r = (await review()).receipt!; return phone.appleCalendar.openAppleCalendarEditor(phone.db, account, r.id, r.revision, adapter, () => true, shared.fetcher); }
   async function verify(follow = false, reads = false, candidate?: AppleCalendarFacts) {
     const r = await review(); return phone.appleCalendar.verifyAppleCalendar(phone.db, account, r.receipt!.id, { revision: r.receipt!.revision, epoch: r.epoch, planFingerprint: r.planFingerprint, follow, reads }, adapter, () => true, candidate);
   }
   async function due() { await phone.db.runAsync("UPDATE apple_calendar_receipts SET last_read_at = '2000-01-01T00:00:00.000Z'"); }
-  return { account, adapter, epoch, planId, person, facts, effects, review, prepare, open, verify, due,
+  return { account, adapter, epoch, planId, person, facts, effects, review, prepare, open, verify, due, shared,
     get phone() { return phone; }, get creates() { return creates; }, get edits() { return edits; }, get prompts() { return prompts; },
     permit: (value: boolean) => { full = value; },
     restart: async () => { phone.close(); phone = await createMobileHarness(account, new Database(filename)); },
@@ -65,6 +67,145 @@ test('Apple Calendar drafts validate civil dates, DST gaps/folds and strip priva
   assert.throws(() => readAppleCalendarFacts({ ...facts, start: '2026-02-30T00:00:00Z' }), /times/);
   assert.throws(() => readAppleCalendarFacts({ ...facts, time_zone: 'UNKNOWN ZONE' }), /timezone/);
   assert.throws(() => appleCalendarUrl('invalid', crypto.randomUUID()));
+});
+
+test('a lost reservation response survives restart and foreground confirmation never opens an editor', async () => {
+  const f = await fixture(); try {
+    await f.prepare(); const transport = f.shared.fetcher; let lose = true;
+    f.shared.fetcher = async (input, init) => {
+      const response = await transport(input, init);
+      if (JSON.parse(String(init?.body)).action === 'reserve' && lose) { lose = false; throw new Error('lost response'); }
+      return response;
+    };
+    await assert.rejects(f.open(), /Reconnect/); assert.equal(f.creates, 0); assert.equal((await f.review()).receipt!.attempted, 0);
+    const frozen = (await f.review()).publication!.request_json!;
+    assert.equal(JSON.parse(frozen).action, 'reserve'); assert.ok(!frozen.includes('PRIVATE')); assert.ok(!frozen.includes('Coffee'));
+    await f.restart(); await f.phone.calendarReservations.syncCalendarReservations(f.phone.db, account, { fetcher: f.shared.fetcher });
+    assert.equal(f.creates, 0); assert.equal((await f.review()).publication!.server_status, 'reserved');
+    assert.equal(f.shared.requests[0], f.shared.requests[1]);
+    await f.open(); assert.equal(f.creates, 1); assert.equal((await f.review()).publication!.status, 'confirmed');
+  } finally { f.close(); }
+});
+
+test('a lost attempt authorization is durable, confirms in foreground and requires a fresh user action before opening', async () => {
+  const f = await fixture(); try {
+    await f.prepare(); const transport = f.shared.fetcher; let lose = true;
+    f.shared.fetcher = async (input, init) => {
+      const response = await transport(input, init);
+      if (JSON.parse(String(init?.body)).action === 'attempt' && lose) { lose = false; throw new Error('lost response'); }
+      return response;
+    };
+    await assert.rejects(f.open(), /Reconnect/); assert.equal(f.creates, 0); assert.equal((await f.review()).receipt!.attempted, 0);
+    const frozen = (await f.review()).publication!.request_json!; assert.equal(JSON.parse(frozen).action, 'attempt');
+    await f.restart(); await f.phone.calendarReservations.syncCalendarReservations(f.phone.db, account, { fetcher: f.shared.fetcher });
+    assert.equal((await f.review()).publication!.server_status, 'attempted'); assert.equal(f.creates, 0);
+    const receipt = (await f.review()).receipt!;
+    await assert.rejects(f.phone.appleCalendar.discardAppleCalendar(f.phone.db, account, receipt.id, receipt.revision, () => true, f.shared.fetcher), /may have reached/);
+    await f.open(); assert.equal(f.creates, 1);
+    const attempts = f.shared.requests.filter((s) => JSON.parse(s).action === 'attempt'); assert.equal(attempts.length, 3);
+    assert.ok(attempts.every((s) => s === frozen));
+  } finally { f.close(); }
+});
+
+test('a lost saved-result acknowledgement is replayed exactly after restart without another native creation', async () => {
+  const f = await fixture(); try {
+    await f.prepare(); const transport = f.shared.fetcher; let lose = true;
+    f.shared.fetcher = async (input, init) => {
+      const response = await transport(input, init);
+      if (JSON.parse(String(init?.body)).action === 'result' && lose) { lose = false; throw new Error('lost response'); }
+      return response;
+    };
+    const saved = await f.open(); assert.equal(saved.status, 'saved'); assert.equal(f.creates, 1);
+    const frozen = (await f.review()).publication!.request_json!;
+    assert.equal(JSON.parse(frozen).result_action, 'saved'); assert.ok(!frozen.includes('apple-event-1')); assert.ok(!frozen.includes('PRIVATE'));
+    await f.restart(); await assert.rejects(f.open(), /already attempted/);
+    await f.phone.calendarReservations.syncCalendarReservations(f.phone.db, account, { fetcher: f.shared.fetcher });
+    assert.equal((await f.review()).publication!.status, 'confirmed'); assert.equal((await f.review()).publication!.request_json, null);
+    assert.equal(f.creates, 1); const results = f.shared.requests.filter((s) => JSON.parse(s).action === 'result'); assert.deepEqual(results, [frozen, frozen]);
+  } finally { f.close(); }
+});
+
+test('a lost cancellation acknowledgement retains its release until confirmation before a fresh publication', async () => {
+  const f = await fixture(); try {
+    const original = await f.prepare(), transport = f.shared.fetcher; let lose = true;
+    f.adapter.create = async () => ({ action: 'canceled', id: null });
+    f.shared.fetcher = async (input, init) => {
+      const response = await transport(input, init);
+      if (JSON.parse(String(init?.body)).action === 'result' && lose) { lose = false; throw new Error('lost cancellation'); }
+      return response;
+    };
+    const cancelled = await f.open(); assert.equal(cancelled.status, 'cancelled');
+    const frozen = (await f.review()).publication!.request_json!; assert.equal(JSON.parse(frozen).result_action, 'canceled');
+    await f.restart(); await f.phone.calendarReservations.syncCalendarReservations(f.phone.db, account, { fetcher: f.shared.fetcher });
+    assert.equal((await f.review()).publication!.status, 'released');
+    const next = await f.prepare(); assert.notEqual(next.id, original.id);
+    assert.deepEqual(f.shared.requests.filter((s) => JSON.parse(s).action === 'result'), [frozen, frozen]);
+    assert.equal(f.creates, 0);
+  } finally { f.close(); }
+});
+
+test('discarding a reserved draft confirms the exact shared release before discarding the private review', async () => {
+  const f = await fixture(); try {
+    const original = await f.prepare(), transport = f.shared.fetcher; let loseReserve = true, loseRelease = true;
+    f.shared.fetcher = async (input, init) => {
+      const response = await transport(input, init), action = JSON.parse(String(init?.body)).action;
+      if (action === 'reserve' && loseReserve) { loseReserve = false; throw new Error('lost reserve'); }
+      if (action === 'release' && loseRelease) { loseRelease = false; throw new Error('lost release'); }
+      return response;
+    };
+    await assert.rejects(f.open());
+    await f.phone.calendarReservations.syncCalendarReservations(f.phone.db, account, { fetcher: f.shared.fetcher });
+    await assert.rejects(f.phone.appleCalendar.discardAppleCalendar(f.phone.db, account, original.id, original.revision, () => true, f.shared.fetcher));
+    assert.equal((await f.review()).receipt!.status, 'prepared'); assert.equal(f.creates, 0);
+    const frozen = (await f.review()).publication!.request_json!; assert.equal(JSON.parse(frozen).action, 'release');
+    await f.restart(); await f.phone.appleCalendar.discardAppleCalendar(f.phone.db, account, original.id, original.revision, () => true, f.shared.fetcher);
+    assert.equal((await f.review()).receipt!.status, 'discarded'); assert.equal((await f.review()).publication!.status, 'released');
+    assert.deepEqual(f.shared.requests.filter((s) => JSON.parse(s).action === 'release'), [frozen, frozen]);
+    assert.equal(f.creates, 0);
+  } finally { f.close(); }
+});
+
+test('offline, unavailable-server and competing-publication responses retain the draft and cannot reach EventKit', async () => {
+  for (const status of [404, 409, 503]) {
+    const f = await fixture(); try {
+      await f.prepare(); f.shared.fetcher = async () => Response.json({ error: 'unavailable' }, { status });
+      await assert.rejects(f.open(), /not available|changed|Could not confirm/);
+      assert.equal(f.creates, 0); assert.equal((await f.review()).receipt!.attempted, 0);
+      assert.equal((await f.review()).receipt!.status, 'prepared'); assert.ok((await f.review()).publication!.request_json);
+    } finally { f.close(); }
+  }
+});
+
+test('a session change after server authorization retains the frozen request and prevents a new session from opening it', async () => {
+  const f = await fixture(); try {
+    const receipt = await f.prepare(); let current = true; const transport = f.shared.fetcher;
+    const changed: typeof fetch = async (input, init) => {
+      const response = await transport(input, init); if (JSON.parse(String(init?.body)).action === 'attempt') current = false; return response;
+    };
+    await assert.rejects(f.phone.appleCalendar.openAppleCalendarEditor(f.phone.db, account, receipt.id, receipt.revision, f.adapter, () => current, changed), /active account changed/);
+    assert.equal(f.creates, 0); assert.equal((await f.review()).receipt!.attempted, 0);
+    const frozen = (await f.review()).publication!.request_json!, count = f.shared.requests.length;
+    const next = { ...account, deviceId: crypto.randomUUID() };
+    await assert.rejects(f.phone.calendarReservations.authorizeCalendarEditor(f.phone.db, next, receipt, { fetcher: transport }), /earlier sign-in/);
+    assert.equal(f.shared.requests.length, count); assert.equal((await f.review()).publication!.request_json, frozen);
+  } finally { f.close(); }
+});
+
+test('schema 16 upgrades preserve all private rows, existing EventKit receipts, frozen outboxes and account identity', async () => {
+  const f = await fixture(); try {
+    await f.prepare(); await f.open(); await f.verify(true, true);
+    f.phone.sqlite.exec('DROP TABLE apple_calendar_reservations; PRAGMA user_version = 16;');
+    const names = f.phone.sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name != 'app_metadata' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[];
+    assert.equal(names.length, 23);
+    const before = new Map(names.map(({ name }) => [name, f.phone.sqlite.prepare('SELECT * FROM "' + name + '" ORDER BY rowid').all()]));
+    const metadata = f.phone.sqlite.prepare("SELECT key, value FROM app_metadata WHERE key != 'schema-version' ORDER BY key").all();
+    await f.restart(); assert.equal(f.phone.sqlite.pragma('user_version', { simple: true }), 17);
+    for (const [name, rows] of before) assert.deepEqual(f.phone.sqlite.prepare('SELECT * FROM "' + name + '" ORDER BY rowid').all(), rows, name);
+    assert.deepEqual(f.phone.sqlite.prepare("SELECT key, value FROM app_metadata WHERE key != 'schema-version' ORDER BY key").all(), metadata);
+    assert.equal((await f.review()).receipt!.status, 'verified'); assert.equal((await f.review()).publication, null);
+    assert.equal((await f.phone.db.getFirstAsync<{ n: number }>('SELECT COUNT(*) n FROM apple_calendar_reservations'))!.n, 0);
+    assert.equal(f.phone.sqlite.pragma('quick_check', { simple: true }), 'ok');
+  } finally { f.close(); }
 });
 
 test('Apple Calendar persists its frozen receipt before the editor and keeps notes, history and permission choices private', async () => {
@@ -135,7 +276,7 @@ test('A late editor acknowledgement stays in its original account and cannot app
   const f = await fixture(); try {
     const r = await f.prepare(); let current = true; const create = f.adapter.create;
     f.adapter.create = async (event) => { const result = await create(event); current = false; return result; };
-    const held = await f.phone.appleCalendar.openAppleCalendarEditor(f.phone.db, account, r.id, r.revision, f.adapter, () => current);
+    const held = await f.phone.appleCalendar.openAppleCalendarEditor(f.phone.db, account, r.id, r.revision, f.adapter, () => current, f.shared.fetcher);
     assert.equal(held.status, 'held'); assert.equal(held.event_id, 'apple-event-1'); assert.equal(held.read_enabled, 0);
     await assert.rejects(f.phone.appleCalendar.verifyAppleCalendar(f.phone.db, account, r.id, { revision: held.revision, epoch: f.epoch, planFingerprint: (await f.review()).planFingerprint, reads: true, follow: true }, f.adapter, () => current), /active account changed/);
     assert.equal((await f.review()).plan!.planned_date, '2026-10-05'); assert.equal(f.creates, 1);
@@ -254,7 +395,7 @@ test('A genuine native schema-13 upgrade preserves private relationships, queued
   sqlite.prepare('INSERT INTO app_metadata (key,value,updated_at) VALUES (?,?,?)').run('sync-cursor-v4', JSON.stringify({ epoch, sequence: 42 }), now);
   const before = JSON.stringify({ people: sqlite.prepare('SELECT * FROM contacts').all(), plans: sqlite.prepare('SELECT * FROM plans').all(), queue: sqlite.prepare('SELECT * FROM sync_queue').all(), cursor: sqlite.prepare("SELECT * FROM app_metadata WHERE key = 'sync-cursor-v4'").all() });
   const phone = await createMobileHarness(account, sqlite); try {
-    assert.equal(sqlite.pragma('user_version', { simple: true }), 16); assert.equal((sqlite.prepare("SELECT name FROM sqlite_master WHERE name = 'apple_calendar_receipts'").get() as { name: string }).name, 'apple_calendar_receipts');
+    assert.equal(sqlite.pragma('user_version', { simple: true }), 17); assert.equal((sqlite.prepare("SELECT name FROM sqlite_master WHERE name = 'apple_calendar_receipts'").get() as { name: string }).name, 'apple_calendar_receipts');
     assert.equal(JSON.stringify({ people: sqlite.prepare('SELECT * FROM contacts').all(), plans: sqlite.prepare('SELECT * FROM plans').all(), queue: sqlite.prepare('SELECT * FROM sync_queue').all(), cursor: sqlite.prepare("SELECT * FROM app_metadata WHERE key = 'sync-cursor-v4'").all() }), before);
   } finally { phone.close(); }
 });

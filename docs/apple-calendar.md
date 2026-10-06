@@ -16,6 +16,15 @@ Reading defaults to off, separately from creation. **Keep this event's facts upd
 
 Foreground synchronization checks at most 50 enabled receipts per pass, no more often than every 15 minutes per receipt; it never opens a permission prompt. Calendar freshness depends on this phone running. Operational receipts, consent and event facts stay in its account-isolated SQLite cache. Approved plan-date changes use cloud protocol 4 and reach web/other phones. The bridge does not yet publish Apple event facts or its receipt to the cloud, provide an arbitrary Apple Calendar event directory, or reconcile the same event seen through Google and EventKit. It refuses creation when the phone already knows a saved or queued Calendar association for that plan, but a stale/offline phone cannot reserve a plan against a concurrent web publication. Distributed reservation and cross-source identity review remain beta engineering gates.
 
+The build-11 source candidate adds an online, shared reservation before new editor
+attempts, minimal publication-status review and durable acknowledgements. Offline
+drafting remains available; an unopened shared claim must be released before its
+private draft is discarded. Schema 17 preserves schema-16 data and receipts.
+This candidate and migration 49 are undeployed, so the paragraph above describes
+the installed build-10 boundary. Legacy adoption, recovery/session reconciliation
+and cross-source identity review still require implementation. See
+[shared Calendar coordination](calendar-publication-coordination.md).
+
 Native schema 14 adds `apple_calendar_receipts` and lifecycle/date guards; schema 13 upgrades preserve existing relationships, linked sources, queues, caches and cursors. Cloud D1 migration 44, CRM recovery schema 14 and sync protocol 4 are unchanged by this bridge. Receipts intentionally have no cascading plan foreign key, preserving evidence of an uncertain external effect after plan removal. Removing local account storage removes local receipts; account erasure must therefore explain which externally saved events remain in Calendar rather than claim to delete them.
 
 Before calling this ready, build with the Expo 57 supported toolchain and verify on an installed iPhone: iOS 16 denial and iOS 17 creation without reads; save/cancel/delete and invitation effects; receipt URLs after iCloud/Google-backed calendar synchronization; moved IDs; lost replies and restart; limited/offline accounts; all-day exclusive ends in Lisbon, UTC and Los Angeles; DST gaps/folds and midnight dates; sticky manual corrections; account switching, recovery, larger text and VoiceOver. The available Xcode is 26.2; Expo 57 requires 26.4+. Syntax checking, autolinking resolution, SQLite/adapter tests and Hermes export provide narrower evidence and do not replace this gate. [Expo 57 requirements](https://docs.expo.dev/versions/v57.0.0/).

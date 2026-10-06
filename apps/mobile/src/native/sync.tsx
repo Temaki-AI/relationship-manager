@@ -11,8 +11,9 @@ import { clearGmailContext, refreshGmailManifest } from '@/data/gmail-context';
 import { accountScope } from '../../../../packages/domain/src/devices';
 import { registerPrivateAccountCache } from './private-account-cache';
 import { syncPromptSnoozes } from '@/data/today-snoozes';
+import { syncCalendarReservations } from '@/data/calendar-reservations';
 
-type NativeSyncContextValue = { syncing: boolean; error: string | null; gmailError: string | null; promptError: string | null; summary: SyncSummary; revision: number; run: () => Promise<void> };
+type NativeSyncContextValue = { syncing: boolean; error: string | null; gmailError: string | null; promptError: string | null; calendarError: string | null; summary: SyncSummary; revision: number; run: () => Promise<void> };
 const NativeSyncContext = createContext<NativeSyncContextValue | null>(null);
 
 export function NativeSyncProvider({ children }: { children: ReactNode }) {
@@ -22,6 +23,7 @@ export function NativeSyncProvider({ children }: { children: ReactNode }) {
   const [revision, setRevision] = useState(0);
   const [gmailError, setGmailError] = useState<string | null>(null);
   const [promptError, setPromptError] = useState<string | null>(null);
+  const [calendarError, setCalendarError] = useState<string | null>(null);
   const generation = useRef(0), running = useRef(false), needsSignIn = useRef(false);
   const run = useCallback(async () => {
     if (running.current || Platform.OS === 'web') return;
@@ -33,6 +35,8 @@ export function NativeSyncProvider({ children }: { children: ReactNode }) {
       const calendarReads = account && Platform.OS === 'ios' ? await refreshAppleCalendarReads(db, account, appleCalendarAdapter, () => generation.current === current) : { changed: 0 };
       if (account && (sourceReads.changed || calendarReads.changed) && generation.current === current) await syncWorkspace(db, account, { isCurrent: () => generation.current === current });
       if (account && generation.current === current) {
+        try { await syncCalendarReservations(db, account, { isCurrent: () => generation.current === current }); if (generation.current === current) setCalendarError(null); }
+        catch (error) { if (generation.current === current) setCalendarError(error instanceof Error ? error.message : 'Unable to confirm Calendar publication.'); }
         try { await syncPromptSnoozes(db, account, { isCurrent: () => generation.current === current }); if (generation.current === current) setPromptError(null); }
         catch (error) { if (generation.current === current) setPromptError(error instanceof Error ? error.message : 'Unable to sync prompt choices.'); }
         try { await refreshGmailManifest(db, account, { isCurrent: () => generation.current === current }); if (generation.current === current) setGmailError(null); }
@@ -71,7 +75,7 @@ export function NativeSyncProvider({ children }: { children: ReactNode }) {
     const unsubscribe = subscribeSyncChanges(db, () => { void Promise.resolve().then(refresh); });
     return () => { active = false; generation.current = effectGeneration + 1; clearInterval(interval); subscription.remove(); unsubscribe(); };
   }, [db, run]);
-  return <NativeSyncContext.Provider value={{ syncing, error, gmailError, promptError, summary, revision, run }}>{children}</NativeSyncContext.Provider>;
+  return <NativeSyncContext.Provider value={{ syncing, error, gmailError, promptError, calendarError, summary, revision, run }}>{children}</NativeSyncContext.Provider>;
 }
 export function useNativeSync() {
   const value = useContext(NativeSyncContext);

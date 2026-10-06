@@ -4,6 +4,7 @@ import { handleCloudExport } from '@/lib/cloud/portable-api';
 import { handleCloudExportJobs } from '@/lib/cloud/export-jobs';
 import { handleCloudTodaySnooze } from '@/lib/cloud/today-api';
 import { handleTodaySnoozeSync } from '@/lib/cloud/today-snooze-sync-api';
+import { handleCalendarReservations } from '@/lib/cloud/calendar-reservation-api';
 import { handleCloudBackups, handleCloudErasure, handleCloudRestore } from '@/lib/cloud/backup-api';
 import { createCloudImport, handleCloudImportJobs } from '@/lib/cloud/import-api';
 import { CloudAuthenticationError, CloudWorkspaceError, requireCloudWorkspace } from '@/lib/cloud/session';
@@ -58,6 +59,7 @@ async function dispatch(request: Request, context: Context) {
     if (path[0] === 'contacts') return handleCloudContacts(request, workspaceId, path);
     if (path.length === 1 && path[0] === 'enrich' && request.method === 'POST') return handleCloudEnrich(request);
     if (path.join('/') === 'v1/today-snoozes') return handleTodaySnoozeSync(request, actor);
+    if (path.join('/') === 'v1/calendar-reservations') return handleCalendarReservations(request, actor);
     if (path.join('/') === 'today/snooze') return handleCloudTodaySnooze(request, workspaceId);
     if (path.join('/') === 'reminders/email-preferences') return handleReminderEmailPreferences(request, workspaceId, userId);
     if (path[0] === 'groups' && path[1] === 'tags') return handleCloudTagGroups(request, workspaceId, path);

@@ -20,17 +20,20 @@ Build around the owner's existing Everclose account and contact database. Local 
 
 Native Today’s per-person queue, birthday/reminder/check-in reasons, explicit
 conversation logging and direct reminder Done/Snooze now pass native preview
-checks, including the largest text size and restarts. Clean build 9 passes both
-Release binaries and the full offline CI journey, plus actual-release largest-text
-and durable prompt checks. It is installed and running on the phone and user-ready
-simulator; existing contact visibility was owner-confirmed on preceding build 7.
-See [the build-9 delivery record](personal-ios-build9.md).
+checks, including the largest text size and restarts on build 9. Clean build 10
+passes both Release binaries and the full offline CI journey. It is installed on
+the phone and running in the user-ready simulator; iOS blocks the current phone
+launch because the device is locked. Existing contact visibility was owner-confirmed
+on preceding build 7. See [the build-10 delivery record](personal-ios-build10.md).
 Shared birthday/check-in/reminder preferences are implemented and their limited
 server extension is live. A fresh owner phone/web round trip, current-account
-provider pilots and physical accessibility/privacy checks remain open. The next
-build-10 source candidate removes the image/URI decoder findings with tested
-dependency adapters; native verification is pending and the two remaining
-underlying dependency advisories still block public release. See
+provider pilots and physical accessibility/privacy checks remain open. Build 10
+removes the image/URI decoder findings with verified dependency adapters. The
+build-11 candidate implements shared Calendar publication coordination and a
+durable native receipt outbox; compilation and matching server rollout are pending.
+Legacy/recovery and Google/EventKit identity reconciliation remain beta work.
+The two remaining underlying dependency advisories still block public release. See
+[Calendar coordination](calendar-publication-coordination.md),
 [Native Today](native-today.md) and [Dependency security](dependency-security.md).
 
 The personal beta is the first complete product target. General sales workflows, teams and additional providers do not delay that target. LinkedIn automatic connection sync is conditional on approved access; useful profile links and export import remain part of the beta. A personal pilot may qualify for Google's verification exception, but that exception must be checked against the actual use and does not establish readiness for a public service. [Google verification exceptions](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification).

@@ -172,14 +172,14 @@ export async function createCloudHarness() {
       body: options.form || (options.body === undefined ? undefined : JSON.stringify(options.body)),
     });
     let response;
-    if (parts.join('/') === 'v1/today-snoozes' || parts.join('/') === 'v1/gmail-context' || parts[0] === 'v1' && parts[1] === 'contact-photos' || parts.join('/') === 'v1/calendar-event-links/push' || parts.join('/') === 'v1/device-sources/push' || parts[0] === 'contacts' && parts[2] === 'device-sources') {
+    if (parts.join('/') === 'v1/calendar-reservations' || parts.join('/') === 'v1/today-snoozes' || parts.join('/') === 'v1/gmail-context' || parts[0] === 'v1' && parts[1] === 'contact-photos' || parts.join('/') === 'v1/calendar-event-links/push' || parts.join('/') === 'v1/device-sources/push' || parts[0] === 'contacts' && parts[2] === 'device-sources') {
       const authorization = headers.get('authorization');
       let actor: unknown = { userId: 'owner', workspaceId: options.workspace || 'test', authMethod: 'web', lifecycle: 'active' };
       if (authorization) {
         try { actor = { ...await (deviceApi.requireDeviceWorkspace as (db: typeof db, h: Headers) => Promise<unknown>)(db, headers), authMethod: 'device' }; }
         catch { return { status: 401, headers: new Headers(), body: { error: 'Device session revoked.' } }; }
       }
-      const handler = parts.join('/') === 'v1/today-snoozes' ? load(path.join(root, 'lib/cloud/today-snooze-sync-api.ts')).handleTodaySnoozeSync : parts.join('/') === 'v1/gmail-context' ? load(path.join(root, 'lib/cloud/gmail-context-api.ts')).handleGmailContext : parts[0] === 'v1' && parts[1] === 'contact-photos'
+      const handler = parts.join('/') === 'v1/calendar-reservations' ? load(path.join(root, 'lib/cloud/calendar-reservation-api.ts')).handleCalendarReservations : parts.join('/') === 'v1/today-snoozes' ? load(path.join(root, 'lib/cloud/today-snooze-sync-api.ts')).handleTodaySnoozeSync : parts.join('/') === 'v1/gmail-context' ? load(path.join(root, 'lib/cloud/gmail-context-api.ts')).handleGmailContext : parts[0] === 'v1' && parts[1] === 'contact-photos'
         ? load(path.join(root, 'lib/cloud/contact-photo-api.ts')).handleContactPhotos : parts.join('/') === 'v1/calendar-event-links/push'
           ? load(path.join(root, 'lib/cloud/calendar-event-link-api.ts')).handleCalendarEventLinks : deviceSourceApi.handleDeviceSources;
       response = await (handler as (r: Request, a: unknown, p: string[]) => Promise<Response>)(request, actor, parts);
@@ -231,6 +231,20 @@ export async function createCloudHarness() {
     db: typeof db, bucket: typeof assets, now?: Date
   ) => Promise<{ attempted: number; removed: number; pending: number; failed: number }>;
   return { db, assets, faults, call, emailEnv, queueMessages, deadLetterMessages,
+    async routedRequest(request: Request) {
+      // Exercise the real Next middleware, dispatcher and device authentication;
+      // only Cloudflare bindings are replaced by this disposable test runtime.
+      const { NextRequest } = require('next/server');
+      const middleware = load(path.join(root, 'middleware.ts')).middleware as (r: Request) => Promise<Response>;
+      const response = await middleware(new NextRequest(request.clone()));
+      const rewrite = response.headers.get('x-middleware-rewrite'); if (!rewrite) return response;
+      const url = new URL(rewrite); if (!url.pathname.startsWith('/api/cloud/')) return response;
+      const handler = load(path.join(root, 'app/api/cloud/[...path]/route.ts'))[request.method] as
+        (r: Request, c: { params: Promise<{ path: string[] }> }) => Promise<Response>;
+      const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.text();
+      return handler(new Request(rewrite, { method: request.method, headers: request.headers, body }),
+        { params: Promise.resolve({ path: url.pathname.slice('/api/cloud/'.length).split('/') }) });
+    },
     todaySnoozeSync: load(path.join(root, 'lib/cloud/today-snooze-sync-api.ts')) as typeof import('../../lib/cloud/today-snooze-sync-api'),
     providers: load(path.join(root, 'lib/cloud/provider-connections.ts')) as typeof import('../../lib/cloud/provider-connections'),
     googleCalendarResources: load(path.join(root, 'lib/cloud/google-calendar-resources.ts')) as typeof import('../../lib/cloud/google-calendar-resources'),
@@ -247,6 +261,7 @@ export async function createCloudHarness() {
     eventJobs: load(path.join(root, 'lib/cloud/google-event-jobs.ts')) as typeof import('../../lib/cloud/google-event-jobs'),
     planObservations: load(path.join(root, 'lib/cloud/calendar-plan-observations.ts')) as typeof import('../../lib/cloud/calendar-plan-observations'),
     planPublications: load(path.join(root, 'lib/cloud/calendar-plan-publications.ts')) as typeof import('../../lib/cloud/calendar-plan-publications'),
+    calendarReservations: load(path.join(root, 'lib/cloud/calendar-reservation-api.ts')) as typeof import('../../lib/cloud/calendar-reservation-api'),
     publicationDraft: load(path.join(root, 'packages/domain/src/calendar-publication.ts')) as typeof import('../../packages/domain/src/calendar-publication'),
     ownedCalendar: load(path.join(root, 'lib/cloud/google-owned-calendar.ts')) as typeof import('../../lib/cloud/google-owned-calendar'),
     calendarFacts: load(path.join(root, 'packages/domain/src/calendar-events.ts')) as typeof import('../../packages/domain/src/calendar-events'),

@@ -72,7 +72,12 @@ test('A verified Apple event date syncs through protocol 4, preserving private n
     const draft = { title: 'Coffee', location: '', start: { date: '2026-10-05', date_time: null, time_zone: null }, end: { date: '2026-10-06', date_time: null, time_zone: null } };
     const review = await f.phone.appleCalendar.appleCalendarReview(f.phone.db, plan);
     const prepared = await f.phone.appleCalendar.prepareAppleCalendar(f.phone.db, f.account, plan, { operationId: crypto.randomUUID(), epoch: review.epoch, planFingerprint: review.planFingerprint, draft });
-    const saved = await f.phone.appleCalendar.openAppleCalendarEditor(f.phone.db, f.account, prepared.id, prepared.revision, adapter);
+    const saved = await f.phone.appleCalendar.openAppleCalendarEditor(f.phone.db, f.account, prepared.id, prepared.revision, adapter, () => true, f.transport);
+    const publication = await f.cloud.db.prepare('SELECT provider, status, attempted FROM calendar_publication_reservations WHERE id = ?').bind(saved.id).first();
+    assert.deepEqual(publication, { provider: 'apple-calendar', status: 'saved', attempted: 1 });
+    const sharedRequests = f.requests.filter((r) => r.path === 'v1/calendar-reservations');
+    assert.deepEqual(sharedRequests.map((r) => JSON.parse(r.body!).action), ['reserve', 'attempt', 'result']);
+    assert.ok(sharedRequests.every((r) => !/PRIVATE|apple-original|apple-personal|Coffee/.test(r.body!)));
     const verified = await f.phone.appleCalendar.verifyAppleCalendar(f.phone.db, f.account, saved.id, { revision: saved.revision, epoch: review.epoch, planFingerprint: review.planFingerprint, follow: true, reads: true }, adapter);
     await f.restart(); await f.run();
     const cloudPlan = await f.cloud.db.prepare('SELECT planned_date, notes, completed_at FROM plans WHERE public_id = ?').bind(plan).first();
@@ -84,7 +89,7 @@ test('A verified Apple event date syncs through protocol 4, preserving private n
     await f.run(); const other = await f.phone.appleCalendar.appleCalendarReview(f.phone.db, otherPlan);
     const unopened = await f.phone.appleCalendar.prepareAppleCalendar(f.phone.db, f.account, otherPlan, { operationId: crypto.randomUUID(), epoch: other.epoch, planFingerprint: other.planFingerprint, draft });
     await f.saveChoices([person.id], [otherPlan]);
-    await assert.rejects(f.phone.appleCalendar.openAppleCalendarEditor(f.phone.db, f.account, unopened.id, unopened.revision, adapter), /changed/);
+    await assert.rejects(f.phone.appleCalendar.openAppleCalendarEditor(f.phone.db, f.account, unopened.id, unopened.revision, adapter, () => true, f.transport), /changed/);
     assert.equal((await f.phone.appleCalendar.appleCalendarReview(f.phone.db, otherPlan)).receipt!.attempted, 0);
   } finally { await f.close(); }
 });
@@ -215,8 +220,8 @@ test('A late link acknowledgement cannot modify another account and schema-12 up
     const person = await f.person(); await f.run(); const before = await f.review();
     const core = await f.phone.contacts.createContact(f.phone.db, { name: 'Still pending', email: '', phone: '', notes: '', contactFrequency: 14 });
     const cursor = f.phone.sqlite.prepare("SELECT value FROM app_metadata WHERE key = 'sync-cursor-v4'").get();
-    f.phone.sqlite.exec('DROP TABLE today_snooze_queue; DROP TABLE today_snoozes; DROP TRIGGER gmail_context_contact_insert; DROP TRIGGER gmail_context_contact_identity; DROP TRIGGER gmail_context_contact_delete; DROP TRIGGER gmail_context_alias_insert; DROP TRIGGER gmail_context_alias_delete; DROP TRIGGER gmail_context_alias_update; DROP TABLE gmail_person_context; DROP TABLE gmail_context_state; DROP TRIGGER apple_calendar_plan_removed; DROP TRIGGER apple_calendar_plan_deleted; DROP TRIGGER apple_calendar_plan_date_changed; DROP TABLE apple_calendar_receipts; DROP TABLE calendar_event_link_queue; PRAGMA user_version = 12;'); await f.restart();
-    assert.equal(f.phone.sqlite.pragma('user_version', { simple: true }), 16); assert.deepEqual(f.phone.sqlite.prepare("SELECT value FROM app_metadata WHERE key = 'sync-cursor-v4'").get(), cursor);
+    f.phone.sqlite.exec('DROP TABLE apple_calendar_reservations; DROP TABLE today_snooze_queue; DROP TABLE today_snoozes; DROP TRIGGER gmail_context_contact_insert; DROP TRIGGER gmail_context_contact_identity; DROP TRIGGER gmail_context_contact_delete; DROP TRIGGER gmail_context_alias_insert; DROP TRIGGER gmail_context_alias_delete; DROP TRIGGER gmail_context_alias_update; DROP TABLE gmail_person_context; DROP TABLE gmail_context_state; DROP TRIGGER apple_calendar_plan_removed; DROP TRIGGER apple_calendar_plan_deleted; DROP TRIGGER apple_calendar_plan_date_changed; DROP TABLE apple_calendar_receipts; DROP TABLE calendar_event_link_queue; PRAGMA user_version = 12;'); await f.restart();
+    assert.equal(f.phone.sqlite.pragma('user_version', { simple: true }), 17); assert.deepEqual(f.phone.sqlite.prepare("SELECT value FROM app_metadata WHERE key = 'sync-cursor-v4'").get(), cursor);
     assert.equal((await f.review()).currentFingerprint, before.currentFingerprint); assert.equal((await f.phone.contacts.getContact(f.phone.db, core.id))!.sync_state, 'pending');
     await f.run(); await f.saveChoices([person.publicId]); let current = true;
     const late: typeof fetch = async (input, init) => { const response = await f.transport(input, init); if (new URL(String(input)).pathname.endsWith('/calendar-event-links/push')) current = false; return response; };

@@ -56,7 +56,7 @@ test('hosted photos download separately, survive restart offline and never becom
     assert.equal(f.mobile.sqlite.prepare('SELECT count(*) n FROM sync_queue').get()!.n, 0);
     reopened = await createMobileHarness(f.account, new Database(f.mobile.sqlite.serialize()));
     assert.equal(await reopened.photos.loadContactPhoto(reopened.db, f.account, f.person.public_id, { fetcher: async () => { throw new Error('Offline'); } }), PHOTO);
-    assert.equal(reopened.sqlite.pragma('user_version', { simple: true }), 16);
+    assert.equal(reopened.sqlite.pragma('user_version', { simple: true }), 17);
     assert.equal((await f.cloud.call('contacts/' + f.person.id)).body.contact.notes, 'Original private note');
   } finally { reopened?.close(); await f.close(); }
 });

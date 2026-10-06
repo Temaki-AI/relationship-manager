@@ -344,6 +344,13 @@
       "when": 1791206096205,
       "tag": "0048_gmail_recurring",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "6",
+      "when": 1791247653131,
+      "tag": "0049_calendar_publication_reservations",
+      "breakpoints": true
     }
   ]
 }

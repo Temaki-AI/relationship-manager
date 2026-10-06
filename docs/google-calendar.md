@@ -491,6 +491,14 @@ transferring a plan's publication to another account is not implemented.
 
 Migration 44 adds the operational publications and immutable write reviews. CRM
 backup schema 14, native schema 13 and transport version 4 remain unchanged.
+
+The build-11 release branch also adds migration 49's shared publication ledger.
+Google preparation acquires its plan slot atomically against upgraded native
+publishers; existing Google receipts are backfilled without changing prior rows.
+Attempted, saved and unknown external effects keep their slot across restoration
+and provider removal. This extension is not deployed. See
+[shared Calendar coordination](calendar-publication-coordination.md) for tested
+scope and the remaining legacy/session/source-identity work.
 Operational receipts and credentials are excluded from CRM exports; restore retains
 and holds the local receipts, disables following and preserves restored canonical
 links. No source event, remote calendar or invitation is rolled back by CRM recovery.

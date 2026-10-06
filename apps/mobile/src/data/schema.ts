@@ -1,6 +1,44 @@
 import { contactMethodsBackfillSql } from '../../../../packages/domain/src/contact-method-storage.ts';
 export const MOBILE_DATABASE_NAME = 'bonds-mobile.db';
-export const MOBILE_SCHEMA_VERSION = 16;
+export const MOBILE_SCHEMA_VERSION = 17;
+
+// Calendar coordination is separate from the immutable, private EventKit receipt
+// and the frozen version-4 CRM outbox. Existing receipts are never uploaded.
+export const MOBILE_CALENDAR_RESERVATION_MIGRATION_SQL = `
+  CREATE TABLE apple_calendar_reservations (
+    id TEXT PRIMARY KEY NOT NULL REFERENCES apple_calendar_receipts(id),
+    account_scope TEXT NOT NULL,
+    device_id TEXT NOT NULL,
+    epoch TEXT NOT NULL,
+    plan_id TEXT NOT NULL,
+    plan_fingerprint TEXT NOT NULL CHECK (length(plan_fingerprint) = 64),
+    server_revision INTEGER,
+    server_status TEXT CHECK (server_status IS NULL OR server_status IN ('reserved', 'attempted', 'saved', 'cancelled', 'held')),
+    reserve_request_json TEXT NOT NULL CHECK (json_valid(reserve_request_json)),
+    attempt_request_json TEXT CHECK (attempt_request_json IS NULL OR json_valid(attempt_request_json)),
+    request_json TEXT CHECK (request_json IS NULL OR json_valid(request_json)),
+    result_action TEXT CHECK (result_action IS NULL OR result_action IN ('saved', 'canceled')),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'ready', 'confirmed', 'released', 'held')),
+    last_error TEXT,
+    updated_at TEXT NOT NULL,
+    CHECK (server_revision IS NULL OR server_revision > 0)
+  );
+  CREATE TRIGGER apple_calendar_reservation_insert BEFORE INSERT ON apple_calendar_reservations BEGIN
+    SELECT CASE WHEN NEW.account_scope IS NOT (SELECT value FROM app_metadata WHERE key = 'account-scope')
+      OR NOT EXISTS (SELECT 1 FROM apple_calendar_receipts r WHERE r.id = NEW.id AND r.account_scope = NEW.account_scope
+        AND r.plan_id = NEW.plan_id AND r.epoch = NEW.epoch AND r.attempted = 0 AND r.status = 'prepared')
+      THEN RAISE(ABORT, 'APPLE_CALENDAR_RESERVATION_INVALID') END;
+  END;
+  CREATE TRIGGER apple_calendar_reservation_guard BEFORE UPDATE ON apple_calendar_reservations BEGIN
+    SELECT CASE WHEN NEW.id IS NOT OLD.id OR NEW.account_scope IS NOT OLD.account_scope OR NEW.device_id IS NOT OLD.device_id
+      OR NEW.epoch IS NOT OLD.epoch OR NEW.plan_id IS NOT OLD.plan_id OR NEW.plan_fingerprint IS NOT OLD.plan_fingerprint
+      OR NEW.reserve_request_json IS NOT OLD.reserve_request_json
+      OR OLD.attempt_request_json IS NOT NULL AND NEW.attempt_request_json IS NOT OLD.attempt_request_json
+      OR OLD.result_action IS NOT NULL AND NEW.result_action IS NOT OLD.result_action
+      OR OLD.request_json IS NOT NULL AND NEW.request_json IS NOT NULL AND NEW.request_json IS NOT OLD.request_json
+      OR NEW.server_revision < OLD.server_revision THEN RAISE(ABORT, 'APPLE_CALENDAR_RESERVATION_INVALID') END;
+  END;
+`;
 
 export const MOBILE_SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS app_metadata (

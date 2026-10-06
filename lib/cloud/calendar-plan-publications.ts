@@ -34,6 +34,9 @@ async function local(db: DB, actor: ConnectionActor, connectionId: string, planI
   if (!connection) throw new ProviderConnectionError('Publishing connection not found or recovery is active.', 404);
   const plan = await db.prepare('SELECT p.*, c.public_id AS contact_public_id, c.name AS contact_name FROM plans p JOIN contacts c ON c.workspace_id = p.workspace_id AND c.id = p.contact_id WHERE p.workspace_id = ? AND p.public_id = ?').bind(actor.workspaceId, planId).first<Plan>();
   const pub = await pubFor(db, actor, planId);
+  const reserved = await db.prepare("SELECT id, provider FROM calendar_publication_reservations WHERE workspace_id = ? AND plan_public_id = ? AND status != 'cancelled'")
+    .bind(actor.workspaceId, planId).first<{ id: string; provider: string }>();
+  if (reserved && (reserved.provider !== 'google-calendar' || reserved.id !== pub?.id)) throw new ProviderConnectionError('This plan already has a Calendar publication. Review its original receipt instead of creating another event.');
   if (pub && (pub.connection_id !== connectionId || pub.user_id !== actor.userId)) throw new ProviderConnectionError('This plan has a publication in another connection. Review that account instead.');
   if (!pub && !plan) throw new ProviderConnectionError('Plan not found.', 404);
   const write = pub ? await latest(db, pub.id) : null;
@@ -157,7 +160,10 @@ export async function preparePlanPublication(db: DB, actor: ConnectionActor, env
     db.prepare('INSERT INTO calendar_plan_writes (id, publication_id, fingerprint, request_json, plan_fingerprint, dataset_epoch, authorization_revision, publication_revision, kind, base_etag, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .bind(body.operation_id, pubId, fingerprint, request, planHash(c.plan), access.connection.dataset_epoch, access.connection.authorization_revision, c.pub?.revision ?? 1, r ? 'update' : 'create', r?.etag ?? null, now, now),
     removeGuard(db, guard), removeGuard(db, guard + '-review'),
-  ]);
+  ]).catch((error: unknown) => {
+    if (String(error).includes('calendar_publication_reservations')) throw new ProviderConnectionError('This plan acquired another Calendar publication. Review its original receipt before continuing.');
+    throw error;
+  });
   return { write: publicView(await local(db, actor, connectionId, planId)).write };
 }
 function guests(value: Record<string, unknown>, selected: Array<{ email: string }>) {

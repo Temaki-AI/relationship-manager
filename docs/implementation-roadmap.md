@@ -1,5 +1,15 @@
 # Everclose Implementation Roadmap
 
+The build-11 source candidate implements shared Calendar publication reservations
+and a schema-17 native receipt outbox. All 939 regression cases and an additional
+actual middleware/dispatcher journey pass, with 23 selected D1 cases plus the
+actual routing journey on D1. Mobile validation, Cloudflare build and dry run
+pass. Native compilation and the matching production migration/endpoint remain
+pending; build 10 is still the installed personal release. Legacy/recovery and
+Google/EventKit identity reconciliation remain beta work. See
+[Calendar coordination](calendar-publication-coordination.md) and
+[the build-11 candidate](personal-ios-build11.md).
+
 Current forward plan: [Everclose product development plan](product-development-plan.md), covering shared web/iOS data, mobile experience, contact integrations, email and calendars. This document retains the engineering work log and release gates.
 
 Objective: implement the engineering and product sequence in `audit-2026-09-04.md`, preserving the personal relationship companion concept.

@@ -59,11 +59,12 @@ export async function createMobileHarness(account: NativeAccount, sqlite = new D
   const calendarEvents = load(path.join(repository, 'apps/mobile/src/data/calendar-events.ts')) as typeof import('../../apps/mobile/src/data/calendar-events.ts');
   const calendarLinks = load(path.join(repository, 'apps/mobile/src/data/calendar-event-links.ts')) as typeof import('../../apps/mobile/src/data/calendar-event-links.ts');
   const appleCalendar = load(path.join(repository, 'apps/mobile/src/data/apple-calendar.ts')) as typeof import('../../apps/mobile/src/data/apple-calendar.ts');
+  const calendarReservations = load(path.join(repository, 'apps/mobile/src/data/calendar-reservations.ts')) as typeof import('../../apps/mobile/src/data/calendar-reservations.ts');
   const gmailContext = load(path.join(repository, 'apps/mobile/src/data/gmail-context.ts')) as typeof import('../../apps/mobile/src/data/gmail-context.ts');
   const sync = load(path.join(repository, 'apps/mobile/src/data/cloud-sync.ts')) as typeof import('../../apps/mobile/src/data/cloud-sync.ts');
   const queue = load(path.join(repository, 'apps/mobile/src/data/sync-queue.ts')) as typeof import('../../apps/mobile/src/data/sync-queue.ts');
   await database.migrateDatabase(typedDb);
   await database.bindDatabaseAccount(typedDb, accountScope(account));
   await deviceSourceSync.bindDeviceInstallation(typedDb, await deviceSourceSync.installationId(typedDb) ?? crypto.randomUUID());
-  return { db: typedDb, sqlite, faults, database, contacts, contactDrafts, journalDrafts, photos, photoOutbox, reminders, today, todaySnoozes, context, methods, deviceContacts, deviceSourceSync, deviceReconciliation, calendarEvents, calendarLinks, appleCalendar, gmailContext, sync, queue, close: () => sqlite.close() };
+  return { db: typedDb, sqlite, faults, database, contacts, contactDrafts, journalDrafts, photos, photoOutbox, reminders, today, todaySnoozes, context, methods, deviceContacts, deviceSourceSync, deviceReconciliation, calendarEvents, calendarLinks, appleCalendar, calendarReservations, gmailContext, sync, queue, close: () => sqlite.close() };
 }

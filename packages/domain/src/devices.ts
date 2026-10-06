@@ -66,7 +66,7 @@ export function parseDeviceBearer(value: string | null): string | null {
 }
 export function isNativeDeviceApiPath(pathname: string): boolean {
   if (/^\/api\/v1\/contact-photos\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(pathname)) return true;
-  return ['/api/v1/gmail-context', '/api/v1/today-snoozes', '/api/v1/sync/bootstrap', '/api/v1/sync/pull', '/api/v1/sync/push',
+  return ['/api/v1/gmail-context', '/api/v1/today-snoozes', '/api/v1/calendar-reservations', '/api/v1/sync/bootstrap', '/api/v1/sync/pull', '/api/v1/sync/push',
     '/api/v2/sync/bootstrap', '/api/v2/sync/pull', '/api/v2/sync/push',
     '/api/v3/sync/bootstrap', '/api/v3/sync/pull', '/api/v3/sync/push',
     '/api/v4/sync/bootstrap', '/api/v4/sync/pull', '/api/v4/sync/push', '/api/v1/devices/session', '/api/v1/device-sources/push', '/api/v1/calendar-event-links/push'].includes(pathname);

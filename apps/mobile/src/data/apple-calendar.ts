@@ -6,6 +6,7 @@ import { appleCalendarDraft, appleCalendarUrl, appleCalendarDay, readAppleCalend
 import { contextForEditing, type ContextRecord } from './context';
 import { enqueueSyncIntent } from './sync-queue';
 import { signalSyncChange } from './sync-signals';
+import { authorizeCalendarEditor, localCalendarReservation, queueCalendarEditorResult, releaseCalendarReservation, syncCalendarReservations } from './calendar-reservations';
 type DB = SQLiteDatabase;
 export type AppleCalendarReceipt = { id: string; account_scope: string; epoch: string | null; plan_id: string; plan_fingerprint: string; request_json: string; attempted: number;
   event_id: string | null; calendar_id: string | null; status: string; issue: string | null; facts: string | null; follow_date: number; read_enabled: number; read_epoch: string | null; last_plan_date: string | null; last_read_at: string | null; revision: number };
@@ -35,7 +36,8 @@ export async function appleCalendarReview(db: DB, planId: string, operationId?: 
     : await db.getFirstAsync<AppleCalendarReceipt>('SELECT * FROM apple_calendar_receipts WHERE plan_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1', planId);
   if (operationId && !receipt) throw new Error('This Calendar receipt is not available in the active account on this phone.');
   const person = plan ? await db.getFirstAsync<{ name: string }>('SELECT name FROM contacts WHERE id = ? AND deleted_at IS NULL', plan.contact_id) : null;
-  return { plan, person, receipt, epoch: await epoch(db), planFingerprint: await planHash(plan), linkedEventId: (await linkedEvent(db, planId))?.id ?? null };
+  return { plan, person, receipt, publication: receipt ? await localCalendarReservation(db, receipt.id) : null,
+    epoch: await epoch(db), planFingerprint: await planHash(plan), linkedEventId: (await linkedEvent(db, planId))?.id ?? null };
 }
 export async function holdAppleCalendarForEpoch(db: DB, current: string) {
   await db.runAsync(`UPDATE apple_calendar_receipts SET status = 'held', issue = 'epoch_changed', follow_date = 0, read_enabled = 0, revision = revision + 1
@@ -59,7 +61,12 @@ export async function prepareAppleCalendar(db: DB, account: NativeAccount, planI
   });
   return (await receiptFor(db, input.operationId))!;
 }
-export async function discardAppleCalendar(db: DB, account: NativeAccount, operationId: string, revision: number, isCurrent = () => true) {
+export async function discardAppleCalendar(db: DB, account: NativeAccount, operationId: string, revision: number, isCurrent = () => true, fetcher: typeof fetch = fetch) {
+  await owner(db, account, isCurrent); const original = await receiptFor(db, operationId);
+  if (!original || original.account_scope !== accountScope(account) || original.revision !== revision || original.attempted || !['prepared', 'held', 'unknown'].includes(original.status)) {
+    throw new Error('This review may have reached the Calendar editor. Verify the original event instead of discarding it.');
+  }
+  await releaseCalendarReservation(db, account, operationId, { isCurrent, fetcher });
   await db.withExclusiveTransactionAsync(async (tx) => {
     await owner(tx, account, isCurrent);
     const r = await receiptFor(tx, operationId);
@@ -67,11 +74,18 @@ export async function discardAppleCalendar(db: DB, account: NativeAccount, opera
     await tx.runAsync("UPDATE apple_calendar_receipts SET status = 'discarded', revision = revision + 1 WHERE id = ? AND revision = ? AND attempted = 0", operationId, revision);
   });
 }
-export async function openAppleCalendarEditor(db: DB, account: NativeAccount, operationId: string, revision: number, adapter: AppleCalendarAdapter, isCurrent = () => true) {
+export async function openAppleCalendarEditor(db: DB, account: NativeAccount, operationId: string, revision: number, adapter: AppleCalendarAdapter, isCurrent = () => true, fetcher: typeof fetch = fetch) {
   await owner(db, account, isCurrent); const original = await receiptFor(db, operationId);
   if (!original || original.account_scope !== accountScope(account) || original.revision !== revision || original.attempted || original.status !== 'prepared') throw new Error('This editor was already attempted or the review changed. Verify its original event.');
   // Permission on older iOS is resolved before recording an editor attempt; denied access has no external event effect.
   await adapter.prepareEditor();
+  await owner(db, account, isCurrent);
+  const preview = await appleCalendarReview(db, original.plan_id, operationId);
+  if (preview.epoch !== original.epoch || !preview.plan || preview.plan.completed_at || preview.planFingerprint !== original.plan_fingerprint
+    || preview.linkedEventId || preview.receipt?.revision !== revision || preview.receipt.attempted || preview.receipt.status !== 'prepared') {
+    throw new Error('The plan, account or Calendar link changed. Keep this receipt and review it again.');
+  }
+  await authorizeCalendarEditor(db, account, original, { isCurrent, fetcher });
   await db.withExclusiveTransactionAsync(async (tx) => {
     await owner(tx, account, isCurrent); const r = await receiptFor(tx, operationId), plan = await contextForEditing(tx, 'plan', original.plan_id);
     if (!r || r.revision !== revision || r.attempted || r.status !== 'prepared' || await epoch(tx) !== original.epoch || !plan || plan.completed_at || await planHash(plan) !== original.plan_fingerprint || await linkedEvent(tx, original.plan_id)) throw new Error('The plan, account or Calendar link changed. Keep this receipt and review it again.');
@@ -94,7 +108,11 @@ export async function openAppleCalendarEditor(db: DB, account: NativeAccount, op
     const held = !isCurrent() || await epoch(tx) !== original.epoch || row.status === 'held';
     await tx.runAsync('UPDATE apple_calendar_receipts SET event_id = COALESCE(event_id, ?), status = ?, issue = ?, revision = revision + 1, updated_at = ? WHERE id = ?',
       result.action === 'saved' ? result.id : null, result.action === 'canceled' ? 'cancelled' : held ? 'held' : 'saved', held ? 'account_or_plan_changed' : result.action === 'saved' ? 'verification_needed' : null, new Date().toISOString(), operationId);
+    await queueCalendarEditorResult(tx, operationId, result.action as 'saved' | 'canceled');
   });
+  // The native result is already durable. A failed/lost server acknowledgement
+  // is retried from the outbox, never by calling EventKit's create method again.
+  try { await syncCalendarReservations(db, account, { isCurrent, fetcher }); } catch { /* Review exposes the retained pending publication receipt. */ }
   return (await receiptFor(db, operationId))!;
 }
 async function applyObservation(db: DB, account: NativeAccount, receipt: AppleCalendarReceipt, input: AppleCalendarFacts, policy: { explicit: boolean; follow: boolean; reads: boolean; epoch: string | null; planFingerprint?: string }, isCurrent: () => boolean) {
