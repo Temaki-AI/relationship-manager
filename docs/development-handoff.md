@@ -260,3 +260,23 @@ the local build-6 offline journey now passes without unlocking the Mac. Both Mac
 and iPhone should be unlocked and connected by USB only for a later physical
 installation check. See the build-6 record and `tests/native-ui/README.md` for the
 local evidence and repeatable test scope.
+
+### Local Google setup isolation — 6 October 2026
+
+Cloud development now reads all five Google client purposes, project metadata,
+the connector keyring and session secret only from its ignored local configuration;
+missing values cannot inherit another environment's credentials from the shell.
+The template includes Gmail keys. `npm run setup:google` imports a downloaded Web
+client JSON without printing secrets, preserves existing session/vault settings,
+requires exact localhost callbacks/origins, distinct client IDs and separate login
+and data projects, and writes the local file atomically with owner-only permissions.
+All 919 root tests pass with zero failures/skips, including nine development/import
+checks. Full root lint and TypeScript also pass. These tests use disposable synthetic
+credentials; no real OAuth authorization or provider operation is claimed.
+
+The [current Google setup request](google-setup-request.md) supersedes the earlier
+single-project choice with three unbilled projects and nine distinct clients.
+Explicit creation approval is pending after the earlier automatic review rejection.
+The Mac remains locked and the existing console tab's read attempt timed out.
+No real credential import, Google configuration change, production migration or
+deployment was performed by this setup change.

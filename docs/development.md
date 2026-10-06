@@ -22,8 +22,11 @@ belong to the separate SQLite app and are neither imported nor deleted.
 ## Google OAuth
 
 In [Google Auth Platform → Clients](https://console.cloud.google.com/auth/clients),
-select the Google Cloud project used by Everclose. Create a separate **Web application**
-OAuth client named **Everclose local development**. Leave the production client intact.
+select a dedicated local sign-in project, separate from Google data connections.
+Create a **Web application** OAuth client named **Everclose local login**.
+The [prepared setup record](google-setup-request.md) lists the proposed projects
+and clients; their creation still awaits explicit approval. Leave the production
+client intact.
 
 | Setting | Value |
 | --- | --- |
@@ -33,7 +36,7 @@ OAuth client named **Everclose local development**. Leave the production client 
 If the consent screen is in Testing, add your Google account under Audience → Test
 users. Only identity scopes are needed (`openid`, `email`, `profile`); Google Contacts,
 Gmail, and Calendar permissions are not part of sign-in. Complete any required consent
-screen setup in the console. OAuth credentials must be created by the account owner.
+screen setup in the console using the owner's authorized Google account.
 
 Put the new client ID and client secret in `.env.development.local`:
 
@@ -44,7 +47,17 @@ GOOGLE_CLIENT_SECRET=your-client-secret
 
 Keep the generated `BETTER_AUTH_SECRET`. Do not paste secrets in chat, commit them,
 reset the production client, or reuse the production session secret. A downloaded
-client JSON file may also be supplied by its local path for secure import.
+client JSON file can be imported without printing credentials:
+
+```sh
+npm run setup:google -- --purpose login --file /absolute/path/downloaded-client.json
+```
+
+Use Google's Web application export with only the localhost origin/callback above.
+The importer rejects installed-app exports, production/shared callbacks, duplicate
+client IDs and a login project reused for data connections. It records the project
+ID, preserves unrelated settings and the existing session/vault secrets, and
+writes the ignored file atomically with owner-only permissions.
 
 ```sh
 npm run check:dev
@@ -59,13 +72,36 @@ contacts. An `invalid_client` error means the credential values need checking;
 
 ## Google data connections
 
-[Google Calendar setup](google-calendar.md) uses its own client and read-only permissions. Use separate Cloud projects when independent provider revocation is required; clients in one project can be revoked together. Calendar choices and manual staged event downloads/review are implemented locally. People/plan links, native context, recurring jobs and publishing remain in development; real OAuth is unverified.
+Google sign-in grants only identity access. Each data purpose needs a distinct Web
+client ID, with `http://localhost:3100` as its sole origin and
+`http://localhost:3100/api/connections/google/callback` as its sole redirect.
+Use a data project separate from the sign-in project. Google can revoke multiple
+data clients together when they share a project.
 
-Google sign-in grants only identity access. The separate [Google connection setup](google-connections.md)
-uses another OAuth client and a dedicated Google project for read-only Contacts access.
-Its local callback is `http://localhost:3100/api/connections/google/callback`.
+Import the downloaded clients individually after importing login:
+
+```sh
+npm run setup:google -- --purpose contacts --file /absolute/path/contacts-client.json
+npm run setup:google -- --purpose calendar --file /absolute/path/calendar-client.json
+npm run setup:google -- --purpose calendar-publish --file /absolute/path/publishing-client.json
+npm run setup:google -- --purpose gmail --file /absolute/path/gmail-client.json
+```
+
+Contacts is read-only; Calendar reading and app-created calendar publishing use
+separate consent. Gmail requests metadata without message bodies or attachments.
+Importing credentials does not authorize a provider, download data or enable
+automatic refresh. Real authorization for these four purposes remains unverified.
+See [Google Contacts setup](google-connections.md), [Calendar setup](google-calendar.md)
+and [Gmail setup](gmail.md) for their consent and review flows.
+
 New setup files receive an independent connector encryption key; existing files are
 preserved. This computer's local file has received its key separately. Address-book downloads, reviewed create/attach imports and opt-in bounded updates are implemented and verified locally. The connection has not passed a real Google authorization journey.
+
+Cloud development takes all five Google clients, project IDs, the connector keyring
+and session secret only from `.env.development.local`. Missing local values become
+empty even if the shell contains credentials. This prevents accidentally inheriting
+another environment's Google clients or vault/session keys. Keep the independent
+local secrets generated by setup; production credentials cannot be imported here.
 
 ## Development commands
 
@@ -73,6 +109,7 @@ preserved. This computer's local file has received its key separately. Address-b
 | --- | --- |
 | `npm run dev` / `npm run dev:cloud` | Next.js hot reload, cloud handlers, Google sign-in, local D1/R2 |
 | `npm run setup:dev` | Create the ignored configuration if absent and migrate local D1 |
+| `npm run setup:google -- --purpose <purpose> --file <path>` | Import a dedicated localhost Google Web client without printing credentials |
 | `npm run check:dev` | Check configuration and storage isolation without showing credentials |
 | `npm run db:migrate:local` | Apply new migrations only to the isolated local D1 database |
 | `npm run preview:cloud` | Build and run the app locally in the Workers runtime on port 3100 |
@@ -105,9 +142,11 @@ Production remains configured in `wrangler.jsonc`. `npm run deploy:cloud` and
 `npm run db:migrate:remote` affect live resources and are separate release actions.
 Do not run either as part of local setup.
 
-The [4 October personal web release](personal-web-release.md) is deployed as Worker
-version `4222b1a6-c7ba-47e1-b8cb-3f78adeaff17`, with migration 44 and verified real
-Google identity sign-in. Local OAuth credentials remain a separate setup step.
+The [4 October personal web release](personal-web-release.md) verified real Google
+identity sign-in on migration 44. Its subsequent shared Today preference extension
+is deployed as Worker version `370949af-afef-44e2-8578-900625e1ce0d`, also on migration
+44. Local OAuth credentials remain a separate setup step; Gmail migrations 45–48
+and bindings have not been deployed.
 
 On October 3, 2026, Cloudflare reported the then-active production version as
 `a0a51687-c80c-407c-a097-8fb98e1b640d`, tagged `release-2026-10-03`, with deployment

@@ -62,3 +62,23 @@ test('development rejects a remote binding or a production database ID before st
     await assert.rejects(assertIsolatedConfiguration(root), /isolated simulated storage/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('cloud development never inherits login, connector or vault credentials from the shell', () => {
+  const inherited = {
+    GOOGLE_CLIENT_ID: 'production-login', GOOGLE_CLIENT_SECRET: 'production-secret',
+    GOOGLE_GMAIL_CLIENT_ID: 'production-gmail', GOOGLE_GMAIL_CLIENT_SECRET: 'production-gmail-secret',
+    GOOGLE_CONNECTOR_CLIENT_ID: 'production-contacts', GOOGLE_CONNECTOR_CLIENT_SECRET: 'production-contacts-secret',
+    GOOGLE_CALENDAR_CLIENT_ID: 'production-calendar', GOOGLE_CALENDAR_CLIENT_SECRET: 'production-calendar-secret',
+    GOOGLE_CALENDAR_PUBLISH_CLIENT_ID: 'production-publish', GOOGLE_CALENDAR_PUBLISH_CLIENT_SECRET: 'production-publish-secret',
+    GOOGLE_PROJECT_ID: 'production-login-project', CONNECTOR_TOKEN_KEYRING: 'production-vault',
+    BETTER_AUTH_SECRET: 'production-session-secret', UNRELATED_SETTING: 'preserved',
+  };
+  const environment = cloudDevelopmentEnvironment({}, inherited);
+  assert.equal(environment.UNRELATED_SETTING, 'preserved');
+  for (const name of Object.keys(inherited).filter((name) => name !== 'UNRELATED_SETTING')) assert.equal(environment[name], '');
+  assert.equal(developmentConfigurationProblems(environment).length, 3);
+  const local = cloudDevelopmentEnvironment({ GOOGLE_GMAIL_CLIENT_ID: 'local-gmail', GOOGLE_GMAIL_CLIENT_SECRET: 'local-gmail-secret' }, inherited);
+  assert.equal(local.GOOGLE_GMAIL_CLIENT_ID, 'local-gmail');
+  assert.equal(local.GOOGLE_GMAIL_CLIENT_SECRET, 'local-gmail-secret');
+  assert.equal(local.GOOGLE_CLIENT_ID, '');
+});

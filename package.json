@@ -12,6 +12,7 @@
     "dev:cloud": "node scripts/development.mjs cloud",
     "dev:local": "node scripts/development.mjs local",
     "setup:dev": "node scripts/development.mjs setup",
+    "setup:google": "node scripts/import-google-development.mjs",
     "check:dev": "node scripts/development.mjs check",
     "build": "node scripts/build.mjs",
     "build:cloud": "AUTH_MODE=google NEXT_PUBLIC_AUTH_MODE=google opennextjs-cloudflare build",

@@ -10,6 +10,10 @@ export const DEVELOPMENT_ENV_FILE = '.env.development.local';
 export const DEVELOPMENT_URL = 'http://localhost:3100';
 export const DEVELOPMENT_CONFIG = 'wrangler.local.jsonc';
 export const DEVELOPMENT_STORAGE = '.wrangler/everclose-local';
+export const GOOGLE_DEVELOPMENT_PREFIXES = Object.freeze({
+  login: 'GOOGLE', contacts: 'GOOGLE_CONNECTOR', calendar: 'GOOGLE_CALENDAR',
+  'calendar-publish': 'GOOGLE_CALENDAR_PUBLISH', gmail: 'GOOGLE_GMAIL',
+});
 
 export async function ensureDevelopmentEnvironment(root = projectRoot) {
   const filename = join(root, DEVELOPMENT_ENV_FILE);
@@ -31,6 +35,12 @@ export function cloudDevelopmentEnvironment(values, inherited = process.env) {
   return {
     ...inherited,
     ...values,
+    ...Object.fromEntries([
+      ...Object.values(GOOGLE_DEVELOPMENT_PREFIXES).flatMap((prefix) => [
+        `${prefix}_CLIENT_ID`, `${prefix}_CLIENT_SECRET`, `${prefix}_PROJECT_ID`,
+      ]),
+      'CONNECTOR_TOKEN_KEYRING', 'BETTER_AUTH_SECRET',
+    ].map((name) => [name, values[name] || ''])),
     NODE_ENV: 'development',
     EVERCLOSE_DEVELOPMENT: 'cloud',
     AUTH_MODE: 'google',

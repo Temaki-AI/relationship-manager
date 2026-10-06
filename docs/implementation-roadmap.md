@@ -979,3 +979,19 @@ advisory or threshold is suppressed. Build 10 is configured for actual native
 verification; it is not yet distributed. The installed build 9, production Worker,
 database and provider configuration are unchanged. See
 [dependency security](dependency-security.md) for exact scope and evidence.
+
+### Local Google credential import and environment isolation — 6 October 2026
+
+Added the missing Gmail template keys and prevented cloud development from inheriting
+unset Google clients/project IDs or connector/session secrets from the shell. The
+private `setup:google` importer validates dedicated localhost Web exports, exact
+origins/callbacks, separate login/data projects and distinct clients; it preserves
+unrelated values and writes the ignored local configuration atomically at mode 0600.
+All 919 root tests, root TypeScript and full lint pass; nine focused checks cover
+credential isolation, unsafe exports, field preservation and errors without secrets.
+Fixtures are synthetic. The proposed three-project/nine-client Google setup is
+reviewable in [the setup request](google-setup-request.md), with explicit creation
+approval and an unlocked, controllable browser still pending. No actual provider
+configuration, authorization, download, production migration or deployment occurred.
+These changes close the local configuration defect, not the real integration or
+public release gates in the development plan.
