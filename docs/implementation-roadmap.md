@@ -995,3 +995,25 @@ approval and an unlocked, controllable browser still pending. No actual provider
 configuration, authorization, download, production migration or deployment occurred.
 These changes close the local configuration defect, not the real integration or
 public release gates in the development plan.
+
+### Build-10 native verification and in-place installation — 6 October 2026
+
+Native run 37391200805 passes both Release binaries, linkage, real SQLite/Keychain
+startup and the complete offline journal journey. The independently inspected
+XCTest bundle reports one pass, zero failures/skips, in 452.447 seconds. Compiled
+source `3982c0d` and CI merge `7a7ff57` have identical trees. Strict local signing
+passes without exporting keys. The exact signed artifact upgrades TIE Fighter
+from build 9 to version 1.0.0/build 10; fresh installed metadata confirms it.
+iOS refuses the subsequent launch because the phone is locked, so current phone
+launch and process stability remain unverified pending unlock.
+
+The matching simulator artifact runs on **Everclose Build 10**. All 23 data tables,
+schema 16 and installation identity are unchanged, SQLite integrity passes, and
+the actual welcome/preserved pending sign-in continuation was inspected. Synthetic
+QA remains shut down. General CI 37391200731 passes 913 root tests, 398 D1 tests
+with 11 documented skips and 14 cloud browser journeys, then fails its unchanged
+audit gate. Root/mobile audits remain open. The subsequent local Google setup
+passes 919 root tests and changes no app/domain/native test source. Production
+Worker, migration 44, provider configuration and owner database are unchanged by
+this delivery. See [the build-10 record](personal-ios-build10.md); real provider,
+owner, physical and public release gates remain open in the development plan.

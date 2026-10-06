@@ -1,7 +1,17 @@
 # Development handoff — 6 October 2026
 
 Everclose's personal web release is deployed at everclosecrm.com. Personal iOS
-**build 9** is signed, installed in place over build 8 and running on TIE Fighter
+**build 10** is signed and installed in place over build 9 on TIE Fighter.
+Fresh installed metadata reports 1.0.0/build 10. iOS blocks its launch because the
+phone is locked; current launch/process stability awaits an unlocked phone.
+The **Everclose Build 10** simulator runs the exact compiled release as process
+13847; its welcome was inspected, and all 23 data tables and installation identity
+are unchanged, with schema 16 and SQLite integrity intact. Native CI 37391200805
+passes both Release builds, startup and the complete offline journey in 452.447
+seconds (one pass, zero failures/skips). No personal database was copied or reset.
+[The build-10 record](personal-ios-build10.md) contains exact provenance and receipts.
+
+The preceding **build 9** was installed over build 8 and running on TIE Fighter
 (1.0.0/build 9, process 15655). Installation, fresh metadata, launch and subsequent process
 stability pass. The **Everclose Build 9** simulator runs the unmodified compiled
 release at welcome, with its original empty cache and installation identity
@@ -19,12 +29,12 @@ startup and the complete offline journey in 331.439 seconds, with one test and
 zero failures/skips. Delivered source `c9cbca3` and CI merge `ab976b4` have identical
 trees. The earlier failed CI and unsuccessful local diagnostic runs are preserved.
 
-The next build-10 source candidate removes the image/URI decoder findings with
+Build-10 source removes the image/URI decoder findings with
 scoped upstream upgrades and minimal reproducible Metro/query-string adapters.
 Clean installation, 22 mobile tests, types/lint, Hermes export and seven existing
 foundation/supply-chain checks pass. Native compilation/startup/offline validation
-is pending. The root/mobile audits still fail for braces and node-forge; the
-installed phone stays on verified build 9. See
+also passes. The root/mobile audits still fail for braces and node-forge; the
+installed phone now has build 10, with its launch blocked by device lock. See
 [dependency security](dependency-security.md) for graph counts and exact scope.
 
 Native Today has a per-person queue, combined reasons/latest history and explicit

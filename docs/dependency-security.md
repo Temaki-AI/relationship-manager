@@ -80,6 +80,11 @@ graph counts, not independent vulnerability counts.
 The root audit remains seven high findings. Braces 3.0.3 and node-forge 1.4.0 are
 still the latest published releases and still have no patched versions in the
 reviewed advisories. Both audit commands continue to fail at the unchanged gate.
-No root dependency, production Worker, provider grant, database migration or
-installed phone package changes in this slice. Native build-10 validation is
-pending; the passing build-9 delivery stays separately recorded.
+No root dependency, production Worker, provider grant or database migration changes
+in this slice. Native build-10 run 37391200805 now passes both Release builds,
+linkage/startup and its complete offline journey (452.447 seconds, one pass and
+zero failures/skips). Its exact signed artifact upgrades the phone from build 9;
+fresh metadata verifies build 10, while iOS blocks launch because the phone is
+locked. The matching simulator runs with all 23 data tables and installation
+identity unchanged. See [the build-10 record](personal-ios-build10.md). The preceding
+passing build-9 delivery stays separately recorded.

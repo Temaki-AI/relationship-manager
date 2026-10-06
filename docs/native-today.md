@@ -1,9 +1,12 @@
-# Native Today — 5 October 2026
+# Native Today — 6 October 2026
 
-Today is now delivered in the clean compiled **build 8**, installed and running on
-the owner phone and user-ready simulator. [The build-8 record](personal-ios-build8.md)
-contains the green native CI, actual-release accessibility checks and installation
-receipts. The earlier JavaScript-preview evidence below remains separate.
+Today and shared preferences are included in clean compiled **build 10**, installed
+over build 9 on the owner phone and running on the user-ready simulator. Phone
+launch is blocked by iOS device lock; simulator launch, its unchanged 23 data
+tables and installation identity are verified. [The build-10 record](personal-ios-build10.md)
+contains green native CI and installation receipts. The preceding build-8/build-9
+accessibility checks and JavaScript-preview evidence below retain their original
+artifact provenance.
 
 Today now offers up to eight people, with one card per person and explicit reminder,
 birthday and check-in reasons. It includes the most recent recorded interaction.
@@ -26,7 +29,8 @@ that reminder to tomorrow, three days or next week at 9 AM. Both screens use the
 same reminder action implementation, preserving stale-date/account guards and
 the distinction between a durable CRM save and unconfirmed native delivery.
 A separate birthday/check-in reason stays visible after a reminder is completed
-or moved. The shared birthday/check-in preference implementation below is verified in a separate preview and awaits clean-build delivery and server rollout.
+or moved. Shared birthday/check-in preferences were delivered in clean build 9
+and remain in build 10; their migration-44-compatible server extension is live.
 
 Choice lists scroll with a persistent Cancel control. At the largest accessibility
 text size, the earlier UIAlert put Cancel below the visible area and XCTest
