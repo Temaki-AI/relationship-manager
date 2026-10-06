@@ -9,8 +9,9 @@ and its parent; this does not negate the successful native Release checks.
 
 The parser adapters below are included in installed build 10. Its native
 compilation/startup and offline validation pass; current phone launch is blocked
-by the device lock. Build 12 retains these dependency versions and is undergoing
-its own native validation.
+by the device lock. Build 12 retains these dependency versions. Its native device
+and simulator Release builds, startup and offline journey pass in CI 37402857771;
+the signed candidate also preserves the existing synthetic QA cache on upgrade.
 
 ## Compatible patches applied
 

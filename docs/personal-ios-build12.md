@@ -1,10 +1,11 @@
 # Personal iOS build 12 candidate
 
 Status on 6 October 2026: source implementation and local validation pass. The
-iPhone Release job passes and its exact artifact is signed locally; simulator
-Release/startup/offline validation continues in
+iPhone and simulator Release jobs, native startup and the full offline journey
+pass in
 [CI 37402857771](https://github.com/Temaki-AI/relationship-manager/actions/runs/37402857771).
-Build 12 has not been installed. The phone
+The exact iPhone artifact is signed locally. Build 12 was installed and launched
+only on the isolated synthetic QA simulator. The phone
 and user-ready simulator retain build 10. Its current phone launch is denied by
 iOS because the device is locked. No personal database has been copied or reset.
 
@@ -54,9 +55,25 @@ JavaScript bundle retains SHA-256
 | Artifact | SHA-256 |
 | --- | --- |
 | Device archive | `a32f2cc13ce4260f97f0338196044e7cb250dc2a02fa0d5a1dc6465297724849` |
+| Simulator archive | `be5d94bce474983f0f54d6c74f4f8056fd352d5f1f77b5ef875787860787345f` |
 | Signed IPA | `5e3698a531beaf6cf52c938138cbc7b850cbdf4fb914944839a160c861a16098` |
 
-Final simulator evidence and compatible server rollout remain required before installation.
+The downloaded XCTest result independently reports one pass, zero failures/skips,
+and `testOfflineJournalAndRestart()` taking **445.068 seconds**. The downloaded
+first-launch screenshot was inspected and shows the Google account welcome screen.
+The simulator archive matches the same CI merge, reports build 12 and passes its
+checksum/native-linkage verification. Its original bundle hash is
+`c7ef81c591a3410bbfdd38943dd06303c40e281574569068bb9d68a5a22a38fc`.
+
+The existing local-only QA simulator (four explicitly named QA fixtures) upgrades
+from schema 16 to 18 using the unmodified CI binary. Fingerprints of every row in
+all 23 original data tables remain identical; installation/account metadata remain
+byte-identical except `schema-version`. Both new outboxes are empty. SQLite integrity
+and foreign keys pass. The app was verified running as process 32585;
+its Today screen was inspected before the QA simulator was shut down, preserving
+the fixtures. This proves test-cache continuity, not the owner's phone field equality.
+
+A compatible server rollout remains required before replacing the personal installation.
 Production remains on migration 44; migrations 45–50 and the matching Calendar
 endpoint remain undeployed. The unavailable-server gate retains the original draft
 and receipt. A verified matching server rollout is required before replacing the

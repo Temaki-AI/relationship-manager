@@ -31,7 +31,9 @@ provider pilots and physical accessibility/privacy checks remain open. Build 10
 removes the image/URI decoder findings with verified dependency adapters. The
 build-11 candidate's shared Calendar reservations pass native Release validation.
 Build-12 source adds explicit legacy/recovery verification and durable immutable
-review requests; its compilation and matching server rollout remain pending.
+review requests; both native Release builds, startup and the offline journey pass.
+The signed package and QA cache-upgrade checks pass; matching server rollout remains
+pending before replacing the installed personal build 10.
 Google/EventKit identity and arbitrary selected Apple event context remain beta work.
 Unresolved dependency advisories still block public release. See
 [Calendar coordination](calendar-publication-coordination.md),

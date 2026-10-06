@@ -1,9 +1,10 @@
 # Shared Calendar publication coordination
 
 Status on 6 October 2026: build 11 passes both native Release builds, startup and
-the full offline journey; build-12 source adds explicit legacy/recovery verification.
+the full offline journey; build 12 adds explicit legacy/recovery verification and
+also passes native Release/startup/offline checks and the synthetic cache upgrade.
 Production remains on migration 44 and the phone/simulator retain verified build
-10. Migrations 49–50 and these native candidates have not been deployed or installed.
+10. Migrations 49–50 remain undeployed and the personal installations are unchanged.
 Shared publication coordination is not live.
 
 New system Calendar publications acquire an account-wide reservation before
@@ -75,8 +76,8 @@ Native cancellation/release acknowledgement checks pass, and all 22 mobile packa
 tests, types, lint, Hermes export, Cloudflare build and Worker dry run pass. Final
 native release evidence belongs in
 [the build-11 record](personal-ios-build11.md). Build-12 validation is recorded
-separately in [its candidate record](personal-ios-build12.md); the schema-17 binaries
-do not establish native Release validation for schema 18.
+separately in [its candidate record](personal-ios-build12.md), with its own schema-18
+binaries, downloaded test result and all-row synthetic cache preservation.
 
 Before rollout, rehearse production's migration-44-to-current upgrade using a
 recoverable backup and verify the matching middleware/Worker routing. Compile

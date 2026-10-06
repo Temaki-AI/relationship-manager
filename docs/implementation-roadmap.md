@@ -5,8 +5,10 @@ Release builds, startup and the full offline journey. Build-12 source adds
 explicit legacy and recovery verification with immutable schema-18 review
 requests. All 955 root cases pass collectively, along with 22 mobile tests,
 mobile validation, Cloudflare build and dry run. Real D1 passes 39 selected cases
-and all eight final native recovery cases. Build-12 compilation and matching
-production migrations/endpoint remain pending; build 10 remains installed.
+and all eight final native recovery cases. Build 12 passes both native Release
+builds, startup and the full offline journey and runs on the isolated QA simulator,
+preserving its existing cache. Matching production migrations/endpoint remain
+pending; build 10 remains the installed personal release.
 Cross Google/EventKit identity, arbitrary selected Apple event context and real
 provider/owner pilots remain beta work. See
 [Calendar coordination](calendar-publication-coordination.md) and

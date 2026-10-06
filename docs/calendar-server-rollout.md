@@ -2,8 +2,10 @@
 
 Status on 6 October 2026: a Calendar-only candidate is prepared in the restored
 managed `shared-prompt-rollout` worktree. Production remains unchanged at Worker
-`370949af-afef-44e2-8578-900625e1ce0d`, migration 44. Native build 12 is being
-compiled separately in CI 37402857771; build 10 remains installed.
+`370949af-afef-44e2-8578-900625e1ce0d`, migration 44. Native build 12 passes both
+Release builds, startup and the full offline journey in CI 37402857771. It is
+signed and verifies cache preservation on the isolated QA simulator; build 10
+remains the installed personal version.
 
 The server candidate starts at the actual deployed source
 `d741d51921d7686ef9379e1476e75bb9c5ed3717`. Its Calendar API, shared plan guards,

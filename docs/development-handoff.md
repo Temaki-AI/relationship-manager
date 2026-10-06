@@ -24,17 +24,24 @@ All 955 root cases pass collectively (953 in the restricted run, two localhost
 cases in their permitted rerun), as do 22 mobile tests, types/lint, Hermes export,
 Cloudflare build and dry run. The selected D1 suite passes 39 cases; all eight
 native recovery cases pass again after strengthening queued-edit preservation.
-Build 12's device Release job passes; its matching downloaded artifact is signed
-locally with archive/source/bundle/signature checks passing. Simulator validation
-continues in CI 37402857771. The Calendar-only server candidate is saved as local
+Build 12 passes both Release jobs, startup and the full offline journey in
+CI 37402857771. The downloaded result independently reports one pass, no failures
+or skips, in 445.068 seconds. Both matching artifacts pass source/archive/linkage
+checks; the iPhone package is signed and its unchanged bundle and final strict
+signature pass. The isolated local-only QA simulator upgrades schema 16-to-18,
+retaining all 23 original data tables, four guarded contacts and installation
+metadata except the schema marker. Its inspected Today screen runs as process
+32585 before the QA simulator is shut down; the phone/user-ready simulator retain
+build 10. The Calendar-only server candidate is saved as local
 commit `d8fb137` on the deployed baseline, with 814 cases collectively passing and
 31 Calendar plus three Today cases passing on real D1. A production export was
 rejected by automatic approval review; the explicit private-backup permission
 request is pending. No migration, deployment or personal installation occurred.
 The full Worker readiness fix separately requires both Gmail migration 48 and
-Calendar migration 50; its two readiness tests using real disposable D1 pass. This cloud-only
-change does not change the frozen build-12 native source. Publication of these
-follow-up records waits for the existing native run to finish to avoid cancelling it.
+Calendar migration 50; its two readiness tests using real disposable D1 pass.
+Follow-up types, Cloudflare compilation and dry run also pass. Native source is
+unchanged from the verified artifact; these cloud-only fixes and release records
+need no additional native compilation.
 See [Calendar coordination](calendar-publication-coordination.md) and
 [the build-12 candidate](personal-ios-build12.md). Production migration 44 and the
 installed build 10 are unchanged. Real Calendar effects, cross Google/EventKit
