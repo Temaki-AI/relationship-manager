@@ -3,9 +3,10 @@
 The remaining security gate is active; no advisory is suppressed and no audit
 severity threshold is lowered. Signed personal iOS build 10 is installed; its
 provenance is recorded separately. The public audit gate remains open. The
-6 October root audit in CI 37399778819 reports nine affected packages: seven high
-and two moderate. The additional moderate findings involve postcss-selector-parser
-and its parent; this does not negate the successful native Release checks.
+6 October root audit in CI 37399778819 reported nine affected packages: seven high
+and two moderate. A later scoped CSS-parser patch removes the two moderate findings;
+the fresh local root audit reports seven high and zero moderate. The audit still
+exits unsuccessfully, retaining the public release gate.
 
 The parser adapters below are included in installed build 10. Its native
 compilation/startup and offline validation pass; current phone launch is blocked
@@ -85,11 +86,33 @@ The preceding root audit reported seven high findings; the later CI result above
 adds two moderate affected packages. Braces 3.0.3 and node-forge 1.4.0 remained
 unpatched in the preceding review. Dependency versions and audit thresholds have
 not changed in the Calendar work; the public security gate remains open.
-No root dependency, production Worker, provider grant or database migration changes
-in this slice. Native build-10 run 37391200805 now passes both Release builds,
+No root dependency, production Worker, provider grant or database migration changed
+in that image/URI slice. Native build-10 run 37391200805 now passes both Release builds,
 linkage/startup and its complete offline journey (452.447 seconds, one pass and
 zero failures/skips). Its exact signed artifact upgrades the phone from build 9;
 fresh metadata verifies build 10, while iOS blocks launch because the phone is
 locked. The matching simulator runs with all 23 data tables and installation
 identity unchanged. See [the build-10 record](personal-ios-build10.md). The preceding
 passing build-9 delivery stays separately recorded.
+
+## CSS selector parser compatibility — 6 October 2026
+
+Scoped root overrides select postcss-selector-parser 7.1.6 for Tailwind and
+postcss-nested. The lockfile changes only that parser; Tailwind remains 3.4.19,
+postcss-nested remains 6.2.0 and all native dependencies retain their versions.
+The patch closes the [flat-selector CPU-exhaustion advisory](https://github.com/advisories/GHSA-rj75-hqrm-r3gf).
+Upstream 7.0 changed insertion during iteration, so compatibility is verified
+through the actual styling pipeline rather than inferred from the patch version.
+
+The complete stylesheet generated from the current app sources is byte-identical
+with the previous 6.1.4 parser and patched 7.1.6 parser: 74,018 bytes, SHA-256
+`c979eea17bbcd9e76c57615508ca95192c3aceeef94d81cc5514eeceb230ce2e`.
+Separate interactive/responsive utility and nested-selector fixtures also retain
+identical output. Two persistent integration cases cover group/peer, ARIA/data,
+focus-visible, responsive/dark selectors, nested rules and a 400 KB flat selector
+in a subprocess with an enforceable deadline. Both cases pass with no skips.
+Type checking, full lint, Cloudflare production build and Worker dry run pass; standalone
+packaging excludes database/environment files. The fresh root audit drops from
+nine affected packages (seven high/two moderate) to seven high/zero moderate.
+This patch does not change the installed phone or deploy production. Unresolved
+high findings, Google data OAuth and the integration pilots remain open.

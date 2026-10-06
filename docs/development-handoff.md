@@ -47,6 +47,16 @@ See [Calendar coordination](calendar-publication-coordination.md) and
 installed build 10 are unchanged. Real Calendar effects, cross Google/EventKit
 identity and arbitrary selected Apple event context still require completion.
 
+A scoped root CSS-parser patch removes the two moderate audit findings, leaving
+seven high and zero moderate. Tailwind and native package versions are unchanged;
+only postcss-selector-parser changes to 7.1.6. The complete app stylesheet remains
+byte-identical to the original parser, as do interactive/nested selector fixtures.
+Both new compatibility/security cases, types, full lint, Cloudflare build and
+Worker dry run pass. This does not deploy production or change native build 12.
+The redundant native run 37407591330 is confirmed cancelled with native paths
+identical to the successful build-12 source. See
+[dependency security](dependency-security.md) for the patch and remaining gate.
+
 The redundant doc-only-head native run 37395171458 was cancelled after confirming
 its native source matched the delivered build-10 source. Existing build-10 native
 CI remains successful. General CI 37395172147 on `efd3df3` passes 919 root tests
