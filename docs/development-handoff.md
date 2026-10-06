@@ -11,17 +11,24 @@ passes both Release builds, startup and the complete offline journey in 452.447
 seconds (one pass, zero failures/skips). No personal database was copied or reset.
 [The build-10 record](personal-ios-build10.md) contains exact provenance and receipts.
 
-The build-11 source candidate adds shared Calendar publication reservations and
-schema-17 native acknowledgement persistence. It coordinates new upgraded phone
-and web publishers, retaining drafts and exact uncertain requests across restart.
-All 939 regression cases and an additional actual middleware/dispatcher journey
-pass, along with 23 selected D1 cases and the actual routing journey on D1. Mobile
-package tests, types/lint, Hermes export, Cloudflare build and dry run pass.
-The endpoint/migration 49 remain undeployed, and build 11
-is not compiled or installed. Legacy Apple receipt adoption, reauthentication/
-recovery reconciliation and Google/EventKit identity review remain outstanding.
+Build 11's shared Calendar reservations and schema-17 outbox pass both native
+Release builds, startup and the full offline journey in CI 37399778847. The
+downloaded result reports one pass, zero failures/skips and a 430.760-second
+journey; source/artifact provenance and archive hashes pass independently.
+It is compiled but not installed. See [the build-11 record](personal-ios-build11.md).
+
+The build-12 source candidate adds explicit original-event verification for legacy
+receipts, new sign-ins and recovery, preserving the original publisher/epoch and
+uncertain request bodies. Schema 18 preserves every existing schema-17 data table.
+All 955 root cases pass collectively (953 in the restricted run, two localhost
+cases in their permitted rerun), as do 22 mobile tests, types/lint, Hermes export,
+Cloudflare build and dry run. The selected D1 suite passes 39 cases; all eight
+native recovery cases pass again after strengthening queued-edit preservation.
+Native build 12 and the matching server migrations/endpoint remain pending.
 See [Calendar coordination](calendar-publication-coordination.md) and
-[the build-11 candidate](personal-ios-build11.md). Build 10 is unchanged.
+[the build-12 candidate](personal-ios-build12.md). Production migration 44 and the
+installed build 10 are unchanged. Real Calendar effects, cross Google/EventKit
+identity and arbitrary selected Apple event context still require completion.
 
 The redundant doc-only-head native run 37395171458 was cancelled after confirming
 its native source matched the delivered build-10 source. Existing build-10 native

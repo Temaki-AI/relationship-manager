@@ -1,6 +1,46 @@
 import { contactMethodsBackfillSql } from '../../../../packages/domain/src/contact-method-storage.ts';
 export const MOBILE_DATABASE_NAME = 'bonds-mobile.db';
-export const MOBILE_SCHEMA_VERSION = 17;
+export const MOBILE_SCHEMA_VERSION = 18;
+
+export const MOBILE_CALENDAR_PUBLICATION_REVIEW_MIGRATION_SQL = `
+  CREATE TABLE apple_calendar_publication_reviews (
+    id TEXT PRIMARY KEY NOT NULL,
+    receipt_id TEXT NOT NULL REFERENCES apple_calendar_receipts(id),
+    account_scope TEXT NOT NULL,
+    device_id TEXT NOT NULL,
+    epoch TEXT NOT NULL,
+    plan_id TEXT NOT NULL,
+    private_revision INTEGER NOT NULL CHECK (private_revision > 0),
+    request_json TEXT NOT NULL CHECK (json_valid(request_json)),
+    attempted INTEGER NOT NULL DEFAULT 0 CHECK (attempted IN (0, 1)),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'held', 'superseded')),
+    server_revision INTEGER,
+    server_status TEXT,
+    server_creation_epoch TEXT,
+    last_error TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX idx_apple_calendar_publication_review_pending ON apple_calendar_publication_reviews(status, receipt_id);
+  CREATE TRIGGER apple_calendar_publication_review_insert BEFORE INSERT ON apple_calendar_publication_reviews BEGIN
+    SELECT CASE WHEN NEW.account_scope IS NOT (SELECT value FROM app_metadata WHERE key = 'account-scope')
+      OR NEW.status != 'pending' OR NEW.attempted != 0 OR NEW.id = NEW.receipt_id
+      OR NEW.epoch IS NOT json_extract((SELECT value FROM app_metadata WHERE key = 'sync-cursor-v4'), '$.epoch')
+      OR NOT EXISTS (SELECT 1 FROM apple_calendar_receipts r WHERE r.id = NEW.receipt_id AND r.plan_id = NEW.plan_id
+        AND r.account_scope = NEW.account_scope AND r.revision = NEW.private_revision AND r.attempted = 1 AND r.status = 'verified' AND r.read_epoch = NEW.epoch
+        AND json_extract(r.facts, '$.url') = ('bonds://calendar/apple/' || NEW.plan_id || '?receipt=' || NEW.receipt_id)
+        AND json_extract(r.facts, '$.cancelled') = 0 AND json_extract(r.facts, '$.recurring') = 0)
+      THEN RAISE(ABORT, 'APPLE_CALENDAR_PUBLICATION_REVIEW_INVALID') END;
+  END;
+  CREATE TRIGGER apple_calendar_publication_review_guard BEFORE UPDATE ON apple_calendar_publication_reviews BEGIN
+    SELECT CASE WHEN NEW.id IS NOT OLD.id OR NEW.receipt_id IS NOT OLD.receipt_id OR NEW.account_scope IS NOT OLD.account_scope
+      OR NEW.device_id IS NOT OLD.device_id OR NEW.epoch IS NOT OLD.epoch OR NEW.plan_id IS NOT OLD.plan_id
+      OR NEW.private_revision IS NOT OLD.private_revision OR NEW.request_json IS NOT OLD.request_json OR NEW.created_at IS NOT OLD.created_at
+      OR NEW.attempted < OLD.attempted OR NEW.status = 'confirmed' AND NEW.attempted != 1
+      OR OLD.status = 'confirmed' AND NEW.status != 'confirmed' OR OLD.status = 'superseded' AND NEW.status != 'superseded'
+      THEN RAISE(ABORT, 'APPLE_CALENDAR_PUBLICATION_REVIEW_INVALID') END;
+  END;
+`;
 
 // Calendar coordination is separate from the immutable, private EventKit receipt
 // and the frozen version-4 CRM outbox. Existing receipts are never uploaded.

@@ -7,6 +7,7 @@ import { contextForEditing, type ContextRecord } from './context';
 import { enqueueSyncIntent } from './sync-queue';
 import { signalSyncChange } from './sync-signals';
 import { authorizeCalendarEditor, localCalendarReservation, queueCalendarEditorResult, releaseCalendarReservation, syncCalendarReservations } from './calendar-reservations';
+import { latestCalendarPublicationReview } from './calendar-publication-reviews';
 type DB = SQLiteDatabase;
 export type AppleCalendarReceipt = { id: string; account_scope: string; epoch: string | null; plan_id: string; plan_fingerprint: string; request_json: string; attempted: number;
   event_id: string | null; calendar_id: string | null; status: string; issue: string | null; facts: string | null; follow_date: number; read_enabled: number; read_epoch: string | null; last_plan_date: string | null; last_read_at: string | null; revision: number };
@@ -37,6 +38,7 @@ export async function appleCalendarReview(db: DB, planId: string, operationId?: 
   if (operationId && !receipt) throw new Error('This Calendar receipt is not available in the active account on this phone.');
   const person = plan ? await db.getFirstAsync<{ name: string }>('SELECT name FROM contacts WHERE id = ? AND deleted_at IS NULL', plan.contact_id) : null;
   return { plan, person, receipt, publication: receipt ? await localCalendarReservation(db, receipt.id) : null,
+    publicationReview: receipt ? await latestCalendarPublicationReview(db, receipt.id) : null,
     epoch: await epoch(db), planFingerprint: await planHash(plan), linkedEventId: (await linkedEvent(db, planId))?.id ?? null };
 }
 export async function holdAppleCalendarForEpoch(db: DB, current: string) {

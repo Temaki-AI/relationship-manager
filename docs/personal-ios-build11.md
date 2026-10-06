@@ -1,7 +1,8 @@
 # Personal iOS build 11 candidate
 
-Status on 6 October 2026: source implementation and local verification pass.
-Build 11 is not compiled, signed, installed or running yet. Build 10 remains
+Status on 6 October 2026: both native Release builds, startup and the complete
+offline journey pass in [CI 37399778847](https://github.com/Temaki-AI/relationship-manager/actions/runs/37399778847).
+Build 11 is compiled, but has not been signed locally or installed. Build 10 remains
 installed on TIE Fighter and runs in the Everclose Build 10 simulator; the current
 phone launch remains blocked by its device lock.
 
@@ -29,9 +30,22 @@ dispatcher journey, all passing with zero skips. The 23 native Calendar cases
 include lost reserve/attempt/result/cancellation/release replies and restart.
 Real disposable D1 passes 23 selected Calendar cases and the additional routing
 journey. All 22 mobile package tests, mobile/root types and lint, Hermes export,
-Cloudflare build and Worker dry run pass. Native compilation, artifact
-provenance, signatures, hashes, installation and launch must be recorded when
-actually verified; build-10 evidence does not establish those results for build 11.
+Cloudflare build and Worker dry run pass. The downloaded XCTest result independently
+reports one pass, zero failures/skips, with `testOfflineJournalAndRestart()` taking
+430.760 seconds. Device and simulator artifacts report version 1.0.0/build 11,
+Xcode 26.4.1/build 17E202 and CI merge
+`fbb98ee60d974875c8f77004d2ac51c629e14e48`. GitHub comparison finds no changed files
+against source `88282f2f7108b9cad451cee53c437663b0f66919`. Both archive checksums and
+native linkage pass; their original JavaScript bundles have not been replaced.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Device archive | `8368c3fba3311109208600b65b6696076cf3681279d344e8f6eb8c84bcd084b8` |
+| Simulator archive | `7c8709d7d3e4dacabc58873544d8ea7a980f9d776a90af775f82ccb531ed39f7` |
+
+Local signing, installation and launch remain unverified for this candidate.
+Build-12 recovery changes are separate source work and are not covered by these
+build-11 binaries.
 
 Private local evidence uses `/private/tmp/everclose-calendar-coordination-*`,
 `everclose-calendar-final-native-cases.log`, `everclose-calendar-reservation-d1-serial.log`

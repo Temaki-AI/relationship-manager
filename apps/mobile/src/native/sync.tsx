@@ -12,6 +12,7 @@ import { accountScope } from '../../../../packages/domain/src/devices';
 import { registerPrivateAccountCache } from './private-account-cache';
 import { syncPromptSnoozes } from '@/data/today-snoozes';
 import { syncCalendarReservations } from '@/data/calendar-reservations';
+import { syncCalendarPublicationReviews } from '@/data/calendar-publication-reviews';
 
 type NativeSyncContextValue = { syncing: boolean; error: string | null; gmailError: string | null; promptError: string | null; calendarError: string | null; summary: SyncSummary; revision: number; run: () => Promise<void> };
 const NativeSyncContext = createContext<NativeSyncContextValue | null>(null);
@@ -35,8 +36,12 @@ export function NativeSyncProvider({ children }: { children: ReactNode }) {
       const calendarReads = account && Platform.OS === 'ios' ? await refreshAppleCalendarReads(db, account, appleCalendarAdapter, () => generation.current === current) : { changed: 0 };
       if (account && (sourceReads.changed || calendarReads.changed) && generation.current === current) await syncWorkspace(db, account, { isCurrent: () => generation.current === current });
       if (account && generation.current === current) {
-        try { await syncCalendarReservations(db, account, { isCurrent: () => generation.current === current }); if (generation.current === current) setCalendarError(null); }
-        catch (error) { if (generation.current === current) setCalendarError(error instanceof Error ? error.message : 'Unable to confirm Calendar publication.'); }
+        let calendarFailure: string | null = null;
+        try { await syncCalendarPublicationReviews(db, account, { isCurrent: () => generation.current === current }); }
+        catch (error) { calendarFailure = error instanceof Error ? error.message : 'Unable to confirm Calendar verification.'; }
+        try { await syncCalendarReservations(db, account, { isCurrent: () => generation.current === current }); }
+        catch (error) { calendarFailure ??= error instanceof Error ? error.message : 'Unable to confirm Calendar publication.'; }
+        if (generation.current === current) setCalendarError(calendarFailure);
         try { await syncPromptSnoozes(db, account, { isCurrent: () => generation.current === current }); if (generation.current === current) setPromptError(null); }
         catch (error) { if (generation.current === current) setPromptError(error instanceof Error ? error.message : 'Unable to sync prompt choices.'); }
         try { await refreshGmailManifest(db, account, { isCurrent: () => generation.current === current }); if (generation.current === current) setGmailError(null); }

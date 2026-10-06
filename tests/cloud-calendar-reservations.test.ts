@@ -8,6 +8,7 @@ import { getCloudApiRewrite } from '../lib/cloud/api-rewrite.ts';
 import type { DeviceActor } from '../lib/cloud/device-api.ts';
 import { publicationPlanSnapshot } from '../packages/domain/src/calendar-reservations.ts';
 import { fingerprintIdempotencyInput } from '../lib/idempotency.ts';
+import { appleCalendarUrl } from '../packages/domain/src/apple-calendar.ts';
 
 test('native snapshot serialization retains the existing Google plan fingerprint, including Unicode private fields', () => {
   const plan = { public_id: crypto.randomUUID(), contact_public_id: crypto.randomUUID(), type: 'meetup',
@@ -37,6 +38,129 @@ async function fixture() {
   const rows = async () => (await f.h.db.prepare('SELECT * FROM calendar_publication_reservations').all()).results;
   return { f, p, q, epoch, api, read, body, mutate, next, rows, close: () => f.h.close() };
 }
+
+async function verification(t: Awaited<ReturnType<typeof fixture>>, receiptId: string, overrides = {}) {
+  const state = await t.f.h.db.prepare("SELECT epoch FROM workspace_sync_state WHERE workspace_id = 'test'").first<{ epoch: string }>();
+  const preview = await t.api.readCalendarReservation(t.f.h.db, t.q.actor, t.f.plan.public_id, state!.epoch, receiptId);
+  return { action: 'reconcile', operation_id: crypto.randomUUID(), receipt_id: receiptId, plan_id: t.f.plan.public_id,
+    expected_epoch: state!.epoch, expected_reservation_revision: preview.reservation?.revision ?? null,
+    expected_plan_fingerprint: preview.plan_fingerprint!, observed_marker: appleCalendarUrl(t.f.plan.public_id, receiptId), ...overrides };
+}
+
+test('an explicit original-marker verification adopts a legacy publication without a provider write and retains immutable replay evidence', async () => {
+  const t = await fixture(); try {
+    const id = crypto.randomUUID(), b = await verification(t, id);
+    const saved = await t.mutate(b, t.q.actor); assert.equal(saved.review_id, b.operation_id); assert.equal(saved.confirmed, true);
+    assert.equal(saved.reservation.id, id); assert.equal(saved.reservation.status, 'saved'); assert.equal(saved.reservation.attempted, true);
+    assert.deepEqual(await t.mutate(b, t.q.actor), saved);
+    await t.f.h.db.prepare('UPDATE plans SET notes = ? WHERE public_id = ?').bind('A later private correction', t.f.plan.public_id).run();
+    assert.deepEqual(await t.mutate(b, t.q.actor), saved); // Confirms the old commit without replacing the later plan edit.
+    await assert.rejects(t.mutate({ ...b, operation_id: crypto.randomUUID() }, t.q.actor), /current plan/);
+    await assert.rejects(t.mutate({ ...b, expected_reservation_revision: 1 }, t.q.actor), /original verification request/);
+    await assert.rejects(t.mutate(b, t.p.actor), /original verification request/);
+    const q = (await t.f.h.db.prepare('SELECT * FROM calendar_publication_reviews').all()).results;
+    assert.equal(q.length, 1); assert.equal(q[0].observed_marker, b.observed_marker); assert.equal(q[0].reviewing_device_id, t.q.actor.deviceId);
+    assert.equal(t.f.calls.length, 0); await assert.rejects(t.f.prepare(), /already has a Calendar publication/);
+    assert.ok(!JSON.stringify(saved).includes('PRIVATE')); assert.ok(!JSON.stringify(q).includes('PRIVATE'));
+  } finally { await t.close(); }
+});
+
+test('a fresh approved session reconciles a held original publication while preserving its creation identity and private plan', async () => {
+  const t = await fixture(); try {
+    const original = t.body(); await t.mutate(original); await t.mutate(t.next(original, 'attempt', 1));
+    await t.f.h.db.prepare('UPDATE device_sessions SET revoked_at = ? WHERE id = ?').bind(new Date().toISOString(), t.p.actor.deviceId!).run();
+    const before = (await t.rows())[0], review = await verification(t, original.operation_id);
+    const saved = await t.mutate(review, t.q.actor); assert.equal(saved.reservation.status, 'saved'); assert.equal(saved.reservation.on_this_phone, false);
+    const after = (await t.rows())[0];
+    for (const key of ['id', 'user_id', 'publisher_id', 'epoch', 'plan_fingerprint', 'request_fingerprint', 'created_at']) assert.equal(after[key], before[key], key);
+    assert.equal(after.revision, Number(before.revision) + 1); assert.equal(after.attempted, 1);
+    assert.deepEqual(await t.mutate(review, t.q.actor), saved); assert.equal(t.f.calls.length, 0);
+    const plan = await t.f.h.db.prepare('SELECT notes, summary, completed_at FROM plans WHERE public_id = ?').bind(t.f.plan.public_id).first();
+    assert.deepEqual(plan, { notes: 'PRIVATE PLAN NOTE', summary: 'PRIVATE PLAN SUMMARY', completed_at: null });
+    await assert.rejects(t.mutate(t.next(original, 'release', after.revision), t.q.actor), /another Calendar review/);
+  } finally { await t.close(); }
+});
+
+test('verification after actual restore acknowledges the original event under the current epoch without rewinding its claim or CRM history', async () => {
+  const t = await fixture(); try {
+    const original = t.body(); await t.mutate(original); await t.mutate(t.next(original, 'attempt', 1));
+    const backup = (await t.f.h.call('settings/backups', { method: 'POST' })).body.backup;
+    assert.equal((await t.f.h.call('settings/restore', { method: 'POST', body: { filename: backup.filename, confirmation: 'RESTORE' } })).status, 200);
+    const held = (await t.rows())[0], b = await verification(t, original.operation_id);
+    assert.notEqual(b.expected_epoch, original.expected_epoch); assert.equal(held.status, 'held');
+    await t.mutate(b, t.q.actor); const row = (await t.rows())[0]; assert.equal(row.status, 'saved'); assert.equal(row.epoch, original.expected_epoch);
+    assert.equal((await t.f.h.db.prepare('SELECT COUNT(*) n FROM interactions').first<{ n: number }>())!.n, 0);
+    const newBackup = (await t.f.h.call('settings/backups', { method: 'POST' })).body.backup;
+    const snapshot = (await t.f.h.call('settings/backups/' + newBackup.filename)).body;
+    assert.equal(snapshot.tables.calendar_publication_reviews, undefined); assert.equal(snapshot.tables.calendar_publication_reservations, undefined);
+    assert.equal((await t.f.h.call('settings/erase', { method: 'POST', body: { confirmation: 'ERASE ALL DATA' } })).status, 200);
+    assert.equal((await t.f.h.db.prepare('SELECT COUNT(*) n FROM calendar_publication_reviews').first<{ n: number }>())!.n, 0);
+    assert.equal((await t.rows()).length, 0);
+  } finally { await t.close(); }
+});
+
+test('a verified legacy event can retain publication status for a completed plan without changing completion/history', async () => {
+  const t = await fixture(); try {
+    await t.f.h.db.prepare('UPDATE plans SET completed_at = ? WHERE public_id = ?').bind('2026-10-05T12:00:00.000Z', t.f.plan.public_id).run();
+    const history = (await t.f.h.db.prepare('SELECT * FROM interactions').all()).results;
+    const b = await verification(t, crypto.randomUUID()); await t.mutate(b, t.q.actor);
+    assert.equal((await t.f.h.db.prepare('SELECT completed_at FROM plans WHERE public_id = ?').bind(t.f.plan.public_id).first())!.completed_at, '2026-10-05T12:00:00.000Z');
+    assert.deepEqual((await t.f.h.db.prepare('SELECT * FROM interactions').all()).results, history); assert.equal(t.f.calls.length, 0);
+  } finally { await t.close(); }
+});
+
+test('ambiguous providers, cancelled claims, mismatched markers and lost ownership cannot be adopted or release an external event', async () => {
+  const t = await fixture(); try {
+    const id = crypto.randomUUID(), b = await verification(t, id);
+    for (const patch of [{ observed_marker: appleCalendarUrl(t.f.plan.public_id, crypto.randomUUID()) }, { operation_id: id }, { event_id: 'PRIVATE' }, { result_action: 'canceled' }]) {
+      await assert.rejects(t.mutate({ ...b, ...patch }, t.q.actor), { status: 400 });
+    }
+    await assert.rejects(t.mutate(b, { ...t.q.actor, authMethod: 'web' }), { status: 403 });
+    await assert.rejects(t.mutate(b, { ...t.q.actor, workspaceId: 'other' }), { status: 401 });
+    await t.f.prepare(); await assert.rejects(t.mutate(b, t.q.actor), { status: 409 });
+    assert.equal((await t.f.h.db.prepare('SELECT * FROM calendar_publication_reviews').all()).results.length, 0);
+    assert.equal((await t.rows())[0].provider, 'google-calendar'); assert.equal((await t.rows())[0].attempted, 0);
+    assert.equal(t.f.calls.length, 0);
+  } finally { await t.close(); }
+  const u = await fixture(); try {
+    const original = u.body(); await u.mutate(original); await u.mutate(u.next(original, 'attempt', 1));
+    await u.mutate(u.next(original, 'result', 2, { result_action: 'canceled' }));
+    await assert.rejects(u.mutate(await verification(u, original.operation_id), u.q.actor), { status: 409 });
+    assert.equal((await u.rows())[0].status, 'cancelled');
+  } finally { await u.close(); }
+});
+
+test('authorization loss before a verification commit rolls back both legacy adoption and its review receipt', async () => {
+  const t = await fixture(); try {
+    const b = await verification(t, crypto.randomUUID());
+    const db = { ...t.f.h.db, prepare: t.f.h.db.prepare.bind(t.f.h.db), batch: async (statements: Parameters<typeof t.f.h.db.batch>[0]) => {
+      await t.f.h.db.prepare('UPDATE device_sessions SET revoked_at = ? WHERE id = ?').bind(new Date().toISOString(), t.q.actor.deviceId!).run();
+      return t.f.h.db.batch(statements);
+    } };
+    await assert.rejects(t.api.mutateCalendarReservation(db, t.q.actor, b), { status: 401 });
+    assert.equal((await t.rows()).length, 0); assert.equal((await t.f.h.db.prepare('SELECT * FROM calendar_publication_reviews').all()).results.length, 0);
+  } finally { await t.close(); }
+});
+
+test('migration 50 preserves every genuine migration-49 row and admits only review-backed adoption', async () => {
+  const t = await fixture(); try {
+    await t.f.prepare(); await t.f.advance();
+    await t.f.h.db.prepare('DROP TABLE calendar_publication_reviews').run();
+    await t.f.h.db.prepare('DROP TRIGGER calendar_reservation_insert_guard').run();
+    const old = readFileSync(new URL('../drizzle/0049_calendar_publication_reservations.sql', import.meta.url), 'utf8');
+    await t.f.h.db.prepare(old.match(/CREATE TRIGGER calendar_reservation_insert_guard[\s\S]*?\nEND;/)![0]).run();
+    const names = (await t.f.h.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name").all<{ name: string }>()).results.map((p) => p.name);
+    const before = new Map<string, string>();
+    for (const name of names) before.set(name, JSON.stringify((await t.f.h.db.prepare('SELECT * FROM "' + name + '"').all()).results));
+    const sql = readFileSync(new URL('../drizzle/0050_calendar_publication_reviews.sql', import.meta.url), 'utf8');
+    for (const statement of sql.split('--> statement-breakpoint')) if (statement.trim()) await t.f.h.db.prepare(statement).run();
+    for (const name of names) assert.equal(JSON.stringify((await t.f.h.db.prepare('SELECT * FROM "' + name + '"').all()).results), before.get(name), name);
+    assert.equal((await t.f.h.db.prepare('SELECT * FROM calendar_publication_reviews').all()).results.length, 0);
+    assert.equal((await t.f.h.db.prepare('PRAGMA foreign_key_check').all()).results.length, 0);
+    await assert.rejects(t.f.h.db.prepare("INSERT INTO calendar_publication_reservations (id, workspace_id, user_id, plan_public_id, provider, publisher_id, epoch, plan_fingerprint, request_fingerprint, status, attempted, created_at, updated_at) VALUES (?, 'test', 'owner', ?, 'apple-calendar', ?, ?, ?, ?, 'saved', 1, ?, ?)")
+      .bind(crypto.randomUUID(), t.f.plan.public_id, t.q.actor.deviceId!, t.epoch, 'a'.repeat(64), 'b'.repeat(64), new Date().toISOString(), new Date().toISOString()).run(), /CALENDAR_RESERVATION_INVALID/);
+  } finally { await t.close(); }
+});
 
 test('two phones competing for one plan acquire one durable reservation without sharing event details', async () => {
   const t = await fixture(); try {

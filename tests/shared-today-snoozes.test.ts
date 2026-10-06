@@ -177,7 +177,7 @@ test('schema 16 migration preserves the existing journal and rolls back a failed
   const f = await todaySnoozeFixture(); try {
     const local = await f.phone.contacts.createContact(f.phone.db, { name: 'Migration person', notes: 'Keep this private note' });
     await f.phone.reminders.createReminder(f.phone.db, { contactId: local.id, title: 'Keep my reminder', remindAt: new Date(Date.now() + 86_400_000) }, null);
-    f.phone.sqlite.exec("DROP TABLE apple_calendar_reservations; DROP TABLE today_snooze_queue; DROP TABLE today_snoozes; PRAGMA user_version = 15; UPDATE app_metadata SET value = '15' WHERE key = 'schema-version';");
+    f.phone.sqlite.exec("DROP TABLE apple_calendar_publication_reviews; DROP TABLE apple_calendar_reservations; DROP TABLE today_snooze_queue; DROP TABLE today_snoozes; PRAGMA user_version = 15; UPDATE app_metadata SET value = '15' WHERE key = 'schema-version';");
     const tables = f.phone.sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != 'app_metadata' ORDER BY name").all().map((r: { name: string }) => r.name);
     const before = Object.fromEntries(tables.map((name: string) => [name, f.phone.sqlite.prepare(`SELECT * FROM "${name}" ORDER BY rowid`).all()]));
     const failed = { ...f.phone.db, execAsync: async (sql: string) => { if (sql.includes('CREATE TABLE today_snoozes')) throw new Error('Injected migration failure'); return f.phone.db.execAsync(sql); },
@@ -186,7 +186,7 @@ test('schema 16 migration preserves the existing journal and rolls back a failed
     assert.equal(f.phone.sqlite.pragma('user_version', { simple: true }), 15);
     assert.equal(f.phone.sqlite.prepare("SELECT name FROM sqlite_master WHERE name = 'today_snoozes'").get(), undefined);
     await f.phone.database.migrateDatabase(f.phone.db);
-    assert.equal(f.phone.sqlite.pragma('user_version', { simple: true }), 17);
+    assert.equal(f.phone.sqlite.pragma('user_version', { simple: true }), 18);
     assert.equal(f.phone.sqlite.pragma('integrity_check', { simple: true }), 'ok');
     assert.deepEqual(Object.fromEntries(tables.map((name: string) => [name, f.phone.sqlite.prepare(`SELECT * FROM "${name}" ORDER BY rowid`).all()])), before);
     assert.equal(f.phone.sqlite.prepare('SELECT COUNT(*) n FROM today_snooze_queue').get().n, 0);

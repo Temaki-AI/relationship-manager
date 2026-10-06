@@ -7,6 +7,7 @@ import { ActionButton, Surface } from '@/components/design-system';
 import { appleCalendarReview, prepareAppleCalendar, discardAppleCalendar, openAppleCalendarEditor, verifyAppleCalendar, findAppleCalendar, disableAppleCalendarReads, editAppleCalendar } from '@/data/apple-calendar';
 import { appleCalendarAdapter as adapter } from '@/native/apple-calendar';
 import { readSharedCalendarReservation, syncCalendarReservations } from '@/data/calendar-reservations';
+import { queueVerifiedCalendarPublication, syncCalendarPublicationReviews } from '@/data/calendar-publication-reviews';
 import { useNativeAccount } from '@/native/account';
 import { useNativeSync } from '@/native/sync';
 import { accountScope } from '../../../../../../packages/domain/src/devices';
@@ -34,7 +35,7 @@ export default function AppleCalendarScreen() {
   const [calendarId, setCalendarId] = useState(''), [searchStart, setSearchStart] = useState(''), [searchEnd, setSearchEnd] = useState(''), [candidate, setCandidate] = useState<AppleCalendarFacts | null>(null);
   const [calendarPage, setCalendarPage] = useState(0);
   const [sharedReview, setSharedReview] = useState<{ session: string; planId: string; text: string } | null>(null);
-  const scope = accountScope(account), session = `${scope}:${account?.deviceId ?? ''}`, active = useRef(false), currentSession = useRef(session), busyRef = useRef(false), initialized = useRef('');
+  const scope = accountScope(account), session = `${scope}:${account?.deviceId ?? ''}:${id}`, active = useRef(false), currentSession = useRef(session), busyRef = useRef(false), initialized = useRef('');
   useEffect(() => { currentSession.current = session; active.current = true; return () => { active.current = false; }; }, [session]);
   const sharedStatus = sharedReview?.session === session && sharedReview.planId === id ? sharedReview.text : '';
   const isCurrent = useCallback(() => active.current && currentSession.current === session, [session]);
@@ -83,6 +84,14 @@ export default function AppleCalendarScreen() {
     await verifyAppleCalendar(db, account, receipt.id, { ...proof, reads, follow }, adapter, isCurrent, selected);
     setCandidate(null);
   }
+  async function verifyAndShare() {
+    if (!account || !receipt) return;
+    await verify();
+    const fresh = await appleCalendarReview(db, id, receipt.id);
+    if (!fresh.receipt || !isCurrent()) throw new Error('The active Calendar review changed.');
+    await queueVerifiedCalendarPublication(db, account, receipt.id, fresh.receipt.revision, { isCurrent });
+    await syncCalendarPublicationReviews(db, account, { isCurrent });
+  }
   return <>
     <Stack.Screen options={{ title: 'Plan in Calendar' }} />
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -113,6 +122,13 @@ export default function AppleCalendarScreen() {
       {receipt && <Surface style={styles.panel}>
         <Text style={styles.heading}>{statusLabels[receipt.status] ?? 'Calendar receipt'}</Text>
         <Text style={styles.body}>Last review: {title} · {start} → {end}</Text>
+        {review.publicationReview && <>
+          <Text style={styles.body}>{review.publicationReview.status === 'confirmed'
+            ? review.publicationReview.server_status === 'saved' ? 'The verified original publication is confirmed across your account.' : 'The verification was acknowledged; the original publication now needs review.'
+            : review.publicationReview.status === 'pending' ? 'Original-event verification is saved and awaits shared confirmation. The editor will not open again.'
+              : 'The earlier verification is retained. Verify the original event again before sharing its status.'}</Text>
+          {review.publicationReview.status === 'pending' && <ActionButton label="Confirm original-event verification" variant="quiet" disabled={busy} onPress={() => { void run(() => syncCalendarPublicationReviews(db, account, { isCurrent })); }} />}
+        </>}
         {review.publication && <>
           <Text style={styles.body}>{review.publication.status === 'confirmed' ? 'Publication status confirmed across your account.'
             : review.publication.status === 'released' ? 'This Calendar reservation was released.'
@@ -131,6 +147,9 @@ export default function AppleCalendarScreen() {
             <Choice label="Follow the event date for this plan" value={follow} change={(value) => { setFollow(value); if (value) setReads(true); }} /></>}
           {!!receipt.event_id && <ActionButton label="Verify original event" disabled={busy} onPress={() => Alert.alert('Read the original Calendar event?', `Allow Calendar reading to verify this receipt.${reads ? ' Keep its facts updated while this phone is running.' : ''}${follow ? ' Use its date for this plan now and follow later date changes.' : ''} Notes and completion history are retained.`, [
             { text: 'Cancel', style: 'cancel' }, { text: 'Verify', onPress: () => { void run(() => verify()); } },
+          ])} />}
+          {!!receipt.event_id && <ActionButton label="Verify and share original publication" variant="secondary" disabled={busy} onPress={() => Alert.alert('Verify and share this original event?', `Read the event again and check its original Everclose marker, then share minimal publication status with your current account. Its facts and Apple identifiers stay on this phone. This can confirm a legacy event or a receipt held after sign-in or recovery.${reads ? ' Keep its facts updated on this phone.' : ''}${follow ? ' Use and follow its date for this plan.' : ''}`, [
+            { text: 'Cancel', style: 'cancel' }, { text: 'Verify and share', onPress: () => { void run(verifyAndShare); } },
           ])} />}
           <ActionButton label="Find original event in a calendar" variant="secondary" disabled={busy} onPress={() => Alert.alert('Choose a calendar to search?', 'Allow Calendar reading, then choose one calendar and a date window. Only the event matching this receipt can be accepted.', [
             { text: 'Cancel', style: 'cancel' }, { text: 'Choose calendar', onPress: () => { void run(async () => { if (!await adapter.permission(true)) throw new Error('Calendar reading was not allowed.'); if (!isCurrent()) throw new Error('The active account changed.'); const values = await adapter.calendars(); if (isCurrent()) { setCalendars(values); setCalendarPage(0); } }); } },

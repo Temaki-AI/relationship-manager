@@ -1,9 +1,10 @@
 # Shared Calendar publication coordination
 
-Status on 6 October 2026: implemented on the release branch for the build-11
-candidate. Production remains on migration 44 and the phone/simulator retain
-verified build 10. Migration 49 and this native candidate have not been deployed
-or installed. Do not advertise shared publication coordination as live.
+Status on 6 October 2026: build 11 passes both native Release builds, startup and
+the full offline journey; build-12 source adds explicit legacy/recovery verification.
+Production remains on migration 44 and the phone/simulator retain verified build
+10. Migrations 49–50 and these native candidates have not been deployed or installed.
+Shared publication coordination is not live.
 
 New system Calendar publications acquire an account-wide reservation before
 opening Apple's editor. Google publication preparation acquires the same plan
@@ -50,9 +51,15 @@ Approval of a device session identifies the publisher; it does not establish a
 permanent physical-phone identity. Reauthentication and account recovery hold old
 native requests. Automatic retries never transfer a claim to a new session or
 release an unknown external effect. Existing build-10 Apple receipts stay private
-and are not silently adopted. Explicit legacy adoption, fresh-marker reconciliation
-after a session/recovery change, and identity review of one event observed through
-both Google and EventKit remain beta work. The present flow coordinates new
+and are not silently adopted. Build-12 source implements explicit legacy adoption
+and fresh-marker reconciliation after a session/recovery change. A fresh consented
+EventKit read verifies the original marker on the phone; the server acknowledges
+the approved device's report, without independently reading Apple Calendar. Native
+schema 18 and cloud migration 50 retain immutable verification requests, preserve
+the original publisher/creation epoch and permit safe acknowledgement retries
+without another provider read or write. Existing receipts and core edit outboxes
+remain unchanged, including later private edits. Identity review of one event
+observed through both Google and EventKit remains beta work. The present flow coordinates new
 publications by upgraded clients; it cannot prevent a legacy/offline build-10
 editor or an independently created external event.
 
@@ -67,7 +74,9 @@ regression tests pass with zero skips; the subsequent routing journey also passe
 Native cancellation/release acknowledgement checks pass, and all 22 mobile package
 tests, types, lint, Hermes export, Cloudflare build and Worker dry run pass. Final
 native release evidence belongs in
-[the build-11 record](personal-ios-build11.md).
+[the build-11 record](personal-ios-build11.md). Build-12 validation is recorded
+separately in [its candidate record](personal-ios-build12.md); the schema-17 binaries
+do not establish native Release validation for schema 18.
 
 Before rollout, rehearse production's migration-44-to-current upgrade using a
 recoverable backup and verify the matching middleware/Worker routing. Compile

@@ -876,6 +876,21 @@ export const calendarPlanWrites = sqliteTable('calendar_plan_writes', {
   updatedAt: text('updated_at').notNull(),
 }, (table) => [index('calendar_plan_writes_current_idx').on(table.publicationId, table.createdAt)]);
 
+export const calendarPublicationReviews = sqliteTable('calendar_publication_reviews', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  receiptId: text('receipt_id').notNull(),
+  planPublicId: text('plan_public_id').notNull(),
+  reviewingDeviceId: text('reviewing_device_id').notNull(),
+  epoch: text('epoch').notNull(),
+  expectedRevision: integer('expected_revision'),
+  planFingerprint: text('plan_fingerprint').notNull(),
+  observedMarker: text('observed_marker').notNull(),
+  requestFingerprint: text('request_fingerprint').notNull(),
+  createdAt: text('created_at').notNull(),
+}, (table) => [index('calendar_publication_reviews_receipt_idx').on(table.workspaceId, table.receiptId, table.createdAt)]);
+
 export const calendarPublicationReservations = sqliteTable('calendar_publication_reservations', {
   id: text('id').primaryKey(),
   workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
@@ -1160,6 +1175,7 @@ export const schema = {
   calendarPlanPublications,
   calendarPlanWrites,
   calendarPublicationReservations,
+  calendarPublicationReviews,
   calendarEventPeople,
   calendarEventPlans,
   mutationReceipts,

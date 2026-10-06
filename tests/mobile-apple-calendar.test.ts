@@ -194,12 +194,12 @@ test('a session change after server authorization retains the frozen request and
 test('schema 16 upgrades preserve all private rows, existing EventKit receipts, frozen outboxes and account identity', async () => {
   const f = await fixture(); try {
     await f.prepare(); await f.open(); await f.verify(true, true);
-    f.phone.sqlite.exec('DROP TABLE apple_calendar_reservations; PRAGMA user_version = 16;');
+    f.phone.sqlite.exec('DROP TABLE apple_calendar_publication_reviews; DROP TABLE apple_calendar_reservations; PRAGMA user_version = 16;');
     const names = f.phone.sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name != 'app_metadata' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[];
     assert.equal(names.length, 23);
     const before = new Map(names.map(({ name }) => [name, f.phone.sqlite.prepare('SELECT * FROM "' + name + '" ORDER BY rowid').all()]));
     const metadata = f.phone.sqlite.prepare("SELECT key, value FROM app_metadata WHERE key != 'schema-version' ORDER BY key").all();
-    await f.restart(); assert.equal(f.phone.sqlite.pragma('user_version', { simple: true }), 17);
+    await f.restart(); assert.equal(f.phone.sqlite.pragma('user_version', { simple: true }), 18);
     for (const [name, rows] of before) assert.deepEqual(f.phone.sqlite.prepare('SELECT * FROM "' + name + '" ORDER BY rowid').all(), rows, name);
     assert.deepEqual(f.phone.sqlite.prepare("SELECT key, value FROM app_metadata WHERE key != 'schema-version' ORDER BY key").all(), metadata);
     assert.equal((await f.review()).receipt!.status, 'verified'); assert.equal((await f.review()).publication, null);
@@ -395,7 +395,7 @@ test('A genuine native schema-13 upgrade preserves private relationships, queued
   sqlite.prepare('INSERT INTO app_metadata (key,value,updated_at) VALUES (?,?,?)').run('sync-cursor-v4', JSON.stringify({ epoch, sequence: 42 }), now);
   const before = JSON.stringify({ people: sqlite.prepare('SELECT * FROM contacts').all(), plans: sqlite.prepare('SELECT * FROM plans').all(), queue: sqlite.prepare('SELECT * FROM sync_queue').all(), cursor: sqlite.prepare("SELECT * FROM app_metadata WHERE key = 'sync-cursor-v4'").all() });
   const phone = await createMobileHarness(account, sqlite); try {
-    assert.equal(sqlite.pragma('user_version', { simple: true }), 17); assert.equal((sqlite.prepare("SELECT name FROM sqlite_master WHERE name = 'apple_calendar_receipts'").get() as { name: string }).name, 'apple_calendar_receipts');
+    assert.equal(sqlite.pragma('user_version', { simple: true }), 18); assert.equal((sqlite.prepare("SELECT name FROM sqlite_master WHERE name = 'apple_calendar_receipts'").get() as { name: string }).name, 'apple_calendar_receipts');
     assert.equal(JSON.stringify({ people: sqlite.prepare('SELECT * FROM contacts').all(), plans: sqlite.prepare('SELECT * FROM plans').all(), queue: sqlite.prepare('SELECT * FROM sync_queue').all(), cursor: sqlite.prepare("SELECT * FROM app_metadata WHERE key = 'sync-cursor-v4'").all() }), before);
   } finally { phone.close(); }
 });

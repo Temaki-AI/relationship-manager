@@ -2,7 +2,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { fingerprintIdempotencyInput as hash } from '@/lib/idempotency';
 import { readJsonBody, RequestBodyError } from '@/lib/request-body';
 import { isSyncUuid } from '@/packages/domain/src/sync';
-import { publicationPlanSnapshot, type CalendarReservation, type PublicationPlan } from '@/packages/domain/src/calendar-reservations';
+import { publicationPlanSnapshot, readCalendarPublicationReview, type CalendarReservation, type PublicationPlan } from '@/packages/domain/src/calendar-reservations';
 import { maintenanceGuard, removeGuard } from './recovery-storage';
 import type { DeviceActor } from './device-api';
 
@@ -31,6 +31,16 @@ async function requireState(db: DB, actor: DeviceActor, epoch: string) {
   if (!isSyncUuid(epoch)) throw new CalendarReservationError('Refresh this account before reviewing Calendar.', 400, 'invalid_epoch');
   const auth = authorization(actor, epoch);
   if (await db.prepare('SELECT 1 WHERE ' + auth.sql).bind(...auth.values).first()) return auth;
+  const scope = `EXISTS (SELECT 1 FROM workspace_members m JOIN workspaces w ON w.id = m.workspace_id
+    WHERE m.workspace_id = ? AND m.user_id = ? AND m.role = 'owner')`;
+  const validDevice = actor.authMethod === 'web' ? { sql: '', values: [] } : {
+    sql: ` AND EXISTS (SELECT 1 FROM device_sessions d WHERE d.id = ? AND d.workspace_id = ? AND d.user_id = ?
+      AND d.revoked_at IS NULL AND d.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`,
+    values: [actor.deviceId ?? '', actor.workspaceId, actor.userId],
+  };
+  if (!await db.prepare('SELECT 1 WHERE ' + scope + validDevice.sql).bind(actor.workspaceId, actor.userId, ...validDevice.values).first()) {
+    throw new CalendarReservationError('Sign in with the workspace owner account before reviewing Calendar.', 401, 'unauthorized');
+  }
   const state = await db.prepare('SELECT epoch, paused FROM workspace_sync_state WHERE workspace_id = ?').bind(actor.workspaceId).first<{ epoch: string; paused: number }>();
   if (!state) throw new CalendarReservationError('Sign in with the workspace owner account before reviewing Calendar.', 401, 'unauthorized');
   if (state?.epoch !== epoch) throw new CalendarReservationError('Account data changed after recovery. Review the original Calendar receipt.', 409, 'epoch_changed');
@@ -68,6 +78,7 @@ function mutation(value: unknown) {
     expected_epoch: string; expected_revision: number | null; expected_plan_fingerprint: string; result_action?: 'saved' | 'canceled' };
 }
 export async function mutateCalendarReservation(db: DB, actor: DeviceActor, value: unknown) {
+  if (value && typeof value === 'object' && 'action' in value && value.action === 'reconcile') return reconcileCalendarPublication(db, actor, value);
   const b = mutation(value);
   if (actor.authMethod !== 'device' || !isSyncUuid(actor.deviceId)) throw new CalendarReservationError('Use your signed-in phone for Calendar editor actions.', 403, 'device_required');
   const auth = await requireState(db, actor, b.expected_epoch), existing = await rowFor(db, actor, b.operation_id);
@@ -137,6 +148,63 @@ export async function mutateCalendarReservation(db: DB, actor: DeviceActor, valu
     throw error;
   }
   return { version: 1, epoch: b.expected_epoch, reservation: projection(actor, (await rowFor(db, actor, b.operation_id))!) };
+}
+async function reconcileCalendarPublication(db: DB, actor: DeviceActor, value: unknown) {
+  let b;
+  try { b = readCalendarPublicationReview(value); }
+  catch { throw new CalendarReservationError('Verify the original Calendar marker before sharing its publication status.', 400, 'invalid_review'); }
+  if (actor.authMethod !== 'device' || !isSyncUuid(actor.deviceId)) throw new CalendarReservationError('Use an approved phone to verify the original Calendar event.', 403, 'device_required');
+  const auth = await requireState(db, actor, b.expected_epoch);
+  const fingerprint = hash({ ...b, reviewing_device_id: actor.deviceId, user_id: actor.userId });
+  const reviewed = await db.prepare('SELECT request_fingerprint FROM calendar_publication_reviews WHERE id = ? AND workspace_id = ?')
+    .bind(b.operation_id, actor.workspaceId).first<{ request_fingerprint: string }>();
+  if (reviewed) {
+    if (reviewed.request_fingerprint !== fingerprint) throw new CalendarReservationError('Keep the original verification request. A changed review needs a new operation.', 409, 'review_mismatch');
+    const result = await rowFor(db, actor, b.receipt_id);
+    if (!result) throw new CalendarReservationError('The original publication is unavailable. Keep its verified receipt.', 409, 'receipt_changed');
+    await requireState(db, actor, b.expected_epoch);
+    return { version: 1, epoch: b.expected_epoch, review_id: b.operation_id, confirmed: true, reservation: projection(actor, result) };
+  }
+  const existing = await rowFor(db, actor, b.receipt_id), plan = await planFor(db, actor, b.plan_id);
+  if (!plan || hash(publicationPlanSnapshot(plan)) !== b.expected_plan_fingerprint) throw new CalendarReservationError('Sync and review the current plan before sharing this verification.', 409, 'plan_changed');
+  if (existing && (existing.provider !== 'apple-calendar' || existing.user_id !== actor.userId || existing.plan_public_id !== b.plan_id
+    || existing.status === 'cancelled' || existing.revision !== b.expected_reservation_revision)) {
+    throw new CalendarReservationError('The original publication changed. Review its source identity before sharing this event.', 409, 'receipt_changed');
+  }
+  if (!existing && b.expected_reservation_revision !== null) throw new CalendarReservationError('The original publication is unavailable. Refresh its receipt.', 409, 'receipt_changed');
+  if (existing && b.expected_reservation_revision === null) throw new CalendarReservationError('Refresh the original publication before sharing its verification.', 409, 'receipt_changed');
+  const now = new Date().toISOString(), guard = crypto.randomUUID();
+  const planSql = `EXISTS (SELECT 1 FROM plans p JOIN contacts c ON c.workspace_id = p.workspace_id AND c.id = p.contact_id
+    WHERE p.workspace_id = ? AND p.public_id = ? AND c.public_id = ? AND p.type = ? AND p.planned_date = ?
+      AND p.summary IS ? AND p.notes IS ? AND p.completed_at IS ?)`;
+  const condition = existing ? `EXISTS (SELECT 1 FROM calendar_publication_reservations WHERE workspace_id = ? AND id = ?
+    AND plan_public_id = ? AND provider = 'apple-calendar' AND user_id = ? AND status != 'cancelled' AND revision = ?)`
+    : `NOT EXISTS (SELECT 1 FROM calendar_publication_reservations WHERE workspace_id = ? AND (id = ? OR plan_public_id = ? AND status != 'cancelled'))
+      AND NOT EXISTS (SELECT 1 FROM calendar_event_plans l JOIN plans p ON p.id = l.plan_id AND p.workspace_id = l.workspace_id WHERE p.workspace_id = ? AND p.public_id = ?)
+      AND (SELECT count(*) FROM calendar_publication_reservations WHERE workspace_id = ?) < 25000`;
+  const values = existing ? [actor.workspaceId, b.receipt_id, b.plan_id, actor.userId, b.expected_reservation_revision]
+    : [actor.workspaceId, b.receipt_id, b.plan_id, actor.workspaceId, b.plan_id, actor.workspaceId];
+  const insert = db.prepare(`INSERT INTO calendar_publication_reviews (id, workspace_id, user_id, receipt_id, plan_public_id, reviewing_device_id,
+    epoch, expected_revision, plan_fingerprint, observed_marker, request_fingerprint, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(b.operation_id, actor.workspaceId, actor.userId, b.receipt_id, b.plan_id, actor.deviceId, b.expected_epoch,
+      b.expected_reservation_revision, b.expected_plan_fingerprint, b.observed_marker, fingerprint, now);
+  const write = existing
+    ? db.prepare("UPDATE calendar_publication_reservations SET status = 'saved', attempted = 1, revision = revision + 1, updated_at = ? WHERE workspace_id = ? AND id = ? AND revision = ?")
+      .bind(now, actor.workspaceId, b.receipt_id, b.expected_reservation_revision)
+    : db.prepare(`INSERT INTO calendar_publication_reservations (id, workspace_id, user_id, plan_public_id, provider, publisher_id, epoch,
+      plan_fingerprint, request_fingerprint, status, attempted, created_at, updated_at) VALUES (?, ?, ?, ?, 'apple-calendar', ?, ?, ?, ?, 'saved', 1, ?, ?)`)
+      .bind(b.receipt_id, actor.workspaceId, actor.userId, b.plan_id, actor.deviceId, b.expected_epoch, b.expected_plan_fingerprint, fingerprint, now, now);
+  try {
+    await db.batch([maintenanceGuard(db, guard, auth.sql + ' AND ' + planSql + ' AND ' + condition, [...auth.values,
+      actor.workspaceId, b.plan_id, plan.contact_public_id, plan.type, plan.planned_date, plan.summary, plan.notes, plan.completed_at, ...values]), insert, write, removeGuard(db, guard)]);
+  } catch (error) {
+    if (/CALENDAR_PUBLICATION_REVIEW|CALENDAR_RESERVATION_INVALID|CLOUD_RECOVERY_CONFLICT|calendar_publication_(reviews|reservations)/.test(String(error))) {
+      await requireState(db, actor, b.expected_epoch);
+      throw new CalendarReservationError('The plan or original publication changed. Keep the verified event and refresh its review.', 409, 'review_changed');
+    }
+    throw error;
+  }
+  return { version: 1, epoch: b.expected_epoch, review_id: b.operation_id, confirmed: true, reservation: projection(actor, (await rowFor(db, actor, b.receipt_id))!) };
 }
 export async function handleCalendarReservations(request: Request, actor: DeviceActor) {
   try {

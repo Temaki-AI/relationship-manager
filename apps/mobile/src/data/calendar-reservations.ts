@@ -30,7 +30,7 @@ async function currentEpoch(db: DB) {
   const value: unknown = row ? JSON.parse(row.value) : null;
   return value && typeof value === 'object' && 'epoch' in value && isSyncUuid(value.epoch) ? value.epoch : null;
 }
-async function owner(db: DB, account: NativeAccount, isCurrent: () => boolean, row?: LocalCalendarReservation) {
+async function owner(db: DB, account: NativeAccount, isCurrent: () => boolean, row?: Pick<LocalCalendarReservation, 'account_scope' | 'device_id' | 'epoch'>) {
   if (!isCurrent() || (await db.getFirstAsync<{ value: string }>("SELECT value FROM app_metadata WHERE key = 'account-scope'"))?.value !== accountScope(account)) {
     throw new NativeCalendarReservationError('The active account changed. Keep the original Calendar receipt.');
   }
@@ -65,7 +65,7 @@ async function request(account: NativeAccount, fetcher: typeof fetch, isCurrent:
     const text = await response.text();
     if (!isCurrent()) throw new NativeCalendarReservationError('The active account changed.');
     if (!response.ok) throw new NativeCalendarReservationError(response.status === 404 || response.status === 501
-      ? 'Shared Calendar publication is not available on this server yet. Your draft is saved; the editor has not been opened.'
+      ? 'Shared Calendar publication is not available on this server yet. Your draft and original receipt are retained.'
       : response.status === 401 || response.status === 403 ? 'Sign in with the original account before continuing Calendar.'
         : response.status === 409 ? 'The plan or its shared Calendar receipt changed. Sync your account and review the original receipt.'
           : 'Could not confirm the shared Calendar receipt. Keep your draft and reconnect.', response.status);
@@ -198,3 +198,4 @@ export async function readSharedCalendarReservation(db: DB, account: NativeAccou
   await owner(db, account, isCurrent); if (await currentEpoch(db) !== epoch) throw new NativeCalendarReservationError('Account data changed. Refresh this Calendar review.');
   return result;
 }
+export { currentEpoch as currentCalendarEpoch, owner as requireCalendarAccount, request as requestCalendarStatus, envelope as readCalendarReservationEnvelope };
