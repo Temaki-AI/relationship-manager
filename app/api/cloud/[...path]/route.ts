@@ -24,6 +24,7 @@ import { isNativeDeviceApiPath } from '@/packages/domain/src/devices';
 import { handleSavedCalendarEvents } from '@/lib/cloud/calendar-event-links';
 import { handleCalendarEventLinks } from '@/lib/cloud/calendar-event-link-api';
 import { handleContactPhotos } from '@/lib/cloud/contact-photo-api';
+import { handleCalendarReservations } from '@/lib/cloud/calendar-reservation-api';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +56,7 @@ async function dispatch(request: Request, context: Context) {
     }
     if (path[0] === 'contacts') return handleCloudContacts(request, workspaceId, path);
     if (path.length === 1 && path[0] === 'enrich' && request.method === 'POST') return handleCloudEnrich(request);
+    if (path.join('/') === 'v1/calendar-reservations') return handleCalendarReservations(request, actor);
     if (path.join('/') === 'v1/today-snoozes') return handleTodaySnoozeSync(request, actor);
     if (path.join('/') === 'today/snooze') return handleCloudTodaySnooze(request, workspaceId);
     if (path.join('/') === 'reminders/email-preferences') return handleReminderEmailPreferences(request, workspaceId, userId);

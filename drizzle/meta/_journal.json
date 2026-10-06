@@ -316,6 +316,20 @@
       "when": 1791119243553,
       "tag": "0044_calendar_plan_publications",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "6",
+      "when": 1791247653131,
+      "tag": "0049_calendar_publication_reservations",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "6",
+      "when": 1791250905543,
+      "tag": "0050_calendar_publication_reviews",
+      "breakpoints": true
     }
   ]
 }

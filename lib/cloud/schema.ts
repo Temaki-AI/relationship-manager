@@ -808,6 +808,40 @@ export const calendarPlanWrites = sqliteTable('calendar_plan_writes', {
   updatedAt: text('updated_at').notNull(),
 }, (table) => [index('calendar_plan_writes_current_idx').on(table.publicationId, table.createdAt)]);
 
+export const calendarPublicationReviews = sqliteTable('calendar_publication_reviews', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  receiptId: text('receipt_id').notNull(),
+  planPublicId: text('plan_public_id').notNull(),
+  reviewingDeviceId: text('reviewing_device_id').notNull(),
+  epoch: text('epoch').notNull(),
+  expectedRevision: integer('expected_revision'),
+  planFingerprint: text('plan_fingerprint').notNull(),
+  observedMarker: text('observed_marker').notNull(),
+  requestFingerprint: text('request_fingerprint').notNull(),
+  createdAt: text('created_at').notNull(),
+}, (table) => [index('calendar_publication_reviews_receipt_idx').on(table.workspaceId, table.receiptId, table.createdAt)]);
+
+export const calendarPublicationReservations = sqliteTable('calendar_publication_reservations', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  planPublicId: text('plan_public_id').notNull(),
+  provider: text('provider').notNull(),
+  publisherId: text('publisher_id').notNull(),
+  epoch: text('epoch').notNull(),
+  planFingerprint: text('plan_fingerprint'),
+  requestFingerprint: text('request_fingerprint'),
+  status: text('status').notNull().default('reserved'),
+  attempted: integer('attempted').notNull().default(0),
+  resultAction: text('result_action'),
+  revision: integer('revision').notNull().default(1),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [uniqueIndex('calendar_reservations_live_plan_idx').on(table.workspaceId, table.planPublicId).where(sql`${table.status} != 'cancelled'`),
+  index('calendar_reservations_workspace_idx').on(table.workspaceId, table.createdAt)]);
+
 export const calendarEvents = sqliteTable('calendar_events', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   publicId: text('public_id').notNull(),
@@ -1059,6 +1093,8 @@ export const schema = {
   plans,
   calendarEvents,
   calendarPlanPublications,
+  calendarPublicationReservations,
+  calendarPublicationReviews,
   calendarPlanWrites,
   calendarEventPeople,
   calendarEventPlans,

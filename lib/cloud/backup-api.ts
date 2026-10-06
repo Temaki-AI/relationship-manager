@@ -173,6 +173,8 @@ export async function handleCloudErasure(request: Request, workspaceId: string) 
       DB.prepare('UPDATE device_sessions SET revoked_at = COALESCE(revoked_at, ?) WHERE workspace_id = ?').bind(new Date().toISOString(), workspaceId),
       DB.prepare('DELETE FROM provider_authorization_attempts WHERE workspace_id = ?').bind(workspaceId),
       DB.prepare('DELETE FROM provider_connections WHERE workspace_id = ?').bind(workspaceId),
+      DB.prepare('DELETE FROM calendar_publication_reservations WHERE workspace_id = ?').bind(workspaceId),
+      DB.prepare('DELETE FROM calendar_publication_reviews WHERE workspace_id = ?').bind(workspaceId),
       ...SNAPSHOT_TABLES.map((table) => DB.prepare(`DELETE FROM ${table} WHERE workspace_id = ?`).bind(workspaceId)),
       DB.prepare('DELETE FROM reminder_email_deliveries WHERE workspace_id = ?').bind(workspaceId),
       DB.prepare('DELETE FROM birthday_email_deliveries WHERE workspace_id = ?').bind(workspaceId),
