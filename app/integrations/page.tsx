@@ -109,54 +109,27 @@ export default function IntegrationsPage() {
       <div className="animate-fade-in">
         <div className="flex items-center gap-2">
           <PlugZap className="h-5 w-5 text-primary" aria-hidden="true" />
-          <h1 className="text-2xl font-bold sm:text-3xl">Data connections</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">Connections</h1>
         </div>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          Every way data enters or leaves Everclose CRM is explicit. Nothing below represents a silently connected cloud account.
+          Choose what to bring into Everclose. Review imports before saving them.
         </p>
       </div>
-
-      <Card className="overflow-hidden border-0 shadow-sm animate-fade-in-up">
-        <div className="h-1 bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-400" />
-        <CardContent className="grid gap-4 pt-6 md:grid-cols-3">
-          <div className="rounded-xl border border-border/60 bg-white/80 p-4">
-            <HardDrive className="h-5 w-5 text-emerald-600" aria-hidden="true" />
-            <p className="mt-3 text-sm font-semibold">{data.workspace?.mode === 'cloud' ? 'Cloud workspace' : 'Local workspace'}</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {data.workspace?.name || 'My Everclose CRM'} stores its CRM data in this deployment.
-            </p>
-          </div>
-          <div className="rounded-xl border border-border/60 bg-white/80 p-4">
-            <ShieldCheck className="h-5 w-5 text-amber-600" aria-hidden="true" />
-            <p className="mt-3 text-sm font-semibold">Explicit transfers</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Imports, exports, and restores happen only when you start them.
-            </p>
-          </div>
-          <div className="rounded-xl border border-border/60 bg-white/80 p-4">
-            <CloudOff className="h-5 w-5 text-rose-600" aria-hidden="true" />
-            <p className="mt-3 text-sm font-semibold">Automatic account sync is off</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Accounts never import contacts, email, or calendar events without a separate connection and import choice.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
 
       <section aria-labelledby="available-connections-heading">
         {data.workspace?.mode === 'cloud' && <Card className="mb-6 border-0 shadow-sm">
           <CardHeader><CardTitle className="text-base">Google account authorization</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="flex flex-wrap gap-3">
             <p className="text-sm text-muted-foreground">Review Google Contacts imports and updates, or authorize Calendar separately and choose calendars for event context.</p>
             <Link href="/connections/google" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Manage Google Contacts</Link>
             <Link href="/connections/google/calendar" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Manage Google Calendar</Link>
             <Link href="/connections/google/publish" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Calendar publishing setup</Link>
-            <Link href="/connections/google/gmail" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Gmail account preview</Link>
+            <Link href="/connections/google/gmail" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Manage Gmail</Link>
           </CardContent>
         </Card>}
         <div className="mb-4">
-          <h2 id="available-connections-heading" className="text-lg font-semibold">Available today</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Working paths included in this release, not roadmap promises.</p>
+          <h2 id="available-connections-heading" className="text-lg font-semibold">Import & export</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Choose a transfer method.</p>
         </div>
         <div className="grid gap-4 lg:grid-cols-2 stagger-children">
           {data.capabilities.map((capability) => {
@@ -198,6 +171,35 @@ export default function IntegrationsPage() {
         </div>
       </section>
 
+      <details className="rounded-xl border border-border bg-white px-4">
+        <summary className="min-h-12 cursor-pointer py-3 text-sm font-medium">How your data is handled</summary>
+      <Card className="overflow-hidden border-0 shadow-sm animate-fade-in-up">
+        <div className="h-1 bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-400" />
+        <CardContent className="grid gap-4 pt-6 md:grid-cols-3">
+          <div className="rounded-xl border border-border/60 bg-white/80 p-4">
+            <HardDrive className="h-5 w-5 text-emerald-600" aria-hidden="true" />
+            <p className="mt-3 text-sm font-semibold">{data.workspace?.mode === 'cloud' ? 'Cloud workspace' : 'Local workspace'}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {data.workspace?.name || 'My Everclose CRM'} stores its CRM data in this deployment.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border/60 bg-white/80 p-4">
+            <ShieldCheck className="h-5 w-5 text-amber-600" aria-hidden="true" />
+            <p className="mt-3 text-sm font-semibold">Explicit transfers</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Imports, exports, and restores happen only when you start them.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border/60 bg-white/80 p-4">
+            <CloudOff className="h-5 w-5 text-rose-600" aria-hidden="true" />
+            <p className="mt-3 text-sm font-semibold">Automatic account sync is off</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Accounts never import contacts, email, or calendar events without a separate connection and import choice.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="border border-amber-200/70 bg-amber-50/40 shadow-sm">
         <CardContent className="flex gap-3 py-5">
           <CloudOff className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-700" aria-hidden="true" />
@@ -207,6 +209,7 @@ export default function IntegrationsPage() {
           </div>
         </CardContent>
       </Card>
+      </details>
     </div>
   );
 }

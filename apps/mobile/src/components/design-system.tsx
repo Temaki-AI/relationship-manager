@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   brandLockup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   brandIcon: { width: 34, height: 34, borderRadius: 10 },
   brandName: { color: palette.ink, fontFamily: fonts.display, fontSize: 25, fontWeight: '700' },
-  surface: { backgroundColor: palette.surface, borderRadius: 26, borderWidth: 1, borderColor: palette.line },
+  surface: { backgroundColor: palette.surface, borderRadius: 18, borderWidth: 1, borderColor: palette.line },
   eyebrow: {
     color: palette.primary,
     fontFamily: fonts.bodyDemi,
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
-  sectionTitle: { color: palette.ink, fontFamily: fonts.display, fontSize: 24, fontWeight: '700', flexShrink: 1 },
+  sectionTitle: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 20, fontWeight: '700', flexShrink: 1 },
   avatar: { alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: palette.white, fontFamily: fonts.bodyDemi, fontWeight: '700' },
   actionButton: {
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
   actionPrimary: { backgroundColor: palette.primary, borderColor: palette.primary },
   actionSecondary: { backgroundColor: palette.surface, borderColor: palette.line },
-  actionQuiet: { backgroundColor: palette.primarySoft, borderColor: palette.primarySoft },
+  actionQuiet: { backgroundColor: 'transparent', borderColor: 'transparent' },
   actionPressed: { opacity: 0.78, transform: [{ scale: 0.99 }] },
   actionDisabled: { opacity: 0.45 },
   actionLabel: { fontFamily: fonts.bodyDemi, fontSize: 15, fontWeight: '700', textAlign: 'center' },

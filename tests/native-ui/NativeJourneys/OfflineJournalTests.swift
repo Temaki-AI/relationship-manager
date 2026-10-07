@@ -34,7 +34,7 @@ final class OfflineJournalTests: XCTestCase {
         // Navigation sits outside the scrolling screen. After a cold launch,
         // its accessibility nodes can appear before UIKit permits interaction.
         // Wait for readiness instead of trying to scroll a navigation button.
-        if ["Today", "People", "Agenda", "Reminders", "Account and sync"].contains(label) {
+        if ["Today", "People", "Calendar", "Settings", "Account and sync"].contains(label) {
             let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: button)
             XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 20), .completed, "Navigation is not ready: \(label)")
             button.tap()
@@ -116,10 +116,11 @@ final class OfflineJournalTests: XCTestCase {
         tap("Use only on this iPhone")
         XCTAssertTrue(journal.staticTexts["Your day is clear"].waitForExistence(timeout: 15))
 
-        tap("Agenda")
+        tap("Calendar")
         XCTAssertTrue(journal.buttons["New plan"].waitForExistence(timeout: 15))
-        tap("Reminders")
-        XCTAssertTrue(journal.staticTexts["Gentle nudges"].waitForExistence(timeout: 15))
+        tap("Calendar"); tap("All reminders")
+        XCTAssertTrue(journal.staticTexts["Reminders"].waitForExistence(timeout: 15))
+        journal.navigationBars.buttons.element(boundBy: 0).tap()
         tap("People")
         tap("Add someone")
         // A prior diagnostic run may have left this test's own unfinished draft.
@@ -141,7 +142,7 @@ final class OfflineJournalTests: XCTestCase {
         XCTAssertTrue(journal.staticTexts[note].waitForExistence(timeout: 15))
         XCTAssertTrue(journal.staticTexts["native-qa@example.invalid"].exists)
 
-        tap("Edit contact details")
+        tap("Details"); tap("Edit contact details")
         let addition = "\nDraft kept after restart."
         XCTAssertEqual(input("notes", multiline: true).value as? String, note)
         enter("notes", addition, multiline: true, appendTo: note)
@@ -149,14 +150,14 @@ final class OfflineJournalTests: XCTestCase {
         restart()
         tap("People")
         tap("Open \(person)")
-        tap("Edit contact details")
+        tap("Details"); tap("Edit contact details")
         XCTAssertTrue(journal.staticTexts["Resumed your saved draft. Its original version is kept so cloud changes can be reviewed."].exists)
         XCTAssertEqual(input("notes", multiline: true).value as? String, note + addition)
-        tap("Save details")
+        tap("Save details"); tap("Overview")
         XCTAssertTrue(journal.staticTexts[note + addition].waitForExistence(timeout: 15))
 
         restart()
-        tap("Agenda")
+        tap("Calendar")
         tap("New plan")
         let choice = journal.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "\(person), native-qa@example.invalid")).firstMatch
         XCTAssertTrue(choice.waitForExistence(timeout: 15))
@@ -170,17 +171,18 @@ final class OfflineJournalTests: XCTestCase {
         tap("Save")
         XCTAssertTrue(journal.staticTexts["Simulator follow-up"].waitForExistence(timeout: 15))
         restart()
-        tap("Agenda")
+        tap("Calendar")
         XCTAssertTrue(journal.staticTexts["Simulator follow-up"].waitForExistence(timeout: 15))
         tap("Confirm it happened")
         journal.alerts.buttons["It happened"].tap()
         expectGone(journal.staticTexts["Simulator follow-up"])
         tap("People")
         tap("Open \(person)")
+        tap("Activity")
         XCTAssertTrue(journal.staticTexts["Simulator follow-up"].waitForExistence(timeout: 15))
 
         restart()
-        tap("Reminders")
+        tap("Calendar"); tap("All reminders")
         tap("Create reminder")
         enter("Reminder title", "Simulator check-in")
         enter("Reminder notes", "Synthetic reminder fixture.", multiline: true)
@@ -200,7 +202,7 @@ final class OfflineJournalTests: XCTestCase {
         XCTAssertTrue(time.waitForExistence(timeout: 15))
         let initialTime = time.label
         restart()
-        tap("Reminders")
+        tap("Calendar"); tap("All reminders")
         XCTAssertTrue(reminderCard("Simulator check-in").waitForExistence(timeout: 15))
         tap("Snooze reminder for \(person): Simulator check-in")
         tap("Next week · 9:00 AM")
@@ -209,17 +211,17 @@ final class OfflineJournalTests: XCTestCase {
         }
         XCTAssertFalse(journal.staticTexts[initialTime].exists, "The reminder did not move to next week")
         restart()
-        tap("Reminders")
+        tap("Calendar"); tap("All reminders")
         XCTAssertTrue(reminderCard("Simulator check-in").waitForExistence(timeout: 15))
         XCTAssertFalse(journal.staticTexts[initialTime].exists)
         tap("Complete reminder for \(person): Simulator check-in")
         expectGone(reminderCard("Simulator check-in"))
         restart()
-        tap("Reminders")
+        tap("Calendar"); tap("All reminders")
         XCTAssertFalse(reminderCard("Simulator check-in").exists)
 
         restart()
-        tap("Account and sync")
+        tap("Settings")
         XCTAssertTrue(journal.staticTexts["Device lock"].waitForExistence(timeout: 15))
         XCTAssertTrue(journal.buttons["Enable device lock"].exists)
         XCTAssertFalse(journal.buttons["Turn off device lock"].exists)

@@ -108,7 +108,7 @@ function TodayCard({ item, onChanged }: { item: DailyFeedItem; onChanged: () => 
         <h3 className="mt-3 text-lg font-semibold leading-tight text-foreground">{item.title}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>
       </div>
-      <Link href={item.href} className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">Profile <ArrowRight className="h-4 w-4" /></Link>
+      <Link href={item.href} className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary hover:underline">Profile <ArrowRight className="h-4 w-4" /></Link>
     </div>
     {additionalReasons.length > 0 && <div className="mt-4 flex flex-wrap gap-2" aria-label="Other reasons to connect">
       {additionalReasons.map((reason) => <span key={reason.id} className="rounded-full bg-muted/70 px-3 py-1 text-xs text-foreground">{reason.title}</span>)}
@@ -180,13 +180,13 @@ export function TodayFocus({ items, snoozes, onChanged }: { items: DailyFeedItem
 
   return <section aria-labelledby="today-focus-title" className="space-y-4">
     <div className="flex flex-wrap items-end justify-between gap-3">
-      <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Your daily rhythm</p><h2 id="today-focus-title" className="mt-1 text-xl font-semibold text-foreground sm:text-2xl">People and moments for today</h2><p className="mt-1 text-sm text-muted-foreground">Reasons from your own notes, dates, and reminders. You decide when to act.</p></div>
-      <Link href="/reminders" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">All reminders <ArrowRight className="h-4 w-4" /></Link>
+      <h2 id="today-focus-title" className="text-lg font-semibold text-foreground">Next up</h2>
+      <Link href="/reminders" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary hover:underline">All reminders <ArrowRight className="h-4 w-4" /></Link>
     </div>
     {items.length ? <div className="grid gap-3 lg:grid-cols-2">{items.map((item) => <TodayCard key={item.id} item={item} onChanged={onChanged} />)}</div>
       : <div className="rounded-2xl border border-dashed border-border bg-white/80 px-6 py-12 text-center"><Check className="mx-auto h-8 w-8 text-emerald-600" /><h3 className="mt-3 text-lg font-semibold">You&apos;re caught up</h3><p className="mt-1 text-sm text-muted-foreground">Nothing needs your attention right now. New reasons will appear as dates and reminders come due.</p><Link href="/calendar" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">Explore your calendar <ArrowRight className="h-4 w-4" /></Link></div>}
     {snoozes.length > 0 && <details className="rounded-xl border border-border/70 bg-white/80 px-4 py-3">
-      <summary className="cursor-pointer text-sm font-medium text-foreground">Snoozed prompts ({snoozes.length})</summary>
+      <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-foreground">Snoozed prompts ({snoozes.length})</summary>
       <div className="mt-3 divide-y divide-border/60">
         {snoozes.map((snooze) => <div key={snooze.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
           <div><p className="font-medium">{snooze.reminder_title || (snooze.id.startsWith('birthday-') ? `${snooze.contact_name || 'Contact'}'s birthday` : `Reconnect with ${snooze.contact_name || 'contact'}`)}</p><p className="text-xs text-muted-foreground">Returns {displayDate(snooze.until_date)}</p></div>

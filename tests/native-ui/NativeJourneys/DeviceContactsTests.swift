@@ -92,6 +92,7 @@ final class DeviceContactsTests: XCTestCase {
     // Run against the retained two-person fixture with the contact-label update.
     func testSavedContactLabelsAreReadableWithoutRewritingOriginals() {
         journal.launch(); tap("People"); tap("Open \(person)")
+        tap("Details")
         let method = journal.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Open Work: source-qa@example.invalid")).firstMatch
         XCTAssertTrue(method.waitForExistence(timeout: 15), "The saved method must announce a readable Work label")
         XCTAssertFalse(journal.debugDescription.contains("_$!<WORK>!$_"))
@@ -101,7 +102,9 @@ final class DeviceContactsTests: XCTestCase {
         XCTAssertFalse(journal.buttons["Save methods"].isEnabled, "Displaying a label must not create an unsaved edit")
         tap("Cancel")
         restart(); tap("Open \(person)")
+        tap("Details")
         XCTAssertTrue(method.waitForExistence(timeout: 15))
+        tap("Overview")
         XCTAssertTrue(journal.staticTexts[preferredEmail].exists)
         XCTAssertTrue(journal.staticTexts[note].exists)
     }
@@ -121,7 +124,7 @@ final class DeviceContactsTests: XCTestCase {
         enter("Notes", note, multiline: true)
         tap("Add to Everclose")
         XCTAssertTrue(journal.staticTexts[person].waitForExistence(timeout: 15))
-        tap("Link or review iPhone contact")
+        tap("Details"); tap("Link or review iPhone contact")
         chooseSource("Everclose Source QA", firstPermission: true)
         XCTAssertTrue(journal.staticTexts["Attach to \(person)"].exists)
         selectField("source-qa@example.invalid")
@@ -131,10 +134,11 @@ final class DeviceContactsTests: XCTestCase {
         restart(); tap("Open \(person)")
         XCTAssertTrue(journal.staticTexts[preferredEmail].exists, "Attaching replaced the preferred email")
         XCTAssertTrue(journal.staticTexts[note].exists, "Attaching changed private notes")
+        tap("Details")
         XCTAssertTrue(journal.staticTexts["Everclose Source QA"].exists)
 
         // Importing a source before creating its CRM person uses the same review.
-        restart(); tap("Choose from iPhone Contacts", prefix: true)
+        restart(); tap("Import from iPhone Contacts"); tap("Choose from iPhone Contacts", prefix: true)
         chooseSource("Everclose New Source QA")
         XCTAssertEqual(journal.textFields["New person’s name"].value as? String, "Everclose New Source QA")
         selectField("create-qa@example.invalid")
@@ -145,7 +149,7 @@ final class DeviceContactsTests: XCTestCase {
         XCTAssertTrue(journal.staticTexts["create-qa@example.invalid"].exists)
 
         restart(); tap("Open \(person)")
-        tap("Unlink iPhone source")
+        tap("Details"); tap("Unlink iPhone source")
         journal.alerts.buttons["Unlink"].tap()
         let sourceContext = journal.staticTexts["Everclose Source QA"].firstMatch
         let removed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: sourceContext)
@@ -155,6 +159,7 @@ final class DeviceContactsTests: XCTestCase {
         restart(); tap("Open \(person)")
         XCTAssertTrue(journal.staticTexts[preferredEmail].exists)
         XCTAssertTrue(journal.staticTexts[note].exists)
+        tap("Details")
         XCTAssertFalse(journal.staticTexts["Everclose Source QA"].exists, "Unlink did not remove saved source context")
     }
 
@@ -167,7 +172,7 @@ final class DeviceContactsTests: XCTestCase {
         XCTAssertTrue(host.staticTexts["Synthetic Contacts unchanged"].waitForExistence(timeout: 20), "Everclose modified or removed the system Contacts fixtures")
         host.terminate()
         journal.launch(); tap("People"); tap("Open \(person)")
-        tap("Link or review iPhone contact")
+        tap("Details"); tap("Link or review iPhone contact")
         let denial = journal.staticTexts["Contacts access is off. Allow access in iPhone Settings, or add this person manually."]
         XCTAssertTrue(denial.waitForExistence(timeout: 15))
         restart(); tap("Open \(person)")

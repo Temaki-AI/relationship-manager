@@ -3,7 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Platform, Text, View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ActionButton, Eyebrow } from '@/components/design-system';
+import { ActionButton } from '@/components/design-system';
 import { CalendarEventCard } from '@/components/calendar-event-card';
 import { listAgendaEntries, type AgendaEntry } from '@/data/calendar-events';
 import { ContextCard } from '@/components/context-card';
@@ -30,12 +30,15 @@ export default function AgendaScreen() {
     catch (error) { setError(error instanceof Error ? error.message : 'Unable to save this change.'); }
     finally { setBusy(false); }
   }
-  return <SafeAreaView style={{ flex: 1, backgroundColor: palette.canvas }}>
+  return <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: palette.canvas }}>
     <FlatList data={loading ? [] : rows} keyExtractor={(item) => item.kind + ':' + (item.kind === 'plan' ? item.record.id : item.event.id)} contentContainerStyle={styles.content}
       ListHeaderComponent={<View style={styles.header}>
-        <Eyebrow>Your next connections</Eyebrow><Text style={styles.title}>Agenda</Text>
-        <Text style={styles.body}>Your open plans and saved Calendar meetings, ordered by date. Meeting details remain available offline after sync.</Text>
+        <Text accessibilityRole="header" style={styles.title}>Calendar</Text>
+        <Text style={styles.body}>Upcoming plans and saved meetings.</Text>
+        <View style={styles.options}>
         <ActionButton label="New plan" onPress={() => router.push({ pathname: '/context/edit', params: { entity: 'plan' } })} />
+        <ActionButton label="All reminders" variant="quiet" onPress={() => router.push('/reminders')} />
+        </View>
         {!loading && !!error && <><Text accessibilityRole="alert" style={styles.body}>{error}</Text><ActionButton label="Try again" variant="secondary" onPress={() => setRefresh((value) => value + 1)} /></>}
       </View>}
       ListEmptyComponent={loading ? <ActivityIndicator color={palette.primary} /> : !error ? <Text style={styles.body}>{page ? 'No more agenda items.' : 'No plans or saved meetings yet. Create a plan or review Calendar meetings on the web.'}</Text> : null}
@@ -57,5 +60,5 @@ export default function AgendaScreen() {
 }
 const styles = StyleSheet.create({
   content: { padding: 20, gap: 16, paddingBottom: 40 }, header: { gap: 16 }, options: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  title: { fontFamily: fonts.display, color: palette.ink, fontSize: 36 }, body: { fontFamily: fonts.body, color: palette.muted, fontSize: 15, lineHeight: 22 },
+  title: { fontFamily: fonts.display, color: palette.ink, fontWeight: '700', fontSize: 28 }, body: { fontFamily: fonts.body, color: palette.muted, fontSize: 15, lineHeight: 22 },
 });

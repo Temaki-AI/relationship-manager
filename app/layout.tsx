@@ -47,8 +47,9 @@ export default async function RootLayout({
       <body>
         <Providers>
           <div className="min-h-screen bg-background">
+            <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3">Skip to content</a>
             <NavHeader />
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 sm:pb-8">
+            <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8">
               <SectionNav />
               {children}
             </main>

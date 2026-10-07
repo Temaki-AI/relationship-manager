@@ -38,6 +38,12 @@
   }
 }
 
+@media (max-width: 767px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Animations */
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(12px); }

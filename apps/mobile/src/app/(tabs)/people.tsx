@@ -17,7 +17,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ActionButton, BrandLockup, StatusPill } from '@/components/design-system';
+import { ActionButton, StatusPill } from '@/components/design-system';
+import { Disclosure } from '@/components/disclosure';
 import { ContactAvatar } from '@/components/contact-avatar';
 import { listContactPage } from '@/data/contacts';
 import { getRelationshipState, type ContactRecord } from '@/domain/contact';
@@ -78,7 +79,7 @@ export default function PeopleScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
       <FlatList
         ref={list}
         data={loading ? [] : contacts}
@@ -90,11 +91,9 @@ export default function PeopleScreen() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={(
           <View style={styles.header}>
-            <BrandLockup />
             <View style={styles.headingRow}>
               <View style={styles.headingCopy}>
-                <Text style={styles.title}>Your people</Text>
-                <Text style={styles.subtitle}>Context for the relationships that matter.</Text>
+                <Text accessibilityRole="header" style={styles.title}>People</Text>
               </View>
               <Pressable
                 accessibilityRole="button"
@@ -116,6 +115,7 @@ export default function PeopleScreen() {
               style={styles.search}
               value={search}
             />
+            <Disclosure title="Import from iPhone Contacts">
             <Pressable
               accessibilityRole="button"
               disabled={importing}
@@ -133,6 +133,7 @@ export default function PeopleScreen() {
               <Text style={styles.importTitle}>Browse allowed iPhone contacts</Text><Text style={styles.importDetail}>Read a page of allowed people, then confirm each import.</Text>
             </Pressable>
             <DeviceContactAccess disabled={importing} />
+            </Disclosure>
           </View>
         )}
         ListEmptyComponent={loading || account && syncing ? (
@@ -200,7 +201,7 @@ const styles = StyleSheet.create({
   header: { gap: 18, marginBottom: 18 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   headingCopy: { flex: 1, gap: 4 },
-  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 36, fontWeight: '700', letterSpacing: -0.8 },
+  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 28, fontWeight: '700', letterSpacing: -0.4 },
   subtitle: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 20 },
   addButton: {
     width: 50,

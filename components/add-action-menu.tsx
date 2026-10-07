@@ -47,21 +47,14 @@ export function AddActionMenu({ mobile = false }: { mobile?: boolean }) {
         aria-expanded={open}
         aria-controls={mobile ? 'mobile-add-actions' : 'desktop-add-actions'}
         onClick={() => setOpen((current) => !current)}
-        className={mobile
-          ? 'flex min-h-12 flex-col items-center gap-1 px-3 py-1.5 text-muted-foreground'
-          : 'flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90'}
+        className="flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
       >
-        {mobile ? (
-          <span className="-mt-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/25">
-            <Plus className="h-5 w-5 text-white" aria-hidden="true" />
-          </span>
-        ) : <Plus className="h-4 w-4" aria-hidden="true" />}
-        {mobile ? <span className="text-[10px] font-medium">Add</span> : 'Add'}
+        <Plus className="h-4 w-4" aria-hidden="true" />Add
       </button>
       <div
         id={mobile ? 'mobile-add-actions' : 'desktop-add-actions'}
         hidden={!open}
-        className={`absolute right-0 z-[60] w-64 rounded-xl border border-border/70 bg-white p-1.5 shadow-xl ${mobile ? 'bottom-full mb-3' : 'top-full mt-2'}`}
+        className="absolute right-0 top-full mt-2 z-[60] w-64 rounded-xl border border-border/70 bg-white p-1.5 shadow-xl"
       >
         {actions.map((action) => (
           <Link

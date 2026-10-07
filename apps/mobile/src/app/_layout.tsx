@@ -93,6 +93,7 @@ function AppNavigator() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="account" options={{ title: 'Account & sync' }} />
       <Stack.Screen name="auth" options={{ title: 'Signing in' }} />
+      <Stack.Screen name="reminders/index" options={{ title: 'Reminders' }} />
       <Stack.Screen name="sync-review" options={{ title: 'Review offline changes' }} />
       <Stack.Screen
         name="contacts/new"

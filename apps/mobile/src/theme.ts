@@ -6,7 +6,7 @@ export const palette = {
   surfaceWarm: '#FFF0EB',
   ink: '#251C1C',
   muted: '#746768',
-  faint: '#A99B9B',
+  faint: '#78696A',
   line: '#EADFDA',
   primary: '#C4143C',
   primaryPressed: '#9F1031',

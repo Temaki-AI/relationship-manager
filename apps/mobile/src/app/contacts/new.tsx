@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 
-import { ActionButton, Eyebrow } from '@/components/design-system';
+import { ActionButton } from '@/components/design-system';
 import { createContact } from '@/data/contacts';
 import { contactDraftKey, contactForm } from '@/data/contact-drafts';
 import { CONTACT_FREQUENCY_OPTIONS } from '@/domain/contact';
@@ -50,9 +50,8 @@ export default function NewContactScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.intro}>
-          <Eyebrow>Relationship journal</Eyebrow>
-          <Text style={styles.title}>Who do you want to remember well?</Text>
-          <Text style={styles.subtitle}>Start light. You can add richer context as the relationship unfolds.</Text>
+          <Text accessibilityRole="header" style={styles.title}>Add a person</Text>
+          <Text style={styles.subtitle}>Start with a name. Everything else is optional.</Text>
         </View>
 
         {!!form.error && <Text accessibilityRole="alert" style={styles.subtitle}>{form.error}</Text>}
@@ -192,7 +191,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.canvas },
   content: { padding: 22, paddingBottom: 44, gap: 20 },
   intro: { gap: 7, marginBottom: 4 },
-  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 32, lineHeight: 37, fontWeight: '700', letterSpacing: -0.6 },
+  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 28, lineHeight: 35, fontWeight: '700', letterSpacing: -0.6 },
   subtitle: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 },
   fieldGroup: { gap: 8 },
   label: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 13, fontWeight: '700' },

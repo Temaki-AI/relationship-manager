@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ActionButton, Avatar, Eyebrow, SectionHeading, StatusPill, Surface } from '@/components/design-system';
+import { Disclosure } from '@/components/disclosure';
 import {
   getContact,
   listContactInteractionPage,
@@ -48,6 +49,7 @@ export default function ContactDetailScreen() {
 }
 
 function ContactDetail({ id }: { id: string }) {
+  const [section, setSection] = useState<'overview' | 'activity' | 'details'>('overview');
   const db = useSQLiteContext();
   const focused = useIsFocused();
   const { revision } = useNativeSync();
@@ -139,20 +141,28 @@ function ContactDetail({ id }: { id: string }) {
   const stateTone = relationshipState === 'steady' ? 'moss' : relationshipState === 'overdue' ? 'rose' : 'amber';
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <Stack.Screen options={{ title: contact.name }} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {!!error && <><Text accessibilityRole="alert" style={styles.notes}>{error}</Text><ActionButton label="Try again" variant="secondary" onPress={() => setReload((value) => value + 1)} /></>}
         <View style={styles.identity}>
-          <Avatar name={contact.name} size={82} photo={photo.uri} />
+          <Avatar name={contact.name} size={56} photo={photo.uri} />
           <View style={styles.identityCopy}>
-            <Text style={styles.name}>{contact.name}</Text>
+            <Text accessibilityRole="header" style={styles.name}>{contact.name}</Text>
             <StatusPill tone={stateTone} label={stateLabel} />
           </View>
         </View>
 
         {!!photo.error && <View style={styles.section}><Text accessibilityRole="alert" style={styles.lastTouch}>{photo.error}</Text>
           <ActionButton label="Retry photo download" variant="secondary" onPress={photo.retry} /></View>}
+        <View style={styles.sections} accessibilityLabel="Profile sections">
+          {(['overview', 'activity', 'details'] as const).map((value) => <Pressable key={value}
+            accessibilityRole="button" accessibilityState={{ selected: section === value }}
+            onPress={() => setSection(value)} style={[styles.sectionTab, section === value && styles.sectionSelected]}>
+            <Text style={[styles.sectionLabel, section === value && styles.sectionSelectedLabel]}>{value === 'overview' ? 'Overview' : value === 'activity' ? 'Activity' : 'Details'}</Text>
+          </Pressable>)}
+        </View>
+        {section === 'details' && <>
         <ActionButton label="Edit contact details" variant="secondary" onPress={() => router.push({ pathname: '/contacts/edit', params: { id: contact.id } })} />
         <ActionButton label="Edit contact photo" variant="secondary" onPress={() => router.push({ pathname: '/contacts/photo', params: { id: contact.id } })} />
         <ActionButton label="Contact methods" variant="secondary" onPress={() => router.push({ pathname: '/contacts/methods', params: { id: contact.id } })} />
@@ -185,11 +195,15 @@ function ContactDetail({ id }: { id: string }) {
           {facts.location && <DetailRow label="Location" value={facts.location} />}
           <Text style={styles.lastTouch}>Saved details remain available offline. Manage this source on the web; your corrections stay in Everclose.</Text>
         </Surface>; })}
-
+        </>}
+        {section === 'overview' && <>
+        {(contact.email || contact.phone) && <Surface style={styles.detailsCard}>
+          {contact.email && <DetailRow label="Email" value={contact.email} />}
+          {contact.phone && <DetailRow label="Phone" value={contact.phone} />}
+        </Surface>}
         <View style={styles.section}>
-          <Eyebrow>Quick capture</Eyebrow>
-          <Text style={styles.captureTitle}>How did you connect?</Text>
-          <View style={styles.touchRow} accessibilityRole="radiogroup">
+          <Text style={styles.captureTitle}>Log a conversation</Text>
+          <View style={styles.touchRow}>
             {TOUCH_OPTIONS.map((option) => (
               <Pressable
                 accessibilityRole="button"
@@ -207,23 +221,7 @@ function ContactDetail({ id }: { id: string }) {
           <Text style={styles.lastTouch}>Last touch: {formatRelativeDate(contact.last_contacted)}</Text>
         </View>
 
-        <Surface style={styles.reminderCallout}>
-          <View style={styles.calloutCopy}>
-            <Text style={styles.calloutTitle}>Make the next moment easy</Text>
-            <Text style={styles.calloutText}>Set one gentle reminder and let iOS hold the timing.</Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Set a reminder for ${contact.name}`}
-            onPress={() => router.push({
-              pathname: '/reminders/new',
-              params: { contactId: contact.id },
-            })}
-            style={({ pressed }) => [styles.calloutButton, pressed && styles.pressed]}
-          >
-            <Text style={styles.calloutButtonText}>Set reminder</Text>
-          </Pressable>
-        </Surface>
+        <ActionButton label="Set reminder" variant="secondary" onPress={() => router.push({ pathname: '/reminders/new', params: { contactId: contact.id } })} />
 
         {contact.notes && (
           <View style={styles.section}>
@@ -232,8 +230,10 @@ function ContactDetail({ id }: { id: string }) {
           </View>
         )}
 
-        <PersonCalendarContext contactId={id} />
-        <PersonGmailContext key={contact.id} contactId={contact.id} />
+        <Disclosure title="Calendar & email context">
+          <PersonCalendarContext contactId={id} />
+          <PersonGmailContext key={contact.id} contactId={contact.id} />
+        </Disclosure>
         <View style={styles.section}>
           <SectionHeading title="Open reminders" />
           {reminders.length === 0 ? (
@@ -249,7 +249,8 @@ function ContactDetail({ id }: { id: string }) {
           ))}
         </View>
 
-        <View style={styles.section}>
+        </>}
+        {section === 'activity' && <View style={styles.section}>
           <SectionHeading title="Relationship timeline" />
           {interactions.length === 0 ? (
             <Text style={styles.emptySection}>Log a touch above to start the relationship timeline.</Text>
@@ -265,7 +266,7 @@ function ContactDetail({ id }: { id: string }) {
           ))}
           {!!timelineError && <Text accessibilityRole="alert" style={styles.notes}>{timelineError}</Text>}
           {!!cursor && <ActionButton label={loadingMore ? 'Reading older entries…' : 'Show older entries'} variant="secondary" disabled={loadingMore} onPress={() => void loadOlder()} />}
-        </View>
+        </View>}
       </ScrollView>
     </SafeAreaView>
   );
@@ -283,19 +284,27 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: palette.canvas },
   centered: { flex: 1, backgroundColor: palette.canvas, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 30 },
-  content: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 42, gap: 25 },
+  content: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 42, gap: 16 },
+  sections: { flexDirection: 'row', backgroundColor: palette.surface, borderRadius: 12, padding: 4, gap: 4, borderWidth: 1, borderColor: palette.line },
+  sectionTab: { flex: 1, minHeight: 44, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
+  sectionSelected: { backgroundColor: palette.ink },
+  sectionLabel: { color: palette.muted, fontFamily: fonts.bodyDemi, fontSize: 14 },
+  sectionSelectedLabel: { color: palette.white },
   identity: { flexDirection: 'row', alignItems: 'center', gap: 17 },
   identityCopy: { flex: 1, gap: 8 },
-  name: { color: palette.ink, fontFamily: fonts.display, fontSize: 34, lineHeight: 39, fontWeight: '700', letterSpacing: -0.7 },
+  name: { color: palette.ink, fontFamily: fonts.display, fontSize: 26, lineHeight: 33, fontWeight: '700', letterSpacing: -0.7 },
   detailsCard: { padding: 17, gap: 13, borderRadius: 21 },
   detailRow: { gap: 2 },
-  detailLabel: { color: palette.faint, fontFamily: fonts.bodyDemi, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.1 },
+  detailLabel: { color: palette.muted, fontFamily: fonts.bodyDemi, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.1 },
   detailValue: { color: palette.ink, fontFamily: fonts.bodyMedium, fontSize: 14 },
   section: { gap: 12 },
   captureTitle: { color: palette.ink, fontFamily: fonts.display, fontSize: 25, fontWeight: '700', marginTop: -4 },
-  touchRow: { flexDirection: 'row', gap: 8 },
+  touchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   touchButton: {
-    flex: 1,
+    flexGrow: 1,
+    minWidth: 80,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     minHeight: 48,
     borderRadius: 15,
     borderWidth: 1,
@@ -304,7 +313,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  touchText: { color: palette.primary, fontFamily: fonts.bodyDemi, fontSize: 12, fontWeight: '700' },
+  touchText: { color: palette.primary, fontFamily: fonts.bodyDemi, fontSize: 14, fontWeight: '700' },
   lastTouch: { color: palette.muted, fontFamily: fonts.body, fontSize: 12 },
   reminderCallout: { padding: 18, borderRadius: 22, gap: 15, backgroundColor: '#2B2424', borderColor: '#2B2424' },
   calloutCopy: { gap: 3 },

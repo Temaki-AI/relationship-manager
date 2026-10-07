@@ -1058,7 +1058,7 @@ export default function ContactDetail() {
   return (
     <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
       <div className="animate-fade-in">
-        <Link href="/contacts" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <Link href="/contacts" className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" />
           Back
         </Link>
@@ -1155,7 +1155,7 @@ export default function ContactDetail() {
         </CardContent>
       </Card>
 
-      <div className="sticky top-14 z-20 flex items-center gap-2 rounded-xl border border-border/70 bg-white/95 p-2 shadow-sm backdrop-blur sm:relative sm:top-auto sm:w-fit sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+      <div className="sticky top-16 z-20 flex items-center gap-2 rounded-xl border border-border/70 bg-white/95 p-2 shadow-sm backdrop-blur sm:relative sm:top-auto sm:w-fit sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
         {(contact.phone || contact.email) && (
           <a
             href={contact.phone ? `sms:${contact.phone}` : `mailto:${contact.email}`}
@@ -1179,20 +1179,20 @@ export default function ContactDetail() {
             <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
           </summary>
           <div className="absolute right-0 z-30 mt-2 w-44 rounded-xl border border-border bg-white p-2 shadow-lg">
-            <Link href={`/contacts/${id}/methods`} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-muted/50">Contact methods</Link>
-            <Link href={`/contacts/${id}/sources`} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-muted/50">Linked sources</Link>
+            <Link href={`/contacts/${id}/methods`} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-muted/50">Contact methods</Link>
+            <Link href={`/contacts/${id}/sources`} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-muted/50">Linked sources</Link>
             <Link href={`/calendar/events?contact_id=${id}`} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-muted/50">Calendar context</Link>
-            <Link href={`/contacts/${id}/edit`} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-muted/50">
+            <Link href={`/contacts/${id}/edit`} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-muted/50">
               <Edit className="h-4 w-4" aria-hidden="true" />Edit profile
             </Link>
-            <button type="button" onClick={() => { profileMenuRef.current?.removeAttribute('open'); setDeleteConfirmOpen(true); }} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm text-destructive hover:bg-destructive/10">
+            <button type="button" onClick={() => { profileMenuRef.current?.removeAttribute('open'); setDeleteConfirmOpen(true); }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm text-destructive hover:bg-destructive/10">
               <Trash2 className="h-4 w-4" aria-hidden="true" />Delete contact
             </button>
           </div>
         </details>
       </div>
 
-      <nav aria-label="Profile sections" className="sticky top-[7.5rem] z-10 grid grid-cols-3 gap-1 rounded-xl border bg-white/95 p-1 shadow-sm backdrop-blur sm:top-16 md:hidden">
+      <nav aria-label="Profile sections" className="sticky top-[7.75rem] z-10 grid grid-cols-3 gap-1 rounded-xl border bg-white/95 p-1 shadow-sm backdrop-blur sm:top-16 md:hidden">
         {([
           ['overview', 'Overview'],
           ['activity', 'Activity'],
@@ -1203,7 +1203,7 @@ export default function ContactDetail() {
             type="button"
             aria-pressed={mobileSection === section}
             onClick={() => setMobileSection(section)}
-            className={`min-h-10 rounded-lg px-2 text-sm font-semibold ${mobileSection === section ? 'bg-foreground text-white' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
+            className={`min-h-11 rounded-lg px-2 text-sm font-semibold ${mobileSection === section ? 'bg-foreground text-white' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
           >
             {label}
           </button>
@@ -1411,7 +1411,7 @@ export default function ContactDetail() {
             type="button"
             aria-pressed={activityFilter === value}
             onClick={() => setActivityFilter(value)}
-            className={`min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors ${activityFilter === value ? 'border-primary bg-primary text-white' : 'border-border bg-white text-muted-foreground hover:text-foreground'}`}
+            className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors ${activityFilter === value ? 'border-primary bg-primary text-white' : 'border-border bg-white text-muted-foreground hover:text-foreground'}`}
           >
             {label}
           </button>
@@ -1563,7 +1563,7 @@ export default function ContactDetail() {
                   <div>
                     <Label htmlFor="relationship-contact" className="text-xs">Connect another contact</Label>
                     {relationshipForm.related_contact_id ? (
-                      <div className="mt-1 flex min-h-10 items-center justify-between gap-3 rounded-lg border border-input bg-white px-3 py-2">
+                      <div className="mt-1 flex min-h-11 items-center justify-between gap-3 rounded-lg border border-input bg-white px-3 py-2">
                         <span className="text-sm font-medium">{relationshipForm.related_name}</span>
                         <Button
                           type="button"

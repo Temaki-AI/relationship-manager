@@ -165,13 +165,13 @@ function EventDetail({ event, completing, onComplete, onReschedule }: {
               type="button"
               disabled={completing}
               onClick={() => onComplete(event)}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-current/20 bg-white/70 px-3 text-xs font-semibold hover:bg-white disabled:opacity-50"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-current/20 bg-white/70 px-3 text-xs font-semibold hover:bg-white disabled:opacity-50"
               aria-label={`Mark ${event.kind} ${event.title} done`}
             >
               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
               {completing ? 'Saving...' : 'Mark done'}
             </button><button type="button" disabled={completing} onClick={() => onReschedule(event)} aria-label={`Reschedule ${event.kind} ${event.title}`}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-current/20 bg-white/70 px-3 text-xs font-semibold hover:bg-white disabled:opacity-50">
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-current/20 bg-white/70 px-3 text-xs font-semibold hover:bg-white disabled:opacity-50">
               <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />Reschedule
             </button></div>
           )}
@@ -495,7 +495,7 @@ export default function CalendarPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Link className="inline-flex min-h-11 items-center underline" href="/calendar/events">Saved calendar context</Link>
-            <Button type="button" onClick={() => openReminder()} className="min-h-10">
+            <Button type="button" onClick={() => openReminder()} className="min-h-11">
               <Plus className="h-4 w-4" aria-hidden="true" /> Add reminder
             </Button>
             <div className="flex items-center rounded-xl border border-white/80 bg-white/80 p-1 shadow-sm backdrop-blur">
@@ -503,7 +503,7 @@ export default function CalendarPage() {
                 type="button"
                 onClick={() => setView('month')}
                 aria-pressed={view === 'month'}
-                className={`flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium ${
+                className={`flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium ${
                   view === 'month' ? 'bg-foreground text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -513,7 +513,7 @@ export default function CalendarPage() {
                 type="button"
                 onClick={() => setView('agenda')}
                 aria-pressed={view === 'agenda'}
-                className={`flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium ${
+                className={`flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium ${
                   view === 'agenda' ? 'bg-foreground text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -574,7 +574,7 @@ export default function CalendarPage() {
                   <label htmlFor="calendar-contact-search" className="mb-1.5 block text-sm font-semibold">Person</label>
                 )}
                 {selectedContact ? (
-                  <div className="flex min-h-10 items-center justify-between gap-3 rounded-lg border bg-white px-3 text-sm">
+                  <div className="flex min-h-11 items-center justify-between gap-3 rounded-lg border bg-white px-3 text-sm">
                     <span>{selectedContact.name}</span>
                     <button type="button" onClick={() => setSelectedContact(null)} className="font-semibold text-primary hover:underline">Change</button>
                   </div>
@@ -604,7 +604,7 @@ export default function CalendarPage() {
                             key={contact.id}
                             type="button"
                             onClick={() => setSelectedContact(contact)}
-                            className="block min-h-9 w-full rounded-md px-2 text-left text-sm hover:bg-rose-50 focus-visible:bg-rose-50"
+                            className="block min-h-11 w-full rounded-md px-2 text-left text-sm hover:bg-rose-50 focus-visible:bg-rose-50"
                           >
                             {contact.name}
                           </button>
@@ -629,7 +629,7 @@ export default function CalendarPage() {
         <CardContent className="p-4 sm:p-5">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button type="button" variant="outline" size="icon" onClick={() => moveMonth(-1)} aria-label="Previous month">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -648,7 +648,7 @@ export default function CalendarPage() {
                     setCurrentMonth(nextMonth);
                     setSelectedDate(format(nextMonth, 'yyyy-MM-dd'));
                   }}
-                  className="h-9 rounded-md border bg-white px-2 text-sm"
+                  className="min-h-11 min-w-0 max-w-full rounded-md border bg-white px-2 text-sm"
                 />
               </div>
               <h2 className="order-first text-xl font-bold xl:order-none" aria-live="polite">
@@ -664,7 +664,7 @@ export default function CalendarPage() {
               aria-expanded={filtersOpen}
               aria-controls="calendar-filters"
               onClick={() => setFiltersOpen((open) => !open)}
-              className="inline-flex min-h-10 items-center justify-between rounded-lg border bg-white px-3 text-sm font-semibold md:hidden"
+              className="inline-flex min-h-11 items-center justify-between rounded-lg border bg-white px-3 text-sm font-semibold md:hidden"
             >
               <span className="inline-flex items-center gap-2"><Filter className="h-4 w-4" aria-hidden="true" /> Filters</span>
               <span className="text-xs font-normal text-muted-foreground">{activeFilterCount < availableKinds.length || query || contactId !== 'all' || !showCompleted ? 'Active' : 'All events'}</span>
@@ -698,7 +698,7 @@ export default function CalendarPage() {
                 )}
                 {contacts.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
               </select>
-              <label className="flex min-h-9 items-center gap-2 rounded-lg border bg-white px-3 text-sm">
+              <label className="flex min-h-11 items-center gap-2 rounded-lg border bg-white px-3 text-sm">
                 <input
                   type="checkbox"
                   checked={showCompleted}

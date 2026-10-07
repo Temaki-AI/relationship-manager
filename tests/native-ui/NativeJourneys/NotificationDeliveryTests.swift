@@ -32,7 +32,7 @@ final class NotificationDeliveryTests: XCTestCase {
             journal.terminate()
             journal.launch()
         }
-        tap("Reminders")
+        tap("Calendar"); tap("All reminders")
         tap("Create reminder")
         let title = journal.textFields["Reminder title"]
         XCTAssertTrue(title.waitForExistence(timeout: 15))

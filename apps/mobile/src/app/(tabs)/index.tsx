@@ -6,7 +6,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ActionButton, Avatar, BrandLockup, Eyebrow, SectionHeading, StatusPill, Surface } from '@/components/design-system';
+import { ActionButton, Avatar, Eyebrow, SectionHeading, StatusPill, Surface } from '@/components/design-system';
+import { Disclosure } from '@/components/disclosure';
 import { getContact, getDashboardSnapshot, logInteraction, type DashboardSnapshot, type InteractionType } from '@/data/contacts';
 import { getTodayQueue, type TodayPerson } from '@/data/today';
 import { getPromptReview, listSnoozedPrompts, resolvePromptReview, savePromptSnooze, type SnoozedPrompt } from '@/data/today-snoozes';
@@ -156,19 +157,17 @@ export default function TodayScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.topBar}>
-          <BrandLockup />
+          <Text accessibilityRole="header" style={styles.title}>Today</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Account and sync" style={styles.accountButton}
-            onPress={() => router.push('/account')}>
+            onPress={() => router.push('/settings')}>
             <StatusPill tone={account ? 'moss' : 'amber'} label={account ? 'Account & sync' : 'Sign in'} />
           </Pressable>
         </View>
         <View style={styles.heroCopy}>
           <Eyebrow>{getGreeting()}</Eyebrow>
-          <Text accessibilityRole="header" style={styles.title}>A little closer, every day.</Text>
-          <Text style={styles.subtitle}>A few people and thoughtful next steps. Go at your own pace.</Text>
         </View>
         {!!error && <Surface style={styles.messageCard}>
           <Text accessibilityRole="alert" style={styles.subtitle}>{error}</Text>
@@ -178,7 +177,7 @@ export default function TodayScreen() {
         {!!account && !!promptError && !!state?.snoozes.length && <Text accessibilityRole="alert" style={styles.reasonDetail}>{promptError}</Text>}
         {!state && !error ? <View style={styles.loading}><ActivityIndicator accessibilityLabel="Loading Today" color={palette.primary} /></View> : state && <>
           <View style={styles.sectionBlock}>
-            <SectionHeading title="Your next small moves" />
+            <SectionHeading title="Next up" />
             {state.queue.length ? state.queue.map((person) => <Surface key={person.contact.id} style={styles.personCard}>
               <Pressable accessibilityRole="button" accessibilityLabel={`Open ${person.contact.name} from Today`}
                 onPress={() => router.push({ pathname: '/contacts/[id]', params: { id: person.contact.id } })}
@@ -236,18 +235,14 @@ export default function TodayScreen() {
               {state.snoozes.length > snoozeLimit && <ActionButton label="More snoozed prompts" variant="quiet" onPress={() => setSnoozeLimit((value) => value + 10)} />}
             </>}
           </Surface>}
-          <View style={styles.sectionBlock}>
-            <SectionHeading title="Relationship rhythm" />
+          <Disclosure title="Relationship overview">
             <View style={styles.metrics}>
               <Metric value={state.snapshot.contactCount} label="People" />
               <Metric value={state.snapshot.touchesThisWeek} label="Conversations this week" />
             </View>
-          </View>
-          <Surface style={styles.messageCard}>
-            <Text style={styles.privacyTitle}>Private by default</Text>
             <Text style={styles.reasonDetail}>{account ? 'Your private workspace syncs with Everclose. An offline copy stays on this iPhone.'
               : 'Your relationship data stays on this iPhone. Sign in to connect your existing workspace.'}</Text>
-          </Surface>
+          </Disclosure>
         </>}
       </ScrollView>
       {choices.sheet}
@@ -267,17 +262,17 @@ function Metric({ value, label }: { value: number; label: string }) {
 }
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: palette.canvas },
-  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 34, gap: 24 },
+  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24, gap: 16 },
   topBar: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   accountButton: { minHeight: 44, justifyContent: 'center' },
-  heroCopy: { gap: 8, paddingTop: 8 },
-  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 34, fontWeight: '700', lineHeight: 41, letterSpacing: -0.8 },
+  heroCopy: { gap: 4 },
+  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 28, fontWeight: '700', lineHeight: 35, letterSpacing: -0.4 },
   subtitle: { color: palette.muted, fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
   loading: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
   sectionBlock: { gap: 13 },
   personCard: { padding: 18, gap: 13 },
   identity: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
-  personName: { flex: 1, color: palette.ink, fontFamily: fonts.display, fontSize: 24, fontWeight: '700' },
+  personName: { flex: 1, color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 20, fontWeight: '700' },
   reason: { gap: 3 },
   reasonTitle: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 15 },
   reasonDetail: { color: palette.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 },

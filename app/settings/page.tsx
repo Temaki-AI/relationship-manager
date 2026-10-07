@@ -107,7 +107,7 @@ function SettingsHeading({ cloud = false }: { cloud?: boolean }) {
     <div className="animate-fade-in">
       <div className="flex items-center gap-2">
         <HardDrive className="h-5 w-5 text-primary" />
-        <h1 className="text-2xl font-bold sm:text-3xl">Data & recovery</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Settings</h1>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
         {cloud ? 'Protect your private workspace with verified cloud recovery points and encrypted downloads.' : 'Protect your relationship history with verified backups and encrypted downloads.'}
@@ -599,6 +599,8 @@ export default function SettingsPage() {
         </Card>
       </div>
 
+      <details className="rounded-xl border border-border bg-white px-4">
+        <summary className="min-h-12 cursor-pointer py-3 font-medium">Download an encrypted backup</summary>
       <Card className="border border-emerald-200/70 bg-emerald-50/30 shadow-sm animate-fade-in-up">
         <CardHeader className="pb-3">
           <div className="flex items-start gap-3">
@@ -657,6 +659,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      </details>
       <Card className="border-0 shadow-sm animate-fade-in-up">
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -741,6 +744,8 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      <details open={restoring || undefined} className="rounded-xl border border-border bg-white px-4">
+        <summary className="min-h-12 cursor-pointer py-3 font-medium">Restore a backup</summary>
       <Card className="border border-amber-200/70 bg-amber-50/30 shadow-sm animate-fade-in-up">
         <CardHeader className="pb-3">
           <div className="flex items-start gap-3">
@@ -831,6 +836,9 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      </details>
+      <details open={erasing || undefined} className="rounded-xl border border-red-200 bg-white px-4">
+        <summary className="min-h-12 cursor-pointer py-3 font-medium text-destructive">Erase workspace data</summary>
       <Card className="border border-red-200/80 bg-red-50/30 shadow-sm animate-fade-in-up">
         <CardHeader className="pb-3">
           <div className="flex items-start gap-3">
@@ -890,7 +898,7 @@ export default function SettingsPage() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>      </details>
     </div>
   );
 }

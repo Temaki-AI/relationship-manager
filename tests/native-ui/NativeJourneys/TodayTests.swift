@@ -119,6 +119,7 @@ final class TodayTests: XCTestCase {
         XCTAssertFalse(journal.buttons["Complete reminder for \(person): \(second)"].exists)
         tap("Open \(person) from Today")
         XCTAssertTrue(journal.staticTexts["today-qa@example.invalid"].waitForExistence(timeout: 15))
+        tap("Activity")
         XCTAssertTrue(journal.staticTexts["Logged a message"].exists)
     }
 

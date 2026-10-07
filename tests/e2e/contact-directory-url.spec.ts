@@ -44,6 +44,7 @@ test('people filters, pagination, and view survive profile navigation and browse
     await expect(page.getByText('Page 2 of 2')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Friends' })).toHaveAttribute('aria-pressed', 'true');
 
+    await page.getByText('Manage', { exact: true }).click();
     await page.getByRole('button', { name: 'Grid' }).click();
     await expect(page).toHaveURL(/view=grid/u);
     await page.goBack();

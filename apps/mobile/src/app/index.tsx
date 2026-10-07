@@ -34,12 +34,11 @@ export default function IndexRedirect() {
     <ScrollView contentContainerStyle={styles.content}>
       <BrandLockup />
       <View style={styles.intro}>
-        <Text style={styles.title}>Your people, wherever you are.</Text>
-        <Text style={styles.body}>Sign in to Everclose to bring your contacts, notes, plans and reminders from the web to your iPhone.</Text>
+        <Text accessibilityRole="header" style={styles.title}>Stay close to your people.</Text>
+        <Text style={styles.body}>Bring your contacts, notes, and plans from Everclose to your iPhone.</Text>
       </View>
       <Surface style={styles.card}>
-        <Text style={styles.cardTitle}>Continue with your account</Text>
-        <Text style={styles.body}>Google sign-in opens in your browser. Approve this iPhone to connect it to your existing Everclose workspace.</Text>
+        <Text style={styles.body}>Sign in with Google, then approve this iPhone in your browser.</Text>
         <ActionButton label={busy ? 'Signing in…' : 'Continue with Google'} disabled={busy || Platform.OS === 'web'}
           onPress={() => { void connect(() => signIn(process.env.EXPO_PUBLIC_EVERCLOSE_API_URL || 'https://everclosecrm.com')); }} />
         {pending && <ActionButton label="Finish connecting" variant="secondary" disabled={busy} onPress={() => { void connect(resume); }} />}
@@ -48,7 +47,7 @@ export default function IndexRedirect() {
       <Text style={styles.body}>After your first sync, you can work offline. Changes sync when you reconnect and open Everclose.</Text>
       <ActionButton label="Use only on this iPhone" variant="quiet" disabled={busy} onPress={() => router.replace('/(tabs)')} />
       <Text style={styles.caption}>Local-only data stays separate from your signed-in account.</Text>
-      <ActionButton label="Account settings" variant="secondary" disabled={busy} onPress={() => router.push('/account')} />
+      <ActionButton label="Account settings" variant="quiet" disabled={busy} onPress={() => router.push('/account')} />
     </ScrollView>
   </SafeAreaView>;
 }
@@ -57,7 +56,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: palette.canvas },
   content: { padding: 24, gap: 20, flexGrow: 1, justifyContent: 'center' },
   intro: { gap: 12, marginTop: 16 },
-  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 37, fontWeight: '700', lineHeight: 43 },
+  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 30, fontWeight: '700', lineHeight: 37 },
   card: { padding: 22, gap: 16 },
   cardTitle: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 18 },
   body: { color: palette.muted, fontFamily: fonts.body, fontSize: 15, lineHeight: 23 },

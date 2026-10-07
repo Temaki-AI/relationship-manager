@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, BrandLockup, StatusPill } from '@/components/design-system';
+import { Avatar, StatusPill } from '@/components/design-system';
 import { listOpenReminders, type ReminderRecord } from '@/data/reminders';
 import { formatDateTime } from '@/lib/format';
 import { fonts, palette } from '@/theme';
@@ -37,7 +37,7 @@ export default function RemindersScreen() {
   }, [loadReminders]));
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <FlatList
         data={reminders}
         keyExtractor={(reminder) => reminder.id}
@@ -45,11 +45,10 @@ export default function RemindersScreen() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={(
           <View style={styles.header}>
-            <BrandLockup />
-            <View style={styles.headingRow}>
+                        <View style={styles.headingRow}>
               <View style={styles.headingCopy}>
-                <Text style={styles.title}>Gentle nudges</Text>
-                <Text style={styles.subtitle}>Follow through without turning friendship into a task list.</Text>
+                <Text style={styles.title}>Reminders</Text>
+                <Text style={styles.subtitle}>Your open reminders, ordered by date.</Text>
               </View>
               <Pressable
                 accessibilityRole="button"
@@ -129,7 +128,7 @@ const styles = StyleSheet.create({
   header: { gap: 20, marginBottom: 10 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   headingCopy: { flex: 1, gap: 4 },
-  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 36, fontWeight: '700', letterSpacing: -0.8 },
+  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 28, fontWeight: '700', letterSpacing: -0.8 },
   subtitle: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 20 },
   addButton: {
     width: 50,
