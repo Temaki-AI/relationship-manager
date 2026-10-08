@@ -1027,7 +1027,12 @@ export default function ContactDetail() {
   const giftIdeas = parseGiftIdeas(contact.gift_ideas);
   const customFields = parseCustomFields(contact.custom_fields);
   const socialLinks = getSocialLinks(contact.custom_fields);
-  const extraMethods = readContactMethods(contact.contact_methods).filter((method) => method.kind === 'profile' || !method.preferred);
+  const contactMethods = readContactMethods(contact.contact_methods);
+  const primaryEmail = contactMethods.find((method) => method.kind === 'email' && method.value === contact.email && method.preferred)
+    ?? contactMethods.find((method) => method.kind === 'email' && method.value === contact.email);
+  const primaryPhone = contactMethods.find((method) => method.kind === 'phone' && method.value === contact.phone && method.preferred)
+    ?? contactMethods.find((method) => method.kind === 'phone' && method.value === contact.phone);
+  const extraMethods = contactMethods.filter((method) => method.id !== primaryEmail?.id && method.id !== primaryPhone?.id);
   function openLogForm() {
     setMobileSection('activity');
     setActivityFilter('interaction');
@@ -1083,15 +1088,15 @@ export default function ContactDetail() {
               )}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
                 {contact.email && (
-                  <a href={contactMethodHref({ kind: 'email', value: contact.email })} className="flex items-center gap-1.5 hover:text-primary transition-colors">
-                    <Mail className="w-3.5 h-3.5" />
-                    {contact.email}
+                  <a href={contactMethodHref({ kind: 'email', value: contact.email })} className="flex min-h-11 max-w-full items-center gap-1.5 hover:text-primary transition-colors">
+                    <Mail className="w-3.5 h-3.5 shrink-0" />
+                    <span className="min-w-0 break-all">{primaryEmail?.label && <span className="font-medium">{displayContactMethodLabel(primaryEmail.label)}: </span>}{contact.email}</span>
                   </a>
                 )}
                 {contact.phone && (
-                  <a href={contactMethodHref({ kind: 'phone', value: contact.phone })} className="flex items-center gap-1.5 hover:text-primary transition-colors">
-                    <Phone className="w-3.5 h-3.5" />
-                    {contact.phone}
+                  <a href={contactMethodHref({ kind: 'phone', value: contact.phone })} className="flex min-h-11 max-w-full items-center gap-1.5 hover:text-primary transition-colors">
+                    <Phone className="w-3.5 h-3.5 shrink-0" />
+                    <span className="min-w-0 break-all">{primaryPhone?.label && <span className="font-medium">{displayContactMethodLabel(primaryPhone.label)}: </span>}{contact.phone}{primaryPhone?.country ? ` (${primaryPhone.country})` : ''}</span>
                   </a>
                 )}
                 {location && (

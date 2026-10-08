@@ -1,6 +1,21 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('a contact method without an explicit preference is shown once with its label', async ({ page }) => {
+  await page.request.post('/api/auth/login', { data: { password: 'bonds-e2e-account-password' } });
+  const created = await page.request.post('/api/contacts', { headers: { 'Idempotency-Key': crypto.randomUUID() }, data: {
+    name: 'Single-method profile QA',
+    contact_methods: [{ id: crypto.randomUUID(), kind: 'email', value: 'single-method@example.test', label: 'Personal', country: null, preferred: false }],
+  } });
+  expect(created.ok()).toBe(true);
+  const { contact } = await created.json();
+  await page.goto(`/contacts/${contact.id}`);
+  const email = page.getByRole('link', { name: 'Personal: single-method@example.test', exact: true });
+  await expect(email).toHaveCount(1);
+  await expect(email).toBeVisible();
+  await expect(page.locator('a[href^="mailto:"]')).toHaveCount(1);
+});
+
 test('contact methods retain labels, preferred values and drafts across mobile and desktop journeys', async ({ page }, testInfo) => {
   const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message));
   await page.request.post('/api/auth/login', { data: { password: 'bonds-e2e-account-password' } });
@@ -33,7 +48,7 @@ test('contact methods retain labels, preferred values and drafts across mobile a
   expect(JSON.parse(saved.contact_methods)).toHaveLength(4);
   const identities = JSON.parse(saved.contact_methods).map((item: { id: string }) => item.id).sort();
   await page.getByRole('link', { name: 'Back to person', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'work@example.test', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Work: work@example.test', exact: true })).toBeVisible();
   const additional = page.locator('[aria-label="Additional contact methods"]');
   await expect(additional.getByRole('link', { name: 'personal@example.test', exact: true })).toBeVisible();
   await expect(additional.getByRole('link', { name: 'Profile: https://example.test/profile', exact: true })).toHaveAttribute('rel', 'noreferrer noopener');
