@@ -14,6 +14,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -28,6 +29,7 @@ import { useNativeSync } from '@/native/sync';
 import { useNativeAccount } from '@/native/account';
 
 export default function PeopleScreen() {
+  const { fontScale } = useWindowDimensions();
   const db = useSQLiteContext();
   const focused = useIsFocused();
   const { revision, syncing, error: syncError, run } = useNativeSync();
@@ -93,7 +95,7 @@ export default function PeopleScreen() {
           <View style={styles.header}>
             <View style={styles.headingRow}>
               <View style={styles.headingCopy}>
-                <Text accessibilityRole="header" style={styles.title}>People</Text>
+                <Text accessibilityRole="header" maxFontSizeMultiplier={2} style={styles.title}>People</Text>
               </View>
               <Pressable
                 accessibilityRole="button"
@@ -101,11 +103,12 @@ export default function PeopleScreen() {
                 onPress={() => router.push('/contacts/new')}
                 style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
               >
-                <Text style={styles.addButtonText}>+</Text>
+                <Text allowFontScaling={false} style={styles.addButtonText}>+</Text>
               </Pressable>
             </View>
             <TextInput
               accessibilityLabel="Search people"
+              maxFontSizeMultiplier={2}
               autoCapitalize="none"
               onChangeText={(value) => { setSearch(value); setPage(0); }}
               onSubmitEditing={() => setRetry((value) => value + 1)}
@@ -178,12 +181,13 @@ export default function PeopleScreen() {
             >
               <ContactAvatar id={item.id} name={item.name} />
               <View style={styles.personCopy}>
-                <Text style={styles.personName}>{item.name}</Text>
-                <Text numberOfLines={1} style={styles.personMeta}>
+                <Text maxFontSizeMultiplier={2} style={styles.personName}>{item.name}</Text>
+                <Text numberOfLines={fontScale > 1.3 ? undefined : 1} style={styles.personMeta}>
                   {item.email || item.phone || formatRelativeDate(item.last_contacted)}
                 </Text>
+                {fontScale > 1.3 && <RelationshipPill contact={item} />}
               </View>
-              <RelationshipPill contact={item} />
+              {fontScale <= 1.3 && <RelationshipPill contact={item} />}
             </Pressable>
         )}
       />
@@ -209,7 +213,8 @@ const styles = StyleSheet.create({
   subtitle: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 20 },
   addButton: {
     width: 50,
-    height: 50,
+    minHeight: 50,
+    paddingVertical: 12,
     borderRadius: 18,
     backgroundColor: palette.primary,
     alignItems: 'center',

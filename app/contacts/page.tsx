@@ -79,6 +79,7 @@ function getContactSubtitle(contact: DirectoryContact): string | null {
 export default function ContactsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const importRequested = searchParams.get('import') === '1';
   const { captureMoment, search: searchQuery, tag: selectedTag, page, view } = readDirectoryUrl(new URLSearchParams(searchParams.toString()));
   const contactHref = (contactId: number) => `/contacts/${contactId}${captureMoment ? '?capture=moment' : ''}`;
   const [contacts, setContacts] = useState<DirectoryContact[]>([]);
@@ -106,7 +107,7 @@ export default function ContactsPage() {
   const [uploadAttempt, setUploadAttempt] = useState<{ file: File; format: 'csv' | 'vcard'; key: string } | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [phonePickerSupported, setPhonePickerSupported] = useState(false);
-  const [showTransferPanel, setShowTransferPanel] = useState(false);
+  const [showTransferPanel, setShowTransferPanel] = useState(importRequested);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
   const manageMenuRef = useRef<HTMLDetailsElement>(null);
@@ -114,6 +115,14 @@ export default function ContactsPage() {
   const pendingSearchRef = useRef<string | null>(null);
   const searchEditInProgressRef = useRef(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!importRequested) return;
+    setShowTransferPanel(true);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('import');
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [importRequested]);
 
   const writeDirectoryUrl = useCallback((patch: Partial<Pick<DirectoryUrlState, 'search' | 'tag' | 'page' | 'view'>>, mode: 'push' | 'replace' = 'push') => {
     const next = updateDirectoryUrl(window.location.href, patch);
@@ -569,7 +578,7 @@ export default function ContactsPage() {
           {uploadAttempt && <Button className="mt-3" variant="outline" disabled={importing} onClick={() => void handleContactImport(uploadAttempt.file, uploadAttempt.format)}>{importing ? 'Uploading...' : `Retry ${uploadAttempt.file.name}`}</Button>}
       </div>}
 
-      {(showTransferPanel || searchParams.get('import') === '1') && (
+      {showTransferPanel && (
         <Card className="overflow-hidden border-0 shadow-sm animate-fade-in-up">
           <div className="h-1 bg-gradient-to-r from-rose-400 via-amber-400 to-emerald-400" />
           <CardContent className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[1.2fr_1fr]">
@@ -578,12 +587,15 @@ export default function ContactsPage() {
                 <div className="rounded-xl bg-primary/10 p-2.5 text-primary">
                   <ContactIcon className="h-5 w-5" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h2 className="font-semibold text-foreground">Bring your people with you</h2>
                   <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                     {cloudImports ? 'Upload a vCard or CSV and preview every row before saving. You decide what to do with possible matches; existing contacts are never overwritten.' : 'Import a vCard from Apple, Google, or Outlook, or use a CSV spreadsheet. Everclose CRM skips matching emails and phone numbers automatically.'}
                   </p>
                 </div>
+                <Button variant="ghost" size="icon" aria-label="Close import tools" disabled={importing} onClick={() => setShowTransferPanel(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
 
               {cloudImports && <p className="text-xs leading-relaxed text-muted-foreground">Files are uploaded to your cloud workspace for processing. Your original file and report are retained until you remove the report or erase the workspace. Up to 5,000 contacts and 10 MB per upload.</p>}

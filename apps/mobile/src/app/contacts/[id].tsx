@@ -13,6 +13,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -49,6 +50,7 @@ export default function ContactDetailScreen() {
 }
 
 function ContactDetail({ id }: { id: string }) {
+  const { fontScale } = useWindowDimensions();
   const [section, setSection] = useState<'overview' | 'activity' | 'details'>('overview');
   const db = useSQLiteContext();
   const focused = useIsFocused();
@@ -145,21 +147,21 @@ function ContactDetail({ id }: { id: string }) {
       <Stack.Screen options={{ title: contact.name }} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {!!error && <><Text accessibilityRole="alert" style={styles.notes}>{error}</Text><ActionButton label="Try again" variant="secondary" onPress={() => setReload((value) => value + 1)} /></>}
-        <View style={styles.identity}>
+        <View style={[styles.identity, fontScale > 1.3 && styles.identityLarge]}>
           <Avatar name={contact.name} size={56} photo={photo.uri} />
           <View style={styles.identityCopy}>
-            <Text accessibilityRole="header" style={styles.name}>{contact.name}</Text>
+            <Text accessibilityRole="header" maxFontSizeMultiplier={2} style={styles.name}>{contact.name}</Text>
             <StatusPill tone={stateTone} label={stateLabel} />
           </View>
         </View>
 
         {!!photo.error && <View style={styles.section}><Text accessibilityRole="alert" style={styles.lastTouch}>{photo.error}</Text>
           <ActionButton label="Retry photo download" variant="secondary" onPress={photo.retry} /></View>}
-        <View style={styles.sections} accessibilityLabel="Profile sections">
+        <View style={[styles.sections, fontScale > 1.3 && styles.sectionsLarge]} accessibilityLabel="Profile sections">
           {(['overview', 'activity', 'details'] as const).map((value) => <Pressable key={value}
             accessibilityRole="button" accessibilityState={{ selected: section === value }}
-            onPress={() => setSection(value)} style={[styles.sectionTab, section === value && styles.sectionSelected]}>
-            <Text style={[styles.sectionLabel, section === value && styles.sectionSelectedLabel]}>{value === 'overview' ? 'Overview' : value === 'activity' ? 'Activity' : 'Details'}</Text>
+            onPress={() => setSection(value)} style={[styles.sectionTab, fontScale > 1.3 && styles.sectionTabLarge, section === value && styles.sectionSelected]}>
+            <Text maxFontSizeMultiplier={2} style={[styles.sectionLabel, section === value && styles.sectionSelectedLabel]}>{value === 'overview' ? 'Overview' : value === 'activity' ? 'Activity' : 'Details'}</Text>
           </Pressable>)}
         </View>
         {section === 'details' && <>
@@ -286,11 +288,14 @@ const styles = StyleSheet.create({
   centered: { flex: 1, backgroundColor: palette.canvas, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 30 },
   content: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 42, gap: 16 },
   sections: { flexDirection: 'row', backgroundColor: palette.surface, borderRadius: 12, padding: 4, gap: 4, borderWidth: 1, borderColor: palette.line },
+  sectionsLarge: { flexDirection: 'column' },
+  sectionTabLarge: { flex: 0 },
   sectionTab: { flex: 1, minHeight: 44, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
   sectionSelected: { backgroundColor: palette.ink },
   sectionLabel: { color: palette.muted, fontFamily: fonts.bodyDemi, fontSize: 14 },
   sectionSelectedLabel: { color: palette.white },
   identity: { flexDirection: 'row', alignItems: 'center', gap: 17 },
+  identityLarge: { flexDirection: 'column', alignItems: 'stretch' },
   identityCopy: { flex: 1, gap: 8 },
   name: { color: palette.ink, fontFamily: fonts.display, fontSize: 26, lineHeight: 33, fontWeight: '700', letterSpacing: -0.7 },
   detailsCard: { padding: 17, gap: 13, borderRadius: 21 },

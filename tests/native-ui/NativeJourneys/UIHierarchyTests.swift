@@ -19,7 +19,8 @@ final class UIHierarchyTests: XCTestCase {
             journal.scrollViews.allElementsBoundByIndex.last(where: { $0.isHittable && $0.frame.height > 200 })?.swipeUp()
         }
         XCTAssertTrue(element.isHittable, "Unreachable: \(label)")
-        XCTAssertGreaterThanOrEqual(element.frame.height, 44, "Small target: \(label)")
+        // UIKit can report a 44-point layout as 43.99999 after pixel conversion.
+        XCTAssertGreaterThanOrEqual(element.frame.height, 44 - 0.01, "Small target: \(label)")
         element.tap()
     }
 

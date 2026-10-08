@@ -33,7 +33,7 @@ export default function AgendaScreen() {
   return <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: palette.canvas }}>
     <FlatList data={loading ? [] : rows} keyExtractor={(item) => item.kind + ':' + (item.kind === 'plan' ? item.record.id : item.event.id)} contentContainerStyle={styles.content}
       ListHeaderComponent={<View style={styles.header}>
-        <Text accessibilityRole="header" style={styles.title}>Calendar</Text>
+        <Text accessibilityRole="header" maxFontSizeMultiplier={2} style={styles.title}>Calendar</Text>
         <Text style={styles.body}>Upcoming plans and saved meetings.</Text>
         <View style={styles.options}>
         <ActionButton label="New plan" onPress={() => router.push({ pathname: '/context/edit', params: { entity: 'plan' } })} />

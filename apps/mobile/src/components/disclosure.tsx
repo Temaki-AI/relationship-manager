@@ -7,8 +7,8 @@ export function Disclosure({ title, children }: { title: string; children: React
   return <View style={styles.container}>
     <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ expanded }}
       onPress={() => setExpanded((value) => !value)} style={styles.trigger}>
-      <Text style={styles.title}>{title}</Text>
-      <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.indicator}>{expanded ? '−' : '+'}</Text>
+      <Text maxFontSizeMultiplier={2} style={styles.title}>{title}</Text>
+      <Text allowFontScaling={false} accessibilityElementsHidden importantForAccessibility="no" style={styles.indicator}>{expanded ? '−' : '+'}</Text>
     </Pressable>
     {expanded && <View style={styles.content}>{children}</View>}
   </View>;

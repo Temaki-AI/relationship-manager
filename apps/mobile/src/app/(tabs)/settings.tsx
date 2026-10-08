@@ -5,7 +5,7 @@ import { fonts, palette } from '@/theme';
 
 export default function SettingsScreen() {
   return <SafeAreaView edges={['top', 'left', 'right']} style={styles.container}>
-    <Text accessibilityRole="header" style={styles.title}>Settings</Text>
+    <Text accessibilityRole="header" maxFontSizeMultiplier={2} style={styles.title}>Settings</Text>
     <AccountScreen />
   </SafeAreaView>;
 }

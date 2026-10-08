@@ -76,7 +76,7 @@ export function NavHeader() {
   return (
     <>
       {/* Desktop Header */}
-      <header className="bg-white/95 backdrop-blur-md border-b border-border/70 sticky top-0 z-50">
+      <header className="bg-white md:bg-white/95 md:backdrop-blur-md border-b border-border/70 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" aria-label="Everclose home" className="flex min-h-11 items-center gap-2.5 group">

@@ -33,7 +33,7 @@ export function Eyebrow({ children }: { children: ReactNode }) {
 export function SectionHeading({ title, action }: { title: string; action?: ReactNode }) {
   return (
     <View style={styles.sectionHeading}>
-      <Text accessibilityRole="header" style={styles.sectionTitle}>{title}</Text>
+      <Text accessibilityRole="header" maxFontSizeMultiplier={2} style={styles.sectionTitle}>{title}</Text>
       {action}
     </View>
   );
@@ -53,7 +53,7 @@ export function Avatar({ name, size = 48, photo = null }: { name: string; size?:
       ]}
     >
       {photo && photo !== failedPhoto ? <Image accessible={false} source={{ uri: photo }} resizeMode="cover"
-        style={{ width: size, height: size, borderRadius: Math.round(size * 0.36) }} onError={() => setFailedPhoto(photo)} /> : <Text style={[styles.avatarText, { fontSize: Math.max(12, Math.round(size * 0.32)) }]}>
+        style={{ width: size, height: size, borderRadius: Math.round(size * 0.36) }} onError={() => setFailedPhoto(photo)} /> : <Text allowFontScaling={false} style={[styles.avatarText, { fontSize: Math.max(12, Math.round(size * 0.32)) }]}>
         {getInitials(name)}
       </Text>}
     </View>
@@ -89,7 +89,7 @@ export function ActionButton({
         disabled && styles.actionDisabled,
       ]}
     >
-      <Text style={[
+      <Text maxFontSizeMultiplier={2} style={[
         styles.actionLabel,
         variant === 'primary' ? styles.actionPrimaryLabel : styles.actionSecondaryLabel,
       ]}>
@@ -107,7 +107,7 @@ export function StatusPill({ tone, label }: { tone: 'moss' | 'amber' | 'rose'; l
       tone === 'amber' && styles.pillAmber,
       tone === 'rose' && styles.pillRose,
     ]}>
-      <Text style={[
+      <Text maxFontSizeMultiplier={2} style={[
         styles.pillText,
         tone === 'moss' && styles.pillTextMoss,
         tone === 'amber' && styles.pillTextAmber,

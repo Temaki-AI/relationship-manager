@@ -58,6 +58,18 @@ test('secondary tools are discoverable without obscuring the daily tasks', async
   await page.getByText('Manage', { exact: true }).click();
   await page.getByRole('button', { name: 'Transfer contacts', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Bring your people with you' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close import tools' }).click();
+  await expect(page.getByRole('heading', { name: 'Bring your people with you' })).toBeHidden();
+  await page.goto('/contacts?import=1&view=list');
+  await expect(page.getByRole('heading', { name: 'Bring your people with you' })).toBeVisible();
+  await expect(page).not.toHaveURL(/import=1/);
+  await expect(page).toHaveURL(/view=list/);
+  await page.getByRole('button', { name: 'Close import tools' }).click();
+  await expect(page.getByRole('heading', { name: 'Bring your people with you' })).toBeHidden();
+  await page.getByText('Manage', { exact: true }).click();
+  await page.getByRole('button', { name: 'Select people', exact: true }).click();
+  await page.getByRole('button', { name: 'Done selecting' }).click();
+  await expect(page.getByRole('button', { name: 'Done selecting' })).toBeHidden();
 
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();

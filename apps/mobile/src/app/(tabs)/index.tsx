@@ -160,7 +160,7 @@ export default function TodayScreen() {
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.topBar}>
-          <Text accessibilityRole="header" style={styles.title}>Today</Text>
+          <Text accessibilityRole="header" maxFontSizeMultiplier={2} style={styles.title}>Today</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Account and sync" style={styles.accountButton}
             onPress={() => router.push('/settings')}>
             <StatusPill tone={account ? 'moss' : 'amber'} label={account ? 'Account & sync' : 'Sign in'} />

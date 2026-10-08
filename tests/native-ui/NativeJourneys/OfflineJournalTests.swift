@@ -65,11 +65,21 @@ final class OfflineJournalTests: XCTestCase {
         }
         XCTAssertTrue(input.isHittable, "Input is not reachable: \(label)")
         input.tap()
+        var lastKeyboardFrame: CGRect?
+        let keyboardSettled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let keyboard = self.journal.keyboards.firstMatch
+            guard keyboard.exists, keyboard.frame.height > 100 else { return false }
+            let current = keyboard.frame
+            defer { lastKeyboardFrame = current }
+            return lastKeyboardFrame == current
+        }, object: journal)
+        XCTAssertEqual(XCTWaiter.wait(for: [keyboardSettled], timeout: 10), .completed, "Keyboard did not settle")
         // Opening the keyboard shrinks the viewport. Keep the focused input
         // visible before using native text-selection controls.
         for _ in 0..<8 {
-            let scroll = journal.scrollViews.allElementsBoundByIndex.last(where: { $0.isHittable && $0.frame.height > 200 })
-            if let scroll, input.frame.minY >= scroll.frame.minY, input.frame.maxY <= scroll.frame.maxY { break }
+            // The predictive-text strip can sit above the keyboard's reported
+            // frame, so leave room for it as well as the keyboard itself.
+            if input.frame.minY >= 0, input.frame.maxY <= journal.keyboards.firstMatch.frame.minY - 60 { break }
             scrollUp()
         }
         if !appendTo.isEmpty {
@@ -78,12 +88,12 @@ final class OfflineJournalTests: XCTestCase {
             input.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.85)).tap()
         }
         if replace {
-            // A tap can put the caret at the beginning of existing text.
-            input.press(forDuration: 1)
-            let selectAll = journal.menuItems["Select All"]
-            XCTAssertTrue(selectAll.waitForExistence(timeout: 5))
-            selectAll.tap()
-            input.typeText(XCUIKeyboardKey.delete.rawValue)
+            // These short date fields fit on one line. Tapping the trailing
+            // edge puts the caret after the existing value without relying on
+            // the OS version's text-selection menu labels.
+            let original = input.value as? String ?? ""
+            input.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+            input.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: original.count))
             let cleared = input.value as? String
             XCTAssertTrue(cleared == "" || cleared == input.placeholderValue, "Native field was not cleared")
         }

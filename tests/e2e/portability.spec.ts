@@ -55,7 +55,7 @@ test('CSV and vCard transfers round-trip through the consumer UI', async ({ page
     'END:VCARD',
     'BEGIN:VCARD',
     'VERSION:3.0',
-    'EMAIL:missing-name@example.test',
+    'NOTE:No usable contact identity.',
     'END:VCARD',
   ].join('\r\n');
   const importFile = {

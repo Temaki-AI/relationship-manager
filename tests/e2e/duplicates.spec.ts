@@ -118,13 +118,14 @@ test('duplicate cleanup preserves relationship history and creates a recovery po
   await page.goto(`/contacts/${primaryId}`);
   await expect(page.getByRole('heading', { name: primaryName, level: 1 })).toBeVisible();
   const relationshipMemory = page
-    .getByRole('heading', { name: 'Relationship memory', level: 3 })
+    .getByRole('heading', { name: 'What to remember', level: 2 })
     .locator('..')
     .locator('..');
   await expect(relationshipMemory).toContainText(`Primary notes ${suffix}`);
   await expect(relationshipMemory).toContainText(`Secondary notes ${suffix}`);
   await expect(page.getByText('primary-tag', { exact: true })).toBeVisible();
   await expect(page.getByText('secondary-tag', { exact: true })).toBeVisible();
+  if (testInfo.project.name.endsWith('mobile')) await page.getByRole('button', { name: 'Activity', exact: true }).click();
   const relationshipTimeline = page
     .getByRole('heading', { name: /^Relationship timeline/, level: 3 })
     .locator('..')
