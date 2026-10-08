@@ -1,10 +1,19 @@
-# Development handoff — 6 October 2026
+# Development handoff — 8 October 2026
 
-Current delivery: personal iOS **build 12** is installed in place on TIE Fighter;
-fresh metadata confirms 1.0.0/build 12. Its launch is blocked by the phone lock.
-The user-ready simulator runs the exact compiled Release as process 62204 and
-shows the account welcome screen. Its original 23 data tables and identity values
-are preserved through schema 16-to-18; integrity and foreign keys pass. The owner
+Current development delivery: the web and iOS interface now share Today,
+People, Calendar, and Settings, with secondary tools disclosed when requested.
+Profiles separate Overview, Activity, and Details. The user-ready simulator
+`AAC8EF14-F696-416B-ACBF-6706D5EF8B77` runs native build 12 with UI JavaScript
+source `1ccab87d7acdb6d19d4d0a8f9ca913496245ff00`. The exact bundle passes the
+offline journey and normal/largest-text navigation checks. Installation
+preserves every row in all 26 current SQLite tables; schema 18, integrity,
+foreign keys, and bundle receipt checks pass. Its inspected launch retains the
+owner's unfinished Google connection. A signed iPhone UI preview contains the
+same verified bundle, but TIE Fighter currently has no usable connection tunnel;
+the physical phone retains its previously installed build 12. See the
+[interface audit and verification](ui-ux-audit-2026-10-08.md).
+
+Production delivery remains the Calendar-only server rollout. The owner
 approved the private production backup. Both exact Calendar migrations 49–50 are
 applied, with all original rows verified unchanged across 69 production tables.
 The compatible server source `d8fb137` is deployed as Worker
@@ -15,9 +24,9 @@ open. No personal phone database was copied or reset. See the updated
 [build-12 delivery](personal-ios-build12.md) and
 [Calendar server rollout](calendar-server-rollout.md).
 
-The records below describe the preceding preparation and builds. Where they
-refer to pending backup permission, migration 44 or personal build 10, the
-current delivery above supersedes that historical state.
+The new web interface and direct Calendar rescheduling UI are in the draft PR
+and are not deployed to production. The records below describe preceding
+preparation and builds; current delivery above supersedes their older state.
 
 Everclose's personal web release is deployed at everclosecrm.com. Personal iOS
 **build 10** is signed and installed in place over build 9 on TIE Fighter.

@@ -1,11 +1,21 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test.beforeEach(async ({ page }) => {
+  if (process.env.BONDS_E2E_CLOUD_UI === 'true') {
+    await page.route('**/api/auth/get-session*', (route) => route.fulfill({ json: { session: null, user: null } }));
+  }
+});
+
 test('a contact method without an explicit preference is shown once with its label', async ({ page }) => {
   await page.request.post('/api/auth/login', { data: { password: 'bonds-e2e-account-password' } });
   const created = await page.request.post('/api/contacts', { headers: { 'Idempotency-Key': crypto.randomUUID() }, data: {
     name: 'Single-method profile QA',
-    contact_methods: [{ id: crypto.randomUUID(), kind: 'email', value: 'single-method@example.test', label: 'Personal', country: null, preferred: false }],
+    custom_fields: { social: { website: 'https://example.test/' } },
+    contact_methods: [
+      { id: crypto.randomUUID(), kind: 'email', value: 'single-method@example.test', label: 'Personal', country: null, preferred: false },
+      { id: crypto.randomUUID(), kind: 'profile', value: 'https://example.test/', label: 'Website', country: null, preferred: false },
+    ],
   } });
   expect(created.ok()).toBe(true);
   const { contact } = await created.json();
@@ -14,6 +24,7 @@ test('a contact method without an explicit preference is shown once with its lab
   await expect(email).toHaveCount(1);
   await expect(email).toBeVisible();
   await expect(page.locator('a[href^="mailto:"]')).toHaveCount(1);
+  await expect(page.locator('a[href="https://example.test/"]')).toHaveCount(1);
 });
 
 test('contact methods retain labels, preferred values and drafts across mobile and desktop journeys', async ({ page }, testInfo) => {

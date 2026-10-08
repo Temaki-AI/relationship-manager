@@ -73,7 +73,7 @@ test('people and profile use neutral check-in timing with quick capture', async 
       await page.getByRole('button', { name: 'Details', exact: true }).click();
       await expect(page.getByRole('heading', { name: 'Family & connections' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Profile details' })).toBeVisible();
-      await expect(page.getByRole('link', { name: 'Website' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'website: https://example.com/', exact: true })).toBeVisible();
       await expect(page.locator('#profile-details').getByText('Friend', { exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Overview', exact: true }).click();
       await expect(page.getByRole('heading', { name: 'Relationship brief' })).toBeHidden();

@@ -96,9 +96,8 @@ test('cloud upload retries reuse the saved job and open its preview', async ({ p
   try {
     await connect(page, h, { upload: true });
     await page.goto('/contacts');
-    await page.locator('summary').filter({ hasText: 'Manage' }).click();
     await page.getByText('Manage', { exact: true }).click();
-  await page.getByRole('button', { name: 'Transfer contacts' }).click();
+    await page.getByRole('button', { name: 'Transfer contacts' }).click();
     await page.locator('#csv-import').setInputFiles({ name: 'people.csv', mimeType: 'text/csv', buffer: Buffer.from('Name\nAda') });
     await expect(page.getByRole('main').getByRole('alert')).toBeVisible();
     expect((await h.call('import/jobs')).body.jobs).toHaveLength(1);

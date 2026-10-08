@@ -22,7 +22,9 @@ test('people filters, pagination, and view survive profile navigation and browse
     await page.goto('/contacts?search=Person&tag=Friends&view=list');
     await expect(page.getByRole('textbox', { name: 'Search contacts' })).toHaveValue('Person');
     await expect(page.getByRole('button', { name: 'Friends' })).toHaveAttribute('aria-pressed', 'true');
+    await page.getByText('Manage', { exact: true }).click();
     await expect(page.getByRole('button', { name: 'Compact list' })).toHaveAttribute('aria-pressed', 'true');
+    await page.getByText('Manage', { exact: true }).click();
     await expect(page.getByText('Page 1 of 2')).toBeVisible();
 
     await page.getByRole('button', { name: 'Next' }).click();
@@ -34,7 +36,9 @@ test('people filters, pagination, and view survive profile navigation and browse
     await page.goBack();
     await expect(page.getByText('Page 2 of 2')).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Search contacts' })).toHaveValue('Person');
+    await page.getByText('Manage', { exact: true }).click();
     await expect(page.getByRole('button', { name: 'Compact list' })).toHaveAttribute('aria-pressed', 'true');
+    await page.getByText('Manage', { exact: true }).click();
 
     await page.getByRole('button', { name: 'Family' }).click();
     await expect(page).toHaveURL(/tag=Family/u);
@@ -48,7 +52,9 @@ test('people filters, pagination, and view survive profile navigation and browse
     await page.getByRole('button', { name: 'Grid' }).click();
     await expect(page).toHaveURL(/view=grid/u);
     await page.goBack();
+    await page.getByText('Manage', { exact: true }).click();
     await expect(page.getByRole('button', { name: 'Compact list' })).toHaveAttribute('aria-pressed', 'true');
+    await page.getByText('Manage', { exact: true }).click();
 
     await page.getByRole('textbox', { name: 'Search contacts' }).fill('Person 052');
     await expect(page).toHaveURL(/search=Person\+052/u);

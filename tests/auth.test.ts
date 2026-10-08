@@ -110,5 +110,5 @@ test('the consumer logout UI redirects only after the session cookie is cleared'
   assert(handler.indexOf('if (!response.ok)') < handler.indexOf("router.replace('/login')"));
   assert.match(handler, /Your session is still active; try again/);
   assert.match(navigation, /disabled=\{signingOut\}/);
-  assert.match(navigation, /Signing out\.\.\./);
+  assert.match(navigation, /aria-label=\{signingOut \? 'Signing out' : 'Sign out'\}/);
 });

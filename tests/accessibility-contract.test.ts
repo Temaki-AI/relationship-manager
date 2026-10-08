@@ -103,7 +103,7 @@ test('route recovery experiences and reduced motion are part of the app shell', 
 
   const navigation = readFileSync(join(projectRoot, 'components', 'nav-header.tsx'), 'utf8');
   assert.match(navigation, /aria-current=/);
-  assert.match(navigation, /aria-label="More navigation"/);
+  assert.match(navigation, /aria-label="Main navigation"/);
   const addMenu = readFileSync(join(projectRoot, 'components', 'add-action-menu.tsx'), 'utf8');
   assert.match(addMenu, /aria-label="Add"/);
   assert.match(addMenu, /aria-expanded=\{open\}/);

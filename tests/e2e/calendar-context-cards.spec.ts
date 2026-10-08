@@ -93,6 +93,10 @@ test('A person profile previews three saved contexts including a current plan ow
     await expect(page.getByRole('heading', { name: 'Relationship brief', exact: true })).toBeHidden();
     await expect(page.getByText('Conversation suggestions', { exact: true })).toBeVisible();
     await expect(page.getByText('Private relationship notes', { exact: true })).toBeVisible();
+    // Retry scrolls to the lower context card. Inspect the stable overview
+    // viewport rather than a disclosure passing beneath the sticky section bar.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(page).toHaveTitle(/Everclose/);
     expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze()).violations).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: info.outputPath('person-source-context.png'), fullPage: true });

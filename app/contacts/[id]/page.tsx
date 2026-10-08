@@ -1033,6 +1033,8 @@ export default function ContactDetail() {
   const primaryPhone = contactMethods.find((method) => method.kind === 'phone' && method.value === contact.phone && method.preferred)
     ?? contactMethods.find((method) => method.kind === 'phone' && method.value === contact.phone);
   const extraMethods = contactMethods.filter((method) => method.id !== primaryEmail?.id && method.id !== primaryPhone?.id);
+  const legacySocialLinks = Object.entries(socialLinks).filter(([, url]) =>
+    !contactMethods.some((method) => method.kind === 'profile' && new URL(method.value).href === new URL(url).href));
   function openLogForm() {
     setMobileSection('activity');
     setActivityFilter('interaction');
@@ -1125,9 +1127,9 @@ export default function ContactDetail() {
                   <span className="min-w-0 break-all">{method.label && <span className="font-medium">{displayContactMethodLabel(method.label)}: </span>}{method.value}{method.country ? ` (${method.country})` : ''}</span>
                 </a>)}
               </div>}
-              {Object.keys(socialLinks).length > 0 && (
+              {legacySocialLinks.length > 0 && (
                 <div className="mt-3 hidden flex-wrap items-center gap-2 sm:flex">
-                  {Object.entries(socialLinks).map(([key, url]) => {
+                  {legacySocialLinks.map(([key, url]) => {
                     const config = socialIconMap[key];
                     if (!config) return null;
                     const SocialIcon = config.icon;
@@ -1492,7 +1494,7 @@ export default function ContactDetail() {
         </Card>
 
         <div id="profile-details" className={`${mobileSection === 'details' ? 'space-y-4' : 'hidden md:block md:space-y-4'} order-2`}>
-          {(tags.length > 0 || Object.keys(socialLinks).length > 0) && (
+          {(tags.length > 0 || legacySocialLinks.length > 0) && (
             <Card className="border-0 shadow-sm sm:hidden">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold">Profile details</CardTitle>
@@ -1508,11 +1510,11 @@ export default function ContactDetail() {
                     </div>
                   </div>
                 )}
-                {Object.keys(socialLinks).length > 0 && (
+                {legacySocialLinks.length > 0 && (
                   <div>
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Links</p>
                     <div className="flex flex-wrap gap-2">
-                      {Object.entries(socialLinks).map(([key, url]) => {
+                      {legacySocialLinks.map(([key, url]) => {
                         const config = socialIconMap[key];
                         if (!config) return null;
                         const SocialIcon = config.icon;

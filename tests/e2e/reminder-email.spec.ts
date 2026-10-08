@@ -34,7 +34,7 @@ test('email reminder settings show honest availability and save a verified opt-i
     await page.reload();
     await page.getByRole('textbox', { name: 'Time zone' }).fill('Europe/Lisbon');
     await page.getByRole('button', { name: 'Enable email' }).click();
-    await expect(page.getByText('Email alerts are on for due reminders and birthdays.')).toBeVisible();
+    await expect(page.getByText(/Email alerts are on for due reminders and contact or child birthdays\./)).toBeVisible();
     const saved = await h.db.prepare("SELECT enabled, time_zone FROM reminder_email_preferences WHERE workspace_id = 'test' AND user_id = 'user-1'")
       .first<{ enabled: number; time_zone: string }>();
     expect(saved).toMatchObject({ enabled: 1, time_zone: 'Europe/Lisbon' });
