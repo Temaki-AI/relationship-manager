@@ -133,6 +133,6 @@ test('duplicate cleanup preserves relationship history and creates a recovery po
   await expect(relationshipTimeline).toContainText(reminderTitle);
 
   await page.goto('/settings');
-  await expect(page.getByRole('heading', { name: 'Data & recovery', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   await expect(page.getByText('Before duplicate merge', { exact: true }).first()).toBeVisible();
 });

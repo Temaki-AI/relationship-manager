@@ -32,6 +32,8 @@ test('people and profile use neutral check-in timing with quick capture', async 
     await page.goto('/contacts');
     await expect(page.getByRole('heading', { name: 'Your people' })).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Search contacts' })).toBeVisible();
+    await page.getByText('Manage', { exact: true }).click();
+    await page.getByRole('button', { name: 'Grid', exact: true }).click();
     await expect(page.getByText('Not tracking yet')).toBeVisible();
     await expect(page.getByText('On your rhythm')).toBeVisible();
     await expect(page.getByText('Bulk actions')).toHaveCount(0);
@@ -45,11 +47,13 @@ test('people and profile use neutral check-in timing with quick capture', async 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: test.info().outputPath('people-grid.png'), fullPage: true });
 
+    await page.getByText('Manage', { exact: true }).click();
     await page.getByRole('button', { name: 'Select people' }).click();
     await expect(page.getByText('Bulk actions')).toBeVisible();
     await expect(page.getByRole('checkbox', { name: 'Select Ada Lovelace' })).toBeVisible();
     await page.getByRole('button', { name: 'Done selecting' }).click();
     await expect(page.getByText('Bulk actions')).toHaveCount(0);
+    await page.getByText('Manage', { exact: true }).click();
     await page.getByRole('button', { name: 'Compact list' }).click();
     await expect(page.getByText('Check-in rhythm', { exact: true })).toHaveCount(2);
 
@@ -72,6 +76,8 @@ test('people and profile use neutral check-in timing with quick capture', async 
       await expect(page.getByRole('link', { name: 'Website' })).toBeVisible();
       await expect(page.locator('#profile-details').getByText('Friend', { exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Overview', exact: true }).click();
+      await expect(page.getByRole('heading', { name: 'Relationship brief' })).toBeHidden();
+      await page.getByText('Conversation suggestions', { exact: true }).click();
       await expect(page.getByRole('heading', { name: 'Relationship brief' })).toBeVisible();
       await expect(page.getByRole('link', { name: 'Email Ada Lovelace' })).toHaveAttribute('href', 'mailto:ada@example.com');
     }

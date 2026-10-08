@@ -1874,7 +1874,7 @@ export default function ContactDetail() {
             </CardContent>
           </Card>
 
-          {(contact.how_we_met || contact.notes || facts.length > 0 || giftIdeas.length > 0) && (
+          {(contact.how_we_met || facts.length > 0 || giftIdeas.length > 0) && (
             <Card className="border-0 shadow-sm animate-fade-in-up">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold">Relationship memory</CardTitle>
@@ -1935,15 +1935,7 @@ export default function ContactDetail() {
                   </div>
                 )}
 
-                {contact.notes && (
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <StickyNote className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-xs font-medium text-muted-foreground">Notes</span>
-                    </div>
-                    <MentionText text={contact.notes} className="text-sm text-foreground whitespace-pre-wrap" />
-                  </div>
-                )}
+
               </CardContent>
             </Card>
           )}

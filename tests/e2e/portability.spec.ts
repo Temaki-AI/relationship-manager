@@ -74,6 +74,7 @@ test('CSV and vCard transfers round-trip through the consumer UI', async ({ page
     ].join('\n')),
   };
 
+  await page.getByText('Manage', { exact: true }).click();
   await page.getByRole('button', { name: 'Transfer contacts' }).click();
   await expect(page.getByText(/only to this Everclose CRM installation/i)).toBeVisible();
   const accessibility = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
@@ -90,6 +91,7 @@ test('CSV and vCard transfers round-trip through the consumer UI', async ({ page
   await expect(page.getByText('1 matching contact', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: new RegExp(importedName) })).toBeVisible();
 
+  await page.getByText('Manage', { exact: true }).click();
   await page.getByRole('button', { name: 'Transfer contacts' }).click();
   await page.locator('#vcard-import').setInputFiles(importFile);
   await expect(page.getByRole('status').getByText(
@@ -106,6 +108,7 @@ test('CSV and vCard transfers round-trip through the consumer UI', async ({ page
   await expect(page.getByText('1 matching contact', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: new RegExp(csvImportedName) })).toBeVisible();
 
+  await page.getByText('Manage', { exact: true }).click();
   await page.getByRole('button', { name: 'Transfer contacts' }).click();
 
   const csvDownloadPromise = page.waitForEvent('download');

@@ -41,7 +41,7 @@ test('contact methods retain labels, preferred values and drafts across mobile a
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   if (testInfo.project.name === 'chromium-desktop') {
     const toolbar = await page.getByRole('button', { name: 'Log moment', exact: true }).boundingBox();
-    const brief = await page.getByRole('heading', { name: 'Relationship brief', exact: true }).boundingBox();
+    const brief = await page.getByText('Conversation suggestions', { exact: true }).boundingBox();
     expect(toolbar!.y + toolbar!.height).toBeLessThan(brief!.y - 8);
   }
 

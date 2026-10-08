@@ -484,6 +484,9 @@ export default function ContactsPage() {
             <UserPlus className="w-3.5 h-3.5 mr-1.5" />
             Add contact
           </Link>
+          {selectionMode && <Button variant="secondary" size="sm" onClick={() => {
+            setSelectionMode(false); setSelectedContactIds([]);
+          }}>Done selecting</Button>}
           <details ref={manageMenuRef} className="relative">
             <summary className={buttonVariants({ variant: 'outline', size: 'sm', className: 'cursor-pointer list-none text-muted-foreground hover:bg-muted/60 hover:text-foreground [&::-webkit-details-marker]:hidden' })}>
               <MoreHorizontal className="h-4 w-4" />
@@ -491,18 +494,19 @@ export default function ContactsPage() {
             </summary>
             <div className="absolute left-0 z-30 mt-2 w-60 rounded-xl border border-border bg-white p-2 shadow-lg sm:left-auto sm:right-0">
               <div className="mb-2 flex flex-col gap-2 border-b border-border pb-2">
-          {contacts.length > 0 && <Button
+          {contacts.length > 0 && !selectionMode && <Button
             type="button"
             variant={selectionMode ? 'secondary' : 'outline'}
             size="sm"
             aria-pressed={selectionMode}
             onClick={() => {
-              setSelectionMode((current) => !current);
+              setSelectionMode(true);
               setSelectedContactIds([]);
+              manageMenuRef.current?.removeAttribute('open');
             }}
           >
             <CheckSquare className="h-3.5 w-3.5" />
-            {selectionMode ? 'Done selecting' : 'Select people'}
+            Select people
           </Button>}
           <div className="inline-flex rounded-lg border border-border/70 bg-white shadow-sm overflow-hidden">
             <button
@@ -928,7 +932,7 @@ export default function ContactsPage() {
                         <Avatar contact={contact} size="sm" className="w-10 h-10" />
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-semibold text-base truncate">{contact.name}</p>
+                            <Link href={contactHref(contact.id)} className="inline-flex min-h-11 items-center font-semibold text-base truncate">{contact.name}</Link>
                             {contact.nickname && (
                               <span className="text-xs text-muted-foreground">Goes by {contact.nickname}</span>
                             )}

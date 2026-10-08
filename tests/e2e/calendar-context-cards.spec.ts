@@ -90,11 +90,9 @@ test('A person profile previews three saved contexts including a current plan ow
     await page.getByRole('button', { name: 'Retry saved meetings' }).click(); await expect(page.getByRole('article')).toHaveCount(3);
     await expect(page.getByRole('article', { name: 'Reviewed group meeting', exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: 'All saved meetings for this person', exact: true })).toHaveAttribute('href', '/calendar/events?contact_id=' + f.ana.id);
-    const brief = await page.getByRole('heading', { name: 'Relationship brief', exact: true }).locator('..').locator('..').boundingBox();
-    expect(brief!.height).toBeLessThan(500);
-    if (info.project.name === 'chromium-mobile') await page.getByRole('navigation', { name: 'Profile sections' }).getByRole('button', { name: 'Details', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Relationship brief', exact: true })).toBeHidden();
+    await expect(page.getByText('Conversation suggestions', { exact: true })).toBeVisible();
     await expect(page.getByText('Private relationship notes', { exact: true })).toBeVisible();
-    if (info.project.name === 'chromium-mobile') await page.getByRole('navigation', { name: 'Profile sections' }).getByRole('button', { name: 'Overview', exact: true }).click();
     expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze()).violations).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: info.outputPath('person-source-context.png'), fullPage: true });
