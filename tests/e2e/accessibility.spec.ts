@@ -52,8 +52,8 @@ test('primary signed-in routes have no automated WCAG A or AA violations', async
     { path: '/groups', heading: 'Groups', title: 'Groups | Everclose CRM' },
     { path: '/smart-lists', heading: 'Smart Lists', title: 'Smart Lists | Everclose CRM' },
     { path: '/reminders', heading: 'Reminders', title: 'Reminders | Everclose CRM' },
-    { path: '/integrations', heading: 'Data connections', title: 'Data connections | Everclose CRM' },
-    { path: '/settings', heading: 'Data & recovery', title: 'Data & recovery | Everclose CRM' },
+    { path: '/integrations', heading: 'Connections', title: 'Data connections | Everclose CRM' },
+    { path: '/settings', heading: 'Settings', title: 'Data & recovery | Everclose CRM' },
   ]) {
     await page.goto(route.path);
     await expect(page.getByRole('heading', { name: new RegExp(route.heading), level: 1 })).toBeVisible();

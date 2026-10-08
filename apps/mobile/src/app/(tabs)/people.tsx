@@ -118,6 +118,8 @@ export default function PeopleScreen() {
             <Disclosure title="Import from iPhone Contacts">
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="Choose from iPhone Contacts"
+              accessibilityHint="Choose one person and review the fields to import."
               disabled={importing}
               onPress={() => void importOneContact()}
               style={({ pressed }) => [styles.importButton, pressed && styles.pressed]}
@@ -129,7 +131,9 @@ export default function PeopleScreen() {
                 </>
               )}
             </Pressable>
-            <Pressable accessibilityRole="button" disabled={importing} onPress={() => router.push('/contacts/device-directory')} style={styles.importButton}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Browse allowed iPhone contacts"
+              accessibilityHint="Browse allowed contacts and review each import." disabled={importing}
+              onPress={() => router.push('/contacts/device-directory')} style={styles.importButton}>
               <Text style={styles.importTitle}>Browse allowed iPhone contacts</Text><Text style={styles.importDetail}>Read a page of allowed people, then confirm each import.</Text>
             </Pressable>
             <DeviceContactAccess disabled={importing} />

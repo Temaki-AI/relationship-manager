@@ -16,7 +16,6 @@ import {
   startOfWeek,
 } from 'date-fns';
 import {
-  ArrowRight,
   Bell,
   CakeSlice,
   CalendarDays,
@@ -31,7 +30,6 @@ import {
   Search,
   SlidersHorizontal,
   Sparkles,
-  Users,
 } from 'lucide-react';
 import type { CalendarEvent, CalendarEventKind, CoreCalendarEvent } from '@/lib/calendar-directory';
 import { calendarEventDates, calendarEventPeople } from '@/lib/calendar-directory';
@@ -480,17 +478,12 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-5">
-      <section className="relative overflow-hidden rounded-2xl border border-rose-100 bg-gradient-to-br from-white via-rose-50/60 to-amber-50 px-5 py-5 shadow-sm sm:px-6">
-        <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-rose-200/30 blur-3xl" aria-hidden="true" />
+      <section className="space-y-4">
         <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-              <CalendarDays className="h-4 w-4" aria-hidden="true" />
-              Relationship rhythm
-            </div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Calendar</h1>
             <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-              Birthdays, plans, reminders, and the moments you have already shared.
+              Plans, reminders, and important dates.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -498,7 +491,7 @@ export default function CalendarPage() {
             <Button type="button" onClick={() => openReminder()} className="min-h-11">
               <Plus className="h-4 w-4" aria-hidden="true" /> Add reminder
             </Button>
-            <div className="flex items-center rounded-xl border border-white/80 bg-white/80 p-1 shadow-sm backdrop-blur">
+            <div className="flex items-center rounded-xl border border-border bg-white p-1">
               <button
                 type="button"
                 onClick={() => setView('month')}
@@ -651,7 +644,7 @@ export default function CalendarPage() {
                   className="min-h-11 min-w-0 max-w-full rounded-md border bg-white px-2 text-sm"
                 />
               </div>
-              <h2 className="order-first text-xl font-bold xl:order-none" aria-live="polite">
+              <h2 className="sr-only" aria-live="polite">
                 {format(currentMonth, 'MMMM yyyy')}
               </h2>
               <div className="text-sm text-muted-foreground">
@@ -859,7 +852,7 @@ export default function CalendarPage() {
                 })}
               </div>
             ) : (
-              <div className="px-5 py-20 text-center">
+              <div className="px-5 py-10 text-center">
                 <SlidersHorizontal className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
                 <h2 className="mt-4 font-semibold">No matching events this month</h2>
                 <p className="mt-1 text-sm text-muted-foreground">Try another month or reset your filters.</p>
@@ -869,21 +862,6 @@ export default function CalendarPage() {
           </CardContent>
         </Card>
       )}
-
-      <div className="flex flex-col gap-3 rounded-xl border border-dashed bg-white/60 p-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4" aria-hidden="true" />
-          Plans, reminders and saved meetings keep their relationship context.
-        </div>
-        <div className="flex gap-3">
-          <Link href="/reminders" className="inline-flex items-center gap-1 font-semibold text-foreground hover:text-primary">
-            Reminders <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-          <Link href="/contacts" className="inline-flex items-center gap-1 font-semibold text-foreground hover:text-primary">
-            Contacts <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-      </div>
       {rescheduling && <CalendarReschedule key={rescheduling.id} event={rescheduling} onCancel={() => setRescheduling(null)} onSaved={(at) => {
         const date = rescheduling.kind === 'plan' ? parseISO(at) : new Date(at);
         setCurrentMonth(startOfMonth(date)); setSelectedDate(format(date, 'yyyy-MM-dd'));

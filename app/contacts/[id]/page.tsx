@@ -1308,7 +1308,13 @@ export default function ContactDetail() {
       )}
 
       <div id="profile-overview" className={`${mobileSection === 'overview' ? 'grid' : 'hidden md:grid'} grid-cols-1 items-start gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]`}>
-        <Card className="border-0 shadow-sm animate-fade-in-up">
+        <div className="min-w-0 space-y-4">
+          {contact.notes && <Card className="border-0 shadow-sm"><CardContent className="p-5">
+            <h2 className="mb-2 text-base font-semibold">What to remember</h2>
+            <MentionText text={contact.notes} className="text-sm leading-relaxed whitespace-pre-wrap" />
+          </CardContent></Card>}
+          <details className="rounded-xl border border-border bg-white">
+            <summary className="min-h-12 cursor-pointer px-4 py-3 text-sm font-medium">Conversation suggestions</summary>
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">Relationship brief</CardTitle>
           </CardHeader>
@@ -1346,7 +1352,8 @@ export default function ContactDetail() {
               </div>
             )}
           </CardContent>
-        </Card>
+          </details>
+        </div>
 
         <div className="min-w-0 space-y-4">
           {process.env.NEXT_PUBLIC_AUTH_MODE === 'google' && <PersonCalendarContext key={id} contactId={id} refreshKey={contact} />}
