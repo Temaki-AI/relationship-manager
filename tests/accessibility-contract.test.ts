@@ -112,7 +112,7 @@ test('route recovery experiences and reduced motion are part of the app shell', 
 });
 
 test('brand and muted text tokens retain WCAG AA contrast', () => {
-  const globalStyles = readFileSync(join(projectRoot, 'app', 'globals.css'), 'utf8');
+  const globalStyles = readFileSync(join(projectRoot, 'app', 'design-tokens.css'), 'utf8');
   const primary = parseHslVariable(globalStyles, 'primary');
   const primaryForeground = parseHslVariable(globalStyles, 'primary-foreground');
   const muted = parseHslVariable(globalStyles, 'muted');

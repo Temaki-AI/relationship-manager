@@ -48,7 +48,7 @@ export function PersonGmailContext({ personId, refreshKey }: { personId: string;
     return () => { alive = false; controller.abort(); clearInterval(timer); document.removeEventListener('visibilitychange', visibility); };
   }, [personId, refreshKey, sourceId, key, after]);
   const value = saved?.key === key ? saved : null;
-  return <Card className="border-0 shadow-sm"><CardContent className="space-y-3 pt-5 pb-4">
+  return <Card className="border-border/70 shadow-card"><CardContent className="space-y-3 pt-5 pb-4">
     <h2 className="text-sm font-semibold">Reviewed email context</h2>
     <p className="text-xs text-muted-foreground">Observed Gmail metadata stays separate from confirmed interactions and your last-contacted date.</p>
     {loading && <p role="status" className="text-sm">Loading reviewed email context…</p>}

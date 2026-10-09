@@ -210,8 +210,8 @@ const RELATIONSHIP_LABEL_OPTIONS = [
 ];
 
 function getTimelineToneClasses(tone: TimelineItem['tone']) {
-  if (tone === 'urgent') return 'bg-rose-50 text-rose-700 border-rose-200/60';
-  if (tone === 'warm') return 'bg-amber-50 text-amber-700 border-amber-200/60';
+  if (tone === 'urgent') return 'bg-secondary text-rose-700 border-rose-200/60';
+  if (tone === 'warm') return 'bg-warning-soft text-amber-700 border-amber-200/60';
   return 'bg-slate-50 text-slate-700 border-slate-200/60';
 }
 
@@ -1071,7 +1071,7 @@ export default function ContactDetail() {
         </Link>
       </div>
 
-      <Card className="border-0 shadow-sm animate-fade-in-up overflow-hidden">
+      <Card className="border-border/70 shadow-card animate-fade-in-up overflow-hidden">
         <CardContent className="py-5 sm:py-6">
           <div className="flex items-start gap-4 sm:gap-5">
             <Avatar contact={contact} size="xl" className="!h-14 !w-14 !text-lg sm:!h-24 sm:!w-24 sm:!text-3xl" />
@@ -1162,7 +1162,7 @@ export default function ContactDetail() {
         </CardContent>
       </Card>
 
-      <div className="sticky top-16 z-20 flex items-center gap-2 rounded-xl border border-border/70 bg-white/95 p-2 shadow-sm backdrop-blur sm:relative sm:top-auto sm:w-fit sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+      <div className="sticky top-16 z-20 flex items-center gap-2 rounded-xl border border-border/70 bg-card/95 p-2 shadow-sm backdrop-blur sm:relative sm:top-auto sm:w-fit sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
         {(contact.phone || contact.email) && (
           <a
             href={contact.phone ? `sms:${contact.phone}` : `mailto:${contact.email}`}
@@ -1185,7 +1185,7 @@ export default function ContactDetail() {
           <summary aria-label="More contact actions" className={buttonVariants({ variant: 'outline', size: 'sm', className: 'h-11 w-11 cursor-pointer list-none p-0 text-muted-foreground hover:bg-muted/60 hover:text-foreground sm:h-9 sm:w-9 [&::-webkit-details-marker]:hidden' })}>
             <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
           </summary>
-          <div className="absolute right-0 z-30 mt-2 w-44 rounded-xl border border-border bg-white p-2 shadow-lg">
+          <div className="absolute right-0 z-30 mt-2 w-44 rounded-xl border border-border bg-card p-2 shadow-lg">
             <Link href={`/contacts/${id}/methods`} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-muted/50">Contact methods</Link>
             <Link href={`/contacts/${id}/sources`} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-muted/50">Linked sources</Link>
             <Link href={`/calendar/events?contact_id=${id}`} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-muted/50">Calendar context</Link>
@@ -1199,7 +1199,7 @@ export default function ContactDetail() {
         </details>
       </div>
 
-      <nav aria-label="Profile sections" className="sticky top-[7.75rem] z-10 grid grid-cols-3 gap-1 rounded-xl border bg-white/95 p-1 shadow-sm backdrop-blur sm:top-16 md:hidden">
+      <nav aria-label="Profile sections" className="sticky top-[7.75rem] z-10 grid grid-cols-3 gap-1 rounded-xl border bg-card/95 p-1 shadow-sm backdrop-blur sm:top-16 md:hidden">
         {([
           ['overview', 'Overview'],
           ['activity', 'Activity'],
@@ -1285,7 +1285,7 @@ export default function ContactDetail() {
                 placeholder="What to remember..."
                 value={reminderForm.title}
                 onChange={(e) => setReminderForm({ ...reminderForm, title: e.target.value })}
-                className="bg-white"
+                className="bg-card"
               />
               <Label htmlFor="reminder-at" className="sr-only">Reminder date and time</Label>
               <Input
@@ -1294,7 +1294,7 @@ export default function ContactDetail() {
                 required
                 value={reminderForm.remind_at}
                 onChange={(e) => setReminderForm({ ...reminderForm, remind_at: e.target.value })}
-                className="bg-white"
+                className="bg-card"
               />
               <Label htmlFor="reminder-notes" className="sr-only">Reminder notes</Label>
               <Textarea
@@ -1303,7 +1303,7 @@ export default function ContactDetail() {
                 value={reminderForm.notes}
                 onChange={(e) => setReminderForm({ ...reminderForm, notes: e.target.value })}
                 rows={2}
-                className="bg-white"
+                className="bg-card"
               />
               <div className="flex gap-2">
                 <Button type="submit" size="sm">Save reminder</Button>
@@ -1316,11 +1316,11 @@ export default function ContactDetail() {
 
       <div id="profile-overview" className={`${mobileSection === 'overview' ? 'grid' : 'hidden md:grid'} grid-cols-1 items-start gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]`}>
         <div className="min-w-0 space-y-4">
-          {contact.notes && <Card className="border-0 shadow-sm"><CardContent className="p-5">
+          {contact.notes && <Card className="border-border/70 shadow-card"><CardContent className="p-5">
             <h2 className="mb-2 text-base font-semibold">What to remember</h2>
             <MentionText text={contact.notes} className="text-sm leading-relaxed whitespace-pre-wrap" />
           </CardContent></Card>}
-          <details className="rounded-xl border border-border bg-white">
+          <details className="rounded-xl border border-border bg-card">
             <summary className="min-h-12 cursor-pointer px-4 py-3 text-sm font-medium">Conversation suggestions</summary>
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">Relationship brief</CardTitle>
@@ -1351,7 +1351,7 @@ export default function ContactDetail() {
                 <p className="text-xs font-medium text-muted-foreground mb-2">Suggested outreach angles</p>
                 <div className="space-y-2">
                   {brief.suggestedOutreach.map((entry) => (
-                    <div key={entry} className="rounded-xl border border-border/60 bg-white/80 p-3 text-sm text-foreground">
+                    <div key={entry} className="rounded-xl border border-border/60 bg-card/80 p-3 text-sm text-foreground">
                       {entry}
                     </div>
                   ))}
@@ -1365,7 +1365,7 @@ export default function ContactDetail() {
         <div className="min-w-0 space-y-4">
           {process.env.NEXT_PUBLIC_AUTH_MODE === 'google' && <PersonCalendarContext key={id} contactId={id} refreshKey={contact} />}
           {process.env.NEXT_PUBLIC_AUTH_MODE === 'google' && contact.public_id && <PersonGmailContext key={contact.public_id} personId={contact.public_id} refreshKey={contact} />}
-          <Card className="border-0 shadow-sm animate-fade-in-up">
+          <Card className="border-border/70 shadow-card animate-fade-in-up">
             <CardContent className="pt-5 pb-4">
               <div className="flex items-center gap-2">
                 <CalendarClock className="h-4 w-4 text-primary" aria-hidden="true" />
@@ -1377,7 +1377,7 @@ export default function ContactDetail() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-sm animate-fade-in-up">
+          <Card className="border-border/70 shadow-card animate-fade-in-up">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold">
                 Open reminders
@@ -1392,7 +1392,7 @@ export default function ContactDetail() {
               {openReminders.length > 0 ? (
                 <>
                   {openReminders.map((reminder) => (
-                    <div key={reminder.id} className="rounded-xl border border-border/60 bg-white/80 p-3">
+                    <div key={reminder.id} className="rounded-xl border border-border/60 bg-card/80 p-3">
                       <p className="font-medium text-sm">{reminder.title}</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {new Date(reminder.remind_at).toLocaleString()}
@@ -1425,7 +1425,7 @@ export default function ContactDetail() {
             type="button"
             aria-pressed={activityFilter === value}
             onClick={() => setActivityFilter(value)}
-            className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors ${activityFilter === value ? 'border-primary bg-primary text-white' : 'border-border bg-white text-muted-foreground hover:text-foreground'}`}
+            className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors ${activityFilter === value ? 'border-primary bg-primary text-white' : 'border-border bg-card text-muted-foreground hover:text-foreground'}`}
           >
             {label}
           </button>
@@ -1433,7 +1433,7 @@ export default function ContactDetail() {
       </nav>
 
       <div className={`${mobileSection === 'overview' ? 'hidden md:grid' : 'grid'} grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-[1.4fr_1fr]`}>
-        <Card className={`${activityFilter === 'interaction' ? 'hidden' : mobileSection === 'activity' ? '' : 'hidden md:block'} order-1 border-0 shadow-sm animate-fade-in-up`}>
+        <Card className={`${activityFilter === 'interaction' ? 'hidden' : mobileSection === 'activity' ? '' : 'hidden md:block'} order-1 border-border/70 shadow-card animate-fade-in-up`}>
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">
               {ACTIVITY_FILTERS.find(({ value }) => value === activityFilter)?.label}
@@ -1448,7 +1448,7 @@ export default function ContactDetail() {
             {filterError ? <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{filterError} <button type="button" className="font-semibold underline" onClick={() => setActivityRevision((value) => value + 1)}>Retry</button></div> : filterLoading && activityFilter !== 'all' ? <p role="status" className="text-sm text-muted-foreground">Loading activity...</p> : visibleTimeline.length > 0 ? (
               <>
                 {visibleTimeline.map((item) => (
-                  <div key={item.id} className="rounded-xl border border-border/60 bg-white/80 p-4">
+                  <div key={item.id} className="rounded-xl border border-border/60 bg-card/80 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-medium text-sm text-foreground">{item.title}</p>
@@ -1495,7 +1495,7 @@ export default function ContactDetail() {
 
         <div id="profile-details" className={`${mobileSection === 'details' ? 'space-y-4' : 'hidden md:block md:space-y-4'} order-2`}>
           {(tags.length > 0 || legacySocialLinks.length > 0) && (
-            <Card className="border-0 shadow-sm sm:hidden">
+            <Card className="border-border/70 shadow-card sm:hidden">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold">Profile details</CardTitle>
               </CardHeader>
@@ -1531,7 +1531,7 @@ export default function ContactDetail() {
               </CardContent>
             </Card>
           )}
-          <Card className="border-0 shadow-sm animate-fade-in-up">
+          <Card className="border-border/70 shadow-card animate-fade-in-up">
             <CardHeader className="pb-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -1577,7 +1577,7 @@ export default function ContactDetail() {
                   <div>
                     <Label htmlFor="relationship-contact" className="text-xs">Connect another contact</Label>
                     {relationshipForm.related_contact_id ? (
-                      <div className="mt-1 flex min-h-11 items-center justify-between gap-3 rounded-lg border border-input bg-white px-3 py-2">
+                      <div className="mt-1 flex min-h-11 items-center justify-between gap-3 rounded-lg border border-input bg-card px-3 py-2">
                         <span className="text-sm font-medium">{relationshipForm.related_name}</span>
                         <Button
                           type="button"
@@ -1601,10 +1601,10 @@ export default function ContactDetail() {
                           onChange={(event) => setRelationshipSearch(event.target.value)}
                           placeholder="Search contacts"
                           autoComplete="off"
-                          className="mt-1 bg-white"
+                          className="mt-1 bg-card"
                         />
                         {relationshipOptions.length > 0 && (
-                          <div className="mt-1 max-h-48 overflow-y-auto rounded-lg border border-border bg-white p-1 shadow-lg">
+                          <div className="mt-1 max-h-48 overflow-y-auto rounded-lg border border-border bg-card p-1 shadow-lg">
                             {relationshipOptions.map((option) => (
                               <button
                                 key={option.id}
@@ -1641,7 +1641,7 @@ export default function ContactDetail() {
                           relationship_label: event.target.value,
                         })}
                         placeholder="e.g. Wife"
-                        className="mt-1 bg-white"
+                        className="mt-1 bg-card"
                       />
                     </div>
                     <div>
@@ -1656,7 +1656,7 @@ export default function ContactDetail() {
                           reciprocal_label: event.target.value,
                         })}
                         placeholder="e.g. Husband"
-                        className="mt-1 bg-white"
+                        className="mt-1 bg-card"
                       />
                     </div>
                   </div>
@@ -1688,7 +1688,7 @@ export default function ContactDetail() {
                         value={childForm.name}
                         onChange={(event) => setChildForm({ ...childForm, name: event.target.value })}
                         placeholder="Name"
-                        className="mt-1 bg-white"
+                        className="mt-1 bg-card"
                       />
                     </div>
                     <div>
@@ -1699,7 +1699,7 @@ export default function ContactDetail() {
                         disabled={!!childForm.linked_contact_id}
                         value={childForm.birthday}
                         onChange={(event) => setChildForm({ ...childForm, birthday: event.target.value })}
-                        className="mt-1 bg-white"
+                        className="mt-1 bg-card"
                       />
                     </div>
                   </div>
@@ -1729,10 +1729,10 @@ export default function ContactDetail() {
                           onChange={(event) => setChildSearch(event.target.value)}
                           placeholder="Search existing profiles"
                           autoComplete="off"
-                          className="mt-1 bg-white"
+                          className="mt-1 bg-card"
                         />
                         {childSearch.trim() && childOptions.length > 0 && (
-                          <div className="mt-1 max-h-40 overflow-y-auto rounded-lg border bg-white p-1" role="listbox" aria-label="Matching contacts">
+                          <div className="mt-1 max-h-40 overflow-y-auto rounded-lg border bg-card p-1" role="listbox" aria-label="Matching contacts">
                             {childOptions.map((option) => (
                               <button key={option.id} type="button" role="option" aria-selected="false"
                                 className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-muted focus:bg-muted"
@@ -1769,7 +1769,7 @@ export default function ContactDetail() {
                   Connected profiles ({connections.relationships.total})
                 </p>
                 {relationships.length > 0 ? relationships.map((relationship) => (
-                  <div key={relationship.id} className="group flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-white/80 p-3">
+                  <div key={relationship.id} className="group flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/80 p-3">
                     <Link href={`/contacts/${relationship.related_contact_id}`} className="min-w-0 flex-1 hover:text-primary">
                       <p className="truncate text-sm font-medium">{relationship.related_name}</p>
                       {relationship.related_nickname && (
@@ -1783,7 +1783,7 @@ export default function ContactDetail() {
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:bg-red-50 hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100"
+                      className="h-8 w-8 text-muted-foreground hover:bg-danger-soft hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100"
                       aria-label={`Remove connection to ${relationship.related_name}`}
                       onClick={() => setConnectionDeleteTarget({
                         kind: 'relationship',
@@ -1816,9 +1816,9 @@ export default function ContactDetail() {
                   Children ({connections.children.total})
                 </p>
                 {children.length > 0 ? children.map((child) => (
-                  <div key={child.id} className="group flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-white/80 p-3">
+                  <div key={child.id} className="group flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/80 p-3">
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <div className="rounded-lg bg-amber-50 p-2 text-amber-700">
+                      <div className="rounded-lg bg-warning-soft p-2 text-amber-700">
                         <Baby className="h-4 w-4" aria-hidden="true" />
                       </div>
                       <div className="min-w-0">
@@ -1855,7 +1855,7 @@ export default function ContactDetail() {
                         <Edit className="h-3.5 w-3.5" aria-hidden="true" />
                       </Button>
                       <Button type="button" variant="ghost" size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:bg-red-50 hover:text-destructive"
+                        className="h-8 w-8 text-muted-foreground hover:bg-danger-soft hover:text-destructive"
                         aria-label={`Remove child ${child.linked_name || child.name}`}
                         onClick={() => setConnectionDeleteTarget({ kind: 'child', id: child.id, label: child.linked_name || child.name })}>
                         <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1882,7 +1882,7 @@ export default function ContactDetail() {
           </Card>
 
           {(contact.how_we_met || facts.length > 0 || giftIdeas.length > 0) && (
-            <Card className="border-0 shadow-sm animate-fade-in-up">
+            <Card className="border-border/70 shadow-card animate-fade-in-up">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold">Relationship memory</CardTitle>
               </CardHeader>
@@ -1934,7 +1934,7 @@ export default function ContactDetail() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {giftIdeas.map((idea) => (
-                        <span key={idea} className="px-3 py-1 text-xs rounded-full bg-amber-50 text-amber-700 border border-amber-200/50">
+                        <span key={idea} className="px-3 py-1 text-xs rounded-full bg-warning-soft text-amber-700 border border-amber-200/50">
                           {idea}
                         </span>
                       ))}
@@ -1947,7 +1947,7 @@ export default function ContactDetail() {
             </Card>
           )}
         </div>
-      <Card ref={interactionLogRef} className={`${activityFilter !== 'interaction' ? 'hidden' : mobileSection === 'activity' ? '' : 'hidden md:block'} order-1 animate-fade-in-up scroll-mt-28 border-0 shadow-sm`}>
+      <Card ref={interactionLogRef} className={`${activityFilter !== 'interaction' ? 'hidden' : mobileSection === 'activity' ? '' : 'hidden md:block'} order-1 animate-fade-in-up scroll-mt-28 border-border/70 shadow-card`}>
         <CardHeader className="pb-3">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
@@ -1974,7 +1974,7 @@ export default function ContactDetail() {
                   <Label htmlFor="interaction-type" className="text-xs">Type</Label>
                   <select
                     id="interaction-type"
-                    className="w-full h-9 rounded-lg border border-input bg-white px-3 py-1 text-sm mt-1"
+                    className="w-full h-9 rounded-lg border border-input bg-card px-3 py-1 text-sm mt-1"
                     value={interactionForm.type}
                     onChange={(e) => setInteractionForm({ ...interactionForm, type: e.target.value })}
                   >
@@ -1991,7 +1991,7 @@ export default function ContactDetail() {
                     type="date"
                     value={interactionForm.date}
                     onChange={(e) => setInteractionForm({ ...interactionForm, date: e.target.value })}
-                    className="mt-1 bg-white"
+                    className="mt-1 bg-card"
                   />
                 </div>
               </div>
@@ -2002,7 +2002,7 @@ export default function ContactDetail() {
                   placeholder="What happened?"
                   value={interactionForm.summary}
                   onChange={(e) => setInteractionForm({ ...interactionForm, summary: e.target.value })}
-                  className="mt-1 bg-white"
+                  className="mt-1 bg-card"
                 />
               </div>
               <div>
@@ -2013,7 +2013,7 @@ export default function ContactDetail() {
                   value={interactionForm.notes}
                   onChange={(val) => setInteractionForm({ ...interactionForm, notes: val })}
                   rows={2}
-                  className="mt-1 bg-white"
+                  className="mt-1 bg-card"
                 />
               </div>
               <div className="flex gap-2">
@@ -2048,7 +2048,7 @@ export default function ContactDetail() {
                       {isEditing ? (
                         <form id={`interaction-edit-${interaction.id}`} onSubmit={handleEditInteraction} className="animate-slide-down scroll-mt-28 space-y-3 rounded-xl border border-border/50 bg-muted/40 p-3">
                           {interactionEditConflict && (
-                            <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+                            <div role="alert" className="rounded-lg border border-amber-300 bg-warning-soft p-3 text-sm text-amber-950">
                               <p className="font-medium">This interaction changed somewhere else.</p>
                               <p className="mt-1 text-amber-900">Your draft is still here and was not overwritten.</p>
                               <div className="mt-2 flex flex-wrap gap-2">
@@ -2080,7 +2080,7 @@ export default function ContactDetail() {
                               <Label htmlFor="edit-interaction-type" className="text-xs">Type</Label>
                               <select
                                 id="edit-interaction-type"
-                                className="w-full h-9 rounded-lg border border-input bg-white px-3 py-1 text-sm mt-1"
+                                className="w-full h-9 rounded-lg border border-input bg-card px-3 py-1 text-sm mt-1"
                                 value={editInteractionForm.type}
                                 onChange={(e) => setEditInteractionForm({ ...editInteractionForm, type: e.target.value })}
                               >
@@ -2097,7 +2097,7 @@ export default function ContactDetail() {
                                 type="date"
                                 value={editInteractionForm.date}
                                 onChange={(e) => setEditInteractionForm({ ...editInteractionForm, date: e.target.value })}
-                                className="mt-1 bg-white"
+                                className="mt-1 bg-card"
                               />
                             </div>
                           </div>
@@ -2108,7 +2108,7 @@ export default function ContactDetail() {
                               placeholder="What happened?"
                               value={editInteractionForm.summary}
                               onChange={(e) => setEditInteractionForm({ ...editInteractionForm, summary: e.target.value })}
-                              className="mt-1 bg-white"
+                              className="mt-1 bg-card"
                             />
                           </div>
                           <div>
@@ -2119,7 +2119,7 @@ export default function ContactDetail() {
                               value={editInteractionForm.notes}
                               onChange={(val) => setEditInteractionForm({ ...editInteractionForm, notes: val })}
                               rows={2}
-                              className="mt-1 bg-white"
+                              className="mt-1 bg-card"
                             />
                           </div>
                           <div className="flex gap-2">
@@ -2163,7 +2163,7 @@ export default function ContactDetail() {
                               })}
                               variant="ghost"
                               size="icon"
-                              className="h-11 w-11 rounded-full hover:bg-red-50 hover:text-destructive sm:h-8 sm:w-8"
+                              className="h-11 w-11 rounded-full hover:bg-danger-soft hover:text-destructive sm:h-8 sm:w-8"
                               type="button"
                               aria-label={`Delete interaction: ${interactionLabel}`}
                             >
@@ -2192,7 +2192,7 @@ export default function ContactDetail() {
       </Card>
       </div>
 
-      <Card className={`${mobileSection === 'overview' ? '' : 'hidden md:block'} animate-fade-in-up border-0 shadow-sm`}>
+      <Card className={`${mobileSection === 'overview' ? '' : 'hidden md:block'} animate-fade-in-up border-border/70 shadow-card`}>
         <CardHeader className="pb-3">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
@@ -2218,7 +2218,7 @@ export default function ContactDetail() {
                   <Label htmlFor="plan-type" className="text-xs">Type</Label>
                   <select
                     id="plan-type"
-                    className="w-full h-9 rounded-lg border border-input bg-white px-3 py-1 text-sm mt-1"
+                    className="w-full h-9 rounded-lg border border-input bg-card px-3 py-1 text-sm mt-1"
                     value={planForm.type}
                     onChange={(e) => setPlanForm({ ...planForm, type: e.target.value })}
                   >
@@ -2236,7 +2236,7 @@ export default function ContactDetail() {
                     required
                     value={planForm.planned_date}
                     onChange={(e) => setPlanForm({ ...planForm, planned_date: e.target.value })}
-                    className="mt-1 bg-white"
+                    className="mt-1 bg-card"
                   />
                 </div>
               </div>
@@ -2247,7 +2247,7 @@ export default function ContactDetail() {
                   placeholder="Catch up over coffee, discuss project..."
                   value={planForm.summary}
                   onChange={(e) => setPlanForm({ ...planForm, summary: e.target.value })}
-                  className="mt-1 bg-white"
+                  className="mt-1 bg-card"
                 />
               </div>
               <div>
@@ -2258,7 +2258,7 @@ export default function ContactDetail() {
                   value={planForm.notes}
                   onChange={(val) => setPlanForm({ ...planForm, notes: val })}
                   rows={2}
-                  className="mt-1 bg-white"
+                  className="mt-1 bg-card"
                 />
               </div>
               <div className="flex gap-2">
@@ -2277,7 +2277,7 @@ export default function ContactDetail() {
                 const planLabel = plan.summary || `${plan.type} on ${formatDate(plan.planned_date)}`;
                 return (
                   <div key={plan.id} className={`flex items-start gap-3 p-3 rounded-xl border group ${
-                    isOverdue ? 'border-rose-200/60 bg-rose-50/50' : 'border-border/60 bg-white/80'
+                    isOverdue ? 'border-rose-200/60 bg-secondary/50' : 'border-border/60 bg-card/80'
                   }`}>
                     <div className={`w-8 h-8 rounded-full ${config.bg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
                       <Icon className={`w-3.5 h-3.5 ${config.color}`} />
@@ -2297,7 +2297,7 @@ export default function ContactDetail() {
                         onClick={() => handleCompletePlan(plan.id)}
                         variant="ghost"
                         size="icon"
-                        className="h-11 w-11 rounded-full hover:bg-emerald-50 sm:h-8 sm:w-8"
+                        className="h-11 w-11 rounded-full hover:bg-success-soft sm:h-8 sm:w-8"
                         title="Mark as done"
                         aria-label={`Mark plan as done: ${planLabel}`}
                         type="button"
@@ -2312,7 +2312,7 @@ export default function ContactDetail() {
                         })}
                         variant="ghost"
                         size="icon"
-                        className="h-11 w-11 rounded-full hover:bg-red-50 hover:text-destructive sm:h-8 sm:w-8"
+                        className="h-11 w-11 rounded-full hover:bg-danger-soft hover:text-destructive sm:h-8 sm:w-8"
                         type="button"
                         aria-label={`Delete plan: ${planLabel}`}
                       >

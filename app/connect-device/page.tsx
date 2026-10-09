@@ -46,7 +46,7 @@ export default function ConnectDevicePage() {
       <p>{email ? <>Connect <strong>{request?.deviceName}</strong> to <strong>{email}</strong>.</> : 'Checking your account…'}</p>
       <p className="text-sm text-muted-foreground">This phone can keep an offline copy of your contacts, history, reminders, plans, family and relationships, and sync changes. You can revoke its access in Settings.</p>
       <p className="text-sm">Continue only if you started sign-in from your Everclose app.</p>
-      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <Button disabled={!request || !email || busy} className="w-full" onClick={approve}>{busy ? 'Connecting…' : 'Continue to my phone'}</Button>
       <Link href="/" className="block text-center text-sm underline">Cancel</Link>
     </CardContent></Card>

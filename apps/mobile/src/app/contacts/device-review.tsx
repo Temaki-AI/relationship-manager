@@ -1,12 +1,12 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ActionButton, Eyebrow, Surface } from '@/components/design-system';
+import { FormInput as TextInput, ActionButton, Eyebrow, Surface } from '@/components/design-system';
 import { PersonPicker } from '@/components/person-picker';
 import { deviceContactReview, deviceImportContactRevision, saveDeviceContactReview, unlinkDeviceContact } from '@/data/device-contacts';
-import { fonts, palette } from '@/theme';
+import { radii, fonts, palette } from '@/theme';
 import { ProviderSourceError } from '../../../../../packages/domain/src/provider-sources';
 import { ContactMethodError, displayContactMethodLabel } from '../../../../../packages/domain/src/contact-methods';
 import { useNativeAccount } from '@/native/account';
@@ -106,6 +106,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.canvas }, content: { padding: 20, paddingBottom: 40, gap: 18 },
   title: { color: palette.ink, fontFamily: fonts.display, fontSize: 30, fontWeight: '700' }, heading: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 16 },
   body: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 }, fields: { gap: 8, marginTop: 14 },
-  input: { minHeight: 50, borderWidth: 1, borderColor: palette.line, borderRadius: 12, padding: 12, color: palette.ink, fontFamily: fonts.body },
+  input: { minHeight: 50, borderWidth: 1, borderColor: palette.input, borderRadius: radii.control, padding: 12, color: palette.ink, fontFamily: fonts.body },
   choice: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 }, check: { fontSize: 22, color: palette.primary }, choiceText: { flex: 1 },
 });

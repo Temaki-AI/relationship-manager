@@ -501,7 +501,7 @@ export default function ContactsPage() {
               <MoreHorizontal className="h-4 w-4" />
               Manage
             </summary>
-            <div className="absolute left-0 z-30 mt-2 w-60 rounded-xl border border-border bg-white p-2 shadow-lg sm:left-auto sm:right-0">
+            <div className="absolute left-0 z-30 mt-2 w-60 rounded-xl border border-border bg-card p-2 shadow-lg sm:left-auto sm:right-0">
               <div className="mb-2 flex flex-col gap-2 border-b border-border pb-2">
           {contacts.length > 0 && !selectionMode && <Button
             type="button"
@@ -517,7 +517,7 @@ export default function ContactsPage() {
             <CheckSquare className="h-3.5 w-3.5" />
             Select people
           </Button>}
-          <div className="inline-flex rounded-lg border border-border/70 bg-white shadow-sm overflow-hidden">
+          <div className="inline-flex rounded-lg border border-border/70 bg-card shadow-sm overflow-hidden">
             <button
               type="button"
               onClick={() => {
@@ -564,7 +564,7 @@ export default function ContactsPage() {
       </div>
 
       {captureMoment && (
-        <div role="status" className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-rose-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div role="status" className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-secondary/70 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold">Who was this moment with?</p>
             <p className="mt-1 text-xs text-muted-foreground">Choose a person below, then capture what happened. Nothing is logged until you save it.</p>
@@ -573,14 +573,14 @@ export default function ContactsPage() {
         </div>
       )}
 
-      {cloudImports && uploadError && <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+      {cloudImports && uploadError && <div role="alert" className="rounded-xl border border-amber-200 bg-warning-soft p-4 text-sm text-amber-950">
           <p>{uploadError}</p>
           {uploadAttempt && <Button className="mt-3" variant="outline" disabled={importing} onClick={() => void handleContactImport(uploadAttempt.file, uploadAttempt.format)}>{importing ? 'Uploading...' : `Retry ${uploadAttempt.file.name}`}</Button>}
       </div>}
 
       {showTransferPanel && (
-        <Card className="overflow-hidden border-0 shadow-sm animate-fade-in-up">
-          <div className="h-1 bg-gradient-to-r from-rose-400 via-amber-400 to-emerald-400" />
+        <Card className="overflow-hidden border-border/70 shadow-card animate-fade-in-up">
+          <div className="h-1 bg-primary/15" />
           <CardContent className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[1.2fr_1fr]">
             <div className="space-y-4">
               <div className="flex items-start gap-3">
@@ -685,7 +685,7 @@ export default function ContactsPage() {
       )}
 
       {contacts.length > 0 && selectionMode && (
-        <Card className="border-0 shadow-sm animate-fade-in-up">
+        <Card className="border-border/70 shadow-card animate-fade-in-up">
           <CardContent className="pt-5 pb-4 space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
               <div>
@@ -791,7 +791,7 @@ export default function ContactsPage() {
               }, 200);
             }}
             maxLength={200}
-            className="h-11 rounded-xl border-border/60 bg-white pl-10 pr-10 focus:border-primary/40"
+            className="h-11 rounded-xl border-border/60 bg-card pl-10 pr-10 focus:border-primary/40"
             aria-describedby="contact-results-status"
           />
           {refreshing && (
@@ -805,7 +805,7 @@ export default function ContactsPage() {
         </p>
 
         {allTags.length > 0 && (
-          <details open={selectedTag ? true : undefined} className="rounded-lg border border-border bg-white px-3">
+          <details open={selectedTag ? true : undefined} className="rounded-lg border border-border bg-card px-3">
             <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium">{selectedTag ? `Group: ${selectedTag}` : 'Filter by group'}</summary>
             <div className="flex flex-wrap gap-1.5 pb-3">
             <button
@@ -859,7 +859,7 @@ export default function ContactsPage() {
               return (
                 <Card
                   key={contact.id}
-                  className={`border-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                  className={`border-border/70 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                     isSelected ? 'ring-2 ring-primary/30 bg-primary/5' : ''
                   }`}
                 >
@@ -896,7 +896,7 @@ export default function ContactsPage() {
                         </div>
                       </div>
 
-                      <div className={`mb-3 rounded-lg px-3 py-2 ${rhythm.kind === 'ready' ? 'bg-amber-50 text-amber-900' : rhythm.kind === 'due-soon' ? 'bg-sky-50 text-sky-900' : rhythm.kind === 'on-track' ? 'bg-emerald-50 text-emerald-900' : 'bg-stone-50 text-stone-700'}`}>
+                      <div className={`mb-3 rounded-lg px-3 py-2 ${rhythm.kind === 'ready' ? 'bg-warning-soft text-amber-900' : rhythm.kind === 'due-soon' ? 'bg-info-soft text-sky-900' : rhythm.kind === 'on-track' ? 'bg-success-soft text-emerald-900' : 'bg-stone-50 text-stone-700'}`}>
                         <p className="text-xs font-semibold">{rhythm.label}</p>
                         <p className="mt-0.5 text-[11px] leading-relaxed">{rhythm.detail}</p>
                       </div>
@@ -929,7 +929,7 @@ export default function ContactsPage() {
               return (
                 <Card
                   key={contact.id}
-                  className={`border-0 shadow-sm ${isSelected ? 'ring-2 ring-primary/30 bg-primary/5' : ''}`}
+                  className={`border-border/70 shadow-card ${isSelected ? 'ring-2 ring-primary/30 bg-primary/5' : ''}`}
                 >
                   <CardContent className="pt-4 pb-4 px-4">
                     <div className="flex items-center gap-3">
@@ -986,7 +986,7 @@ export default function ContactsPage() {
           </div>
         )
       ) : (
-        <Card className="animate-scale-in border-0 shadow-sm">
+        <Card className="animate-scale-in border-border/70 shadow-card">
           <CardContent className="py-16 text-center">
             {overallTotal === 0 ? (
               <>
@@ -1017,7 +1017,7 @@ export default function ContactsPage() {
       {pagination.totalPages > 1 && filteredContacts.length > 0 && (
         <nav
           aria-label="Contacts pagination"
-          className="flex flex-col gap-3 rounded-xl border border-border/60 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"
         >
           <p className="text-center text-xs text-muted-foreground sm:text-left">
             Showing {(pagination.page - 1) * pagination.pageSize + 1}–{Math.min(

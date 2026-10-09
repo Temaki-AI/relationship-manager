@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import { readGmailContext, setGmailContextEnabled } from '@/data/gmail-context';
-import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ActionButton, Surface } from '@/components/design-system';
+import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FormInput as TextInput, ActionButton, Surface } from '@/components/design-system';
 import { Disclosure } from '@/components/disclosure';
 import { useNativeAccount } from '@/native/account';
 import { useNativeSync } from '@/native/sync';
 import { useRouter } from 'expo-router';
-import { fonts, palette } from '@/theme';
+import { radii, fonts, palette } from '@/theme';
 import { useAppLock } from '@/native/app-lock';
 
 export default function AccountScreen() {
@@ -92,6 +92,6 @@ const styles = StyleSheet.create({
   title: { color: palette.ink, fontFamily: fonts.display, fontSize: 21 },
   body: { color: palette.muted, fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
   label: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 14 },
-  input: { borderWidth: 1, borderColor: palette.line, borderRadius: 14, padding: 14, color: palette.ink, fontSize: 15 },
+  input: { borderWidth: 1, borderColor: palette.input, borderRadius: radii.control, padding: 14, color: palette.ink, fontSize: 16 },
   error: { color: palette.primary, fontFamily: fonts.body, fontSize: 14 },
 });

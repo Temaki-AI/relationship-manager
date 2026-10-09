@@ -38,7 +38,7 @@ export function CalendarEventSchedule({ data, endpoint, reload }: { data: Calend
     <h2 id="automatic-calendar-heading" className="font-semibold">Automatic event downloads</h2>
     <p className="text-sm">Currently {schedule.enabled ? `on · ${schedule.interval === 3600 ? 'hourly' : 'daily'}` : 'off'}. {schedule.enabled && schedule.next_at ? `Next eligible refresh: ${new Date(schedule.next_at).toLocaleString()}.` : ''}</p>
     <p className="text-sm">Refresh this selected calendar while the app is closed. Each complete download rolls the chosen window forward in {data.calendar.time_zone}. This updates saved event context without creating people, publishing plans, inviting anyone or logging interactions.</p>
-    {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
+    {error && <p role="alert" className="text-sm text-destructive dark:text-red-300">{error}</p>}
     <fieldset disabled={busy || uncertain} className="space-y-3">
       <legend className="sr-only">Automatic event choices</legend>
       <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={enabled} disabled={!data.can_download && !schedule.enabled} onChange={(e) => setEnabled(e.target.checked)} />Keep this calendar updated</label>

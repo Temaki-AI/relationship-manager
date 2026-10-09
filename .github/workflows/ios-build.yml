@@ -12,6 +12,7 @@ on:
     paths:
       - 'apps/mobile/**'
       - 'packages/domain/**'
+      - 'packages/design/**'
       - '.github/workflows/ios-build.yml'
       - 'tests/native-ui/**'
 

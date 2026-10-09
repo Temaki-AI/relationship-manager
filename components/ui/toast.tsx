@@ -21,9 +21,9 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 let nextId = 0;
 
 const variantStyles: Record<ToastVariant, { bg: string; icon: React.ElementType; iconColor: string }> = {
-  success: { bg: 'bg-emerald-50 border-emerald-200 text-emerald-800', icon: CheckCircle, iconColor: 'text-emerald-500' },
-  error: { bg: 'bg-red-50 border-red-200 text-red-800', icon: AlertCircle, iconColor: 'text-red-500' },
-  info: { bg: 'bg-blue-50 border-blue-200 text-blue-800', icon: Info, iconColor: 'text-blue-500' },
+  success: { bg: 'bg-success-soft border-success/20 text-success', icon: CheckCircle, iconColor: 'text-success' },
+  error: { bg: 'bg-danger-soft border-destructive/20 text-destructive', icon: AlertCircle, iconColor: 'text-destructive' },
+  info: { bg: 'bg-info-soft border-info/20 text-info', icon: Info, iconColor: 'text-info' },
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -52,7 +52,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ toast }}>
       {children}
       {/* Toast Container */}
-      <div className="fixed bottom-20 left-4 right-4 sm:bottom-6 sm:left-auto sm:right-6 z-[100] flex flex-col gap-2 sm:w-full sm:max-w-sm pointer-events-none">
+      <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-[100] flex flex-col gap-2 md:w-full md:max-w-sm pointer-events-none">
         {toasts.map((t) => {
           const style = variantStyles[t.variant];
           const Icon = style.icon;
@@ -61,7 +61,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               key={t.id}
               role={t.variant === 'error' ? 'alert' : 'status'}
               aria-live={t.variant === 'error' ? 'assertive' : 'polite'}
-              className={`pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-lg text-sm font-medium transition-all duration-300 ${style.bg} ${
+              className={`pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-overlay text-sm font-medium transition-all duration-300 ${style.bg} ${
                 t.leaving ? 'opacity-0 translate-y-2' : 'animate-fade-in-up'
               }`}
             >
@@ -70,7 +70,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => dismiss(t.id)}
-                className="p-0.5 rounded hover:bg-black/5 flex-shrink-0"
+                className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-black/5 flex-shrink-0"
                 aria-label="Dismiss notification"
               >
                 <X className="w-3.5 h-3.5 opacity-50" />

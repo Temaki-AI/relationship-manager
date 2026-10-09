@@ -10,16 +10,15 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
-import { ActionButton } from '@/components/design-system';
+import { FormInput as TextInput, ActionButton } from '@/components/design-system';
 import { createContact } from '@/data/contacts';
 import { contactDraftKey, contactForm } from '@/data/contact-drafts';
 import { CONTACT_FREQUENCY_OPTIONS } from '@/domain/contact';
 import { useContactForm } from '@/native/contact-form';
-import { fonts, palette } from '@/theme';
+import { radii, fonts, palette } from '@/theme';
 
 export default function NewContactScreen() {
   const db = useSQLiteContext();
@@ -198,13 +197,13 @@ const styles = StyleSheet.create({
   helper: { color: palette.muted, fontFamily: fonts.body, fontSize: 12, marginTop: -3 },
   input: {
     minHeight: 51,
-    borderRadius: 16,
+    borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: palette.line,
+    borderColor: palette.input,
     backgroundColor: palette.surface,
     color: palette.ink,
     fontFamily: fonts.body,
-    fontSize: 15,
+    fontSize: 16,
     paddingHorizontal: 15,
     paddingVertical: 13,
   },
@@ -215,7 +214,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 14,
+    borderRadius: radii.control,
     borderWidth: 1,
     borderColor: palette.line,
     backgroundColor: palette.surface,

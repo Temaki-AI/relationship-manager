@@ -71,11 +71,12 @@ test('authenticated navigation remains usable at consumer breakpoints', async ({
     return { background: style.backgroundColor, backdrop: style.backdropFilter };
   });
   if ((page.viewportSize()?.width || 0) < 768) {
-    expect(headerStyle.background).toBe('rgb(255, 255, 255)');
+    expect(headerStyle.background).toBe('rgb(255, 253, 250)');
     expect(headerStyle.backdrop).toBe('none');
     await expect(page.getByRole('navigation').getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
   } else {
-    expect(headerStyle.backdrop).toContain('blur');
+    expect(headerStyle.background).toBe('rgb(255, 253, 250)');
+    expect(headerStyle.backdrop).toBe('none');
     await expect(page.getByRole('navigation').getByRole('link', { name: 'Groups' })).toBeVisible();
   }
 

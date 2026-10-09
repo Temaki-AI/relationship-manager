@@ -2,15 +2,15 @@ import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-rout
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ActionButton } from '@/components/design-system';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FormInput as TextInput, ActionButton } from '@/components/design-system';
 import { PersonPicker } from '@/components/person-picker';
 import { contextForEditing, createContext, updateContext } from '@/data/context';
 import { getContact } from '@/data/contacts';
 import { contextForm, journalDraftKey } from '@/data/journal-drafts';
 import { useJournalForm } from '@/native/journal-form';
 import { type ContextEntity } from '../../../../../packages/domain/src/relationship-context';
-import { fonts, palette } from '@/theme';
+import { radii, fonts, palette } from '@/theme';
 
 export default function ContextEditorScreen() {
   const params = useLocalSearchParams<{ entity: string; contactId: string; id?: string }>();
@@ -101,5 +101,5 @@ const styles = StyleSheet.create({
   title: { color: palette.ink, fontFamily: fonts.display, fontSize: 27 }, label: { fontFamily: fonts.bodyDemi, fontSize: 14, color: palette.ink },
   error: { color: palette.primary, fontFamily: fonts.body, fontSize: 15 },
   body: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 },
-  input: { minHeight: 51, padding: 14, borderWidth: 1, borderColor: palette.line, borderRadius: 14, backgroundColor: palette.surface, color: palette.ink, fontFamily: fonts.body, fontSize: 15 },
+  input: { minHeight: 51, padding: 14, borderWidth: 1, borderColor: palette.input, borderRadius: radii.control, backgroundColor: palette.surface, color: palette.ink, fontFamily: fonts.body, fontSize: 16 },
 });

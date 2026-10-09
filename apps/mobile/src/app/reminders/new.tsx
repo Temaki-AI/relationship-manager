@@ -11,11 +11,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
-import { ActionButton, Eyebrow } from '@/components/design-system';
+import { FormInput as TextInput, ActionButton, Eyebrow } from '@/components/design-system';
 import { PersonPicker } from '@/components/person-picker';
 import { getContact } from '@/data/contacts';
 import { createReminder, isReminderNotificationCurrent, saveReminderNotification } from '@/data/reminders';
@@ -29,7 +28,7 @@ import {
   type ReminderPresetId,
 } from '@/domain/reminder';
 import { cancelReminderNotification, scheduleReminderNotification } from '@/native/notifications';
-import { fonts, palette } from '@/theme';
+import { radii, fonts, palette } from '@/theme';
 import { useNativeAccount } from '@/native/account';
 import { accountScope } from '../../../../../packages/domain/src/devices';
 import { formatDateTime } from '@/lib/format';
@@ -271,7 +270,7 @@ const styles = StyleSheet.create({
   personChoice: {
     width: 112,
     minHeight: 76,
-    borderRadius: 18,
+    borderRadius: radii.card,
     borderWidth: 1,
     borderColor: palette.line,
     backgroundColor: palette.surface,
@@ -281,32 +280,32 @@ const styles = StyleSheet.create({
   personChoiceSelected: { borderColor: palette.primary, backgroundColor: palette.primarySoft },
   personName: { color: palette.ink, fontFamily: fonts.bodyMedium, fontSize: 11 },
   personNameSelected: { color: palette.primary, fontFamily: fonts.bodyDemi, fontWeight: '700' },
-  noContacts: { borderRadius: 18, borderWidth: 1, borderColor: '#EFC9D3', backgroundColor: palette.primarySoft, padding: 16, gap: 3 },
+  noContacts: { borderRadius: radii.card, borderWidth: 1, borderColor: palette.primarySoft, backgroundColor: palette.primarySoft, padding: 16, gap: 3 },
   noContactsTitle: { color: palette.primary, fontFamily: fonts.bodyDemi, fontSize: 14, fontWeight: '700' },
-  noContactsText: { color: '#76545D', fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
+  noContactsText: { color: palette.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
   input: {
     minHeight: 51,
-    borderRadius: 16,
+    borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: palette.line,
+    borderColor: palette.input,
     backgroundColor: palette.surface,
     color: palette.ink,
     fontFamily: fonts.body,
-    fontSize: 15,
+    fontSize: 16,
     paddingHorizontal: 15,
     paddingVertical: 13,
   },
   textarea: { minHeight: 96, lineHeight: 21 },
   suggestions: { gap: 7, paddingRight: 12 },
-  suggestion: { borderRadius: 999, backgroundColor: palette.surfaceWarm, paddingHorizontal: 12, paddingVertical: 8 },
-  suggestionText: { color: '#76545D', fontFamily: fonts.bodyMedium, fontSize: 11 },
+  suggestion: { borderRadius: radii.pill, backgroundColor: palette.surfaceWarm, paddingHorizontal: 12, paddingVertical: 8 },
+  suggestionText: { color: palette.muted, fontFamily: fonts.bodyMedium, fontSize: 11 },
   presets: { flexDirection: 'row', gap: 8 },
-  preset: { flex: 1, minHeight: 67, borderRadius: 17, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface, padding: 11, gap: 3 },
+  preset: { flex: 1, minHeight: 67, borderRadius: radii.control, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.surface, padding: 11, gap: 3 },
   presetSelected: { borderColor: palette.primary, backgroundColor: palette.primary },
   presetLabel: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 11, fontWeight: '700' },
   presetLabelSelected: { color: palette.white },
   presetDetail: { color: palette.muted, fontFamily: fonts.body, fontSize: 10 },
-  presetDetailSelected: { color: '#FFE8EE' },
+  presetDetailSelected: { color: palette.white },
   actions: { gap: 10 },
   pressed: { opacity: 0.72, transform: [{ scale: 0.99 }] },
 });

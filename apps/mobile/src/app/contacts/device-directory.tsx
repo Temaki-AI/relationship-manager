@@ -1,13 +1,13 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ActionButton, Eyebrow } from '@/components/design-system';
+import { FormInput as TextInput, ActionButton, Eyebrow } from '@/components/design-system';
 import { DeviceContactAccess } from '@/components/device-contact-access';
 import { readDeviceContactPage, readLinkedDeviceContact } from '@/native/device-contacts';
 import { stageDeviceContact } from '@/data/device-contacts';
-import { fonts, palette } from '@/theme';
+import { radii, fonts, palette } from '@/theme';
 import type { DeviceContactFacts } from '../../../../../packages/domain/src/device-contact-facts';
 export default function DeviceDirectoryScreen() {
   const db = useSQLiteContext(), router = useRouter(), params = useLocalSearchParams<{ contact?: string }>();
@@ -54,4 +54,4 @@ export default function DeviceDirectoryScreen() {
 }
 const styles = StyleSheet.create({ safe: { flex: 1, backgroundColor: palette.canvas }, content: { padding: 20, paddingBottom: 40, gap: 12 }, header: { gap: 14 }, title: { color: palette.ink, fontFamily: fonts.display, fontSize: 28, fontWeight: '700' },
   heading: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 16 }, body: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 }, error: { color: palette.primary, fontFamily: fonts.body },
-  row: { gap: 6, padding: 16, minHeight: 80, borderWidth: 1, borderColor: palette.line, borderRadius: 14, backgroundColor: palette.surface }, input: { minHeight: 48, padding: 12, borderWidth: 1, borderColor: palette.line, borderRadius: 12, color: palette.ink, fontFamily: fonts.body } });
+  row: { gap: 6, padding: 16, minHeight: 80, borderWidth: 1, borderColor: palette.line, borderRadius: radii.control, backgroundColor: palette.surface }, input: { minHeight: 48, padding: 12, borderWidth: 1, borderColor: palette.input, borderRadius: radii.control, color: palette.ink, fontFamily: fonts.body } });

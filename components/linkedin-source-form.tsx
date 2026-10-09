@@ -61,7 +61,7 @@ export function LinkedInSourceForm({ contactId, onCreated, onDirty }: { contactI
         <label className="flex min-h-11 items-center gap-3"><input type="radio" name="source-destination" checked={mode === 'existing'} onChange={() => setMode('existing')} />Link an existing person</label>
         {mode === 'existing' && <><Label htmlFor="source-search">Find a person</Label><Input id="source-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search your people" />
           {searchError && <p role="alert" className="text-destructive">{searchError}</p>}
-          <Label htmlFor="source-person">Person to link</Label><select id="source-person" value={selected} onChange={(event) => setSelected(event.target.value)} className="min-h-11 w-full rounded-md border bg-white p-2" required>
+          <Label htmlFor="source-person">Person to link</Label><select id="source-person" value={selected} onChange={(event) => setSelected(event.target.value)} className="min-h-11 w-full rounded-md border bg-card p-2" required>
             <option value="">Choose a person</option>{people.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
           </select><p className="text-sm text-muted-foreground">Search to find people outside the first 50 results.</p></>}
       </>}

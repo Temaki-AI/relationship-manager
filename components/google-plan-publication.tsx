@@ -91,7 +91,7 @@ export function GooglePlanPublication({ connectionId, planId }: { connectionId: 
     <Link className="inline-flex min-h-11 items-center underline" href={`/connections/google/${connectionId}/plans`}>Back to plans</Link>
     <h1 className="text-2xl font-semibold">Publish a plan to Google Calendar</h1>
     <p>Review an event in your dedicated Everclose calendar. Private CRM notes stay in Everclose.</p>
-    {error && <p role="alert" className="break-words rounded-lg border border-red-200 p-3 text-red-700">{error}</p>}
+    {error && <p role="alert" className="break-words rounded-lg border border-red-200 p-3 text-destructive">{error}</p>}
     {notice && <p role="status" className="rounded-lg border p-3">{notice}</p>}
     <Button variant="outline" disabled={pending} onClick={() => run(async () => { await refresh(); })}>Refresh publication status</Button>
     {review && <p className="break-words">Account: {review.email} · Calendar: {review.calendar?.summary ?? 'Access needs review'}</p>}

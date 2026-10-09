@@ -8,6 +8,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
+    "design:tokens": "node scripts/generate-design-tokens.mjs",
     "dev": "npm run dev:cloud",
     "dev:cloud": "node scripts/development.mjs cloud",
     "dev:local": "node scripts/development.mjs local",

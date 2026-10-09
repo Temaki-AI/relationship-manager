@@ -2,7 +2,7 @@ import { useIsFocused } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { fonts, palette } from '@/theme';
+import { radii, fonts, palette } from '@/theme';
 import { useAppLock } from '@/native/app-lock';
 
 export type ChoiceOption = { label: string; onPress: () => void };
@@ -64,9 +64,9 @@ const styles = StyleSheet.create({
   content: { padding: 20, gap: 16 },
   title: { color: palette.ink, fontFamily: fonts.display, fontSize: 26, fontWeight: '700' },
   detail: { color: palette.muted, fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
-  option: { minHeight: 44, padding: 16, borderRadius: 16, backgroundColor: palette.primarySoft },
+  option: { minHeight: 44, padding: 16, borderRadius: radii.control, backgroundColor: palette.primarySoft },
   optionText: { color: palette.primary, fontFamily: fonts.bodyDemi, fontSize: 17 },
   footer: { padding: 16, borderTopWidth: 1, borderTopColor: palette.line },
-  cancel: { minHeight: 44, alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 16, backgroundColor: palette.surfaceWarm },
+  cancel: { minHeight: 44, alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: radii.control, backgroundColor: palette.surfaceWarm },
   pressed: { opacity: 0.72 },
 });

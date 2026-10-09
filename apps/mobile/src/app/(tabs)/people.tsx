@@ -12,19 +12,18 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ActionButton, StatusPill } from '@/components/design-system';
+import { FormInput as TextInput, ActionButton, StatusPill } from '@/components/design-system';
 import { Disclosure } from '@/components/disclosure';
 import { ContactAvatar } from '@/components/contact-avatar';
 import { listContactPage } from '@/data/contacts';
 import { getRelationshipState, type ContactRecord } from '@/domain/contact';
 import { formatRelativeDate } from '@/lib/format';
-import { fonts, palette } from '@/theme';
+import { fonts, palette, radii, typeScale } from '@/theme';
 import { useNativeSync } from '@/native/sync';
 import { useNativeAccount } from '@/native/account';
 
@@ -209,34 +208,34 @@ const styles = StyleSheet.create({
   header: { gap: 18, marginBottom: 18 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   headingCopy: { flex: 1, gap: 4 },
-  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 28, fontWeight: '700', letterSpacing: -0.4 },
+  title: { color: palette.ink, fontFamily: fonts.display, ...typeScale.title },
   subtitle: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 20 },
   addButton: {
     width: 50,
     minHeight: 50,
     paddingVertical: 12,
-    borderRadius: 18,
+    borderRadius: radii.control,
     backgroundColor: palette.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   addButtonText: { color: palette.white, fontFamily: fonts.body, fontSize: 30, lineHeight: 33 },
   search: {
-    height: 50,
-    borderRadius: 17,
+    borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: palette.line,
+    borderColor: palette.input,
     backgroundColor: palette.surface,
     color: palette.ink,
     fontFamily: fonts.body,
-    fontSize: 15,
+    fontSize: 16,
+    paddingVertical: 12,
     paddingHorizontal: 16,
   },
   importButton: {
     minHeight: 66,
-    borderRadius: 19,
+    borderRadius: radii.card,
     borderWidth: 1,
-    borderColor: '#EFC9D3',
+    borderColor: palette.primarySoft,
     backgroundColor: palette.primarySoft,
     paddingHorizontal: 16,
     paddingVertical: 13,
@@ -244,7 +243,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   importTitle: { color: palette.primary, fontFamily: fonts.bodyDemi, fontSize: 14, fontWeight: '700' },
-  importDetail: { color: '#76545D', fontFamily: fonts.body, fontSize: 11, lineHeight: 16 },
+  importDetail: { color: palette.muted, fontFamily: fonts.body, fontSize: 11, lineHeight: 16 },
   pressed: { opacity: 0.76, transform: [{ scale: 0.99 }] },
   empty: { paddingVertical: 54, alignItems: 'center', gap: 6, paddingHorizontal: 24 },
   emptyTitle: { color: palette.ink, fontFamily: fonts.display, fontSize: 23, fontWeight: '700' },

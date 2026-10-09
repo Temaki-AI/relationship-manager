@@ -273,13 +273,13 @@ export default function EditContact() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <Card className="animate-fade-in-up border-0 shadow-sm">
+        <Card className="animate-fade-in-up border-border/70 shadow-card">
           <CardContent className="pt-6 space-y-6">
             {hasConflict && (
               <section
                 role="alert"
                 aria-labelledby="edit-conflict-heading"
-                className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950"
+                className="rounded-xl border border-amber-300 bg-warning-soft p-4 text-amber-950"
               >
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />

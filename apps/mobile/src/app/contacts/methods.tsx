@@ -3,12 +3,12 @@ import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-rout
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
-import { ActionButton, Surface } from '@/components/design-system';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { FormInput as TextInput, ActionButton, Surface } from '@/components/design-system';
 import { getContactForEditing, type ContactEditBase } from '@/data/contacts';
 import { updateContactMethods } from '@/data/contact-methods';
 import { readContactMethods, displayContactMethodLabel, type ContactMethod, type ContactMethodKind } from '../../../../../packages/domain/src/contact-methods';
-import { fonts, palette } from '@/theme';
+import { radii, fonts, palette } from '@/theme';
 
 type Editor = { base: ContactEditBase; draft: ContactMethod[]; initial: string };
 export default function ContactMethodsScreen() {
@@ -71,5 +71,5 @@ const styles = StyleSheet.create({
   content: { padding: 24, paddingBottom: 44, gap: 20 }, card: { padding: 18, gap: 12 }, additions: { gap: 10 }, preference: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
   title: { fontFamily: fonts.display, fontSize: 28, color: palette.ink }, label: { fontFamily: fonts.bodyDemi, fontSize: 15, color: palette.ink },
   body: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: palette.muted }, error: { fontFamily: fonts.body, fontSize: 15, color: palette.primary },
-  input: { backgroundColor: palette.surface, borderColor: palette.line, borderWidth: 1, borderRadius: 12, padding: 14, minHeight: 48, fontFamily: fonts.body, fontSize: 16, color: palette.ink },
+  input: { backgroundColor: palette.surface, borderColor: palette.input, borderWidth: 1, borderRadius: radii.control, padding: 14, minHeight: 48, fontFamily: fonts.body, fontSize: 16, color: palette.ink },
 });

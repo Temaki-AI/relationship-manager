@@ -9,7 +9,7 @@ import { listAgendaEntries, type AgendaEntry } from '@/data/calendar-events';
 import { ContextCard } from '@/components/context-card';
 import { completePlan, deleteContext } from '@/data/context';
 import { useNativeSync } from '@/native/sync';
-import { fonts, palette } from '@/theme';
+import { fonts, palette, typeScale } from '@/theme';
 
 export default function AgendaScreen() {
   const db = useSQLiteContext(), router = useRouter(), focused = useIsFocused(), { revision } = useNativeSync();
@@ -60,5 +60,5 @@ export default function AgendaScreen() {
 }
 const styles = StyleSheet.create({
   content: { padding: 20, gap: 16, paddingBottom: 40 }, header: { gap: 16 }, options: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  title: { fontFamily: fonts.display, color: palette.ink, fontWeight: '700', fontSize: 28 }, body: { fontFamily: fonts.body, color: palette.muted, fontSize: 15, lineHeight: 22 },
+  title: { fontFamily: fonts.display, color: palette.ink, ...typeScale.title }, body: { fontFamily: fonts.body, color: palette.muted, fontSize: 15, lineHeight: 22 },
 });

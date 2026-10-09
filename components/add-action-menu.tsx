@@ -54,7 +54,7 @@ export function AddActionMenu({ mobile = false }: { mobile?: boolean }) {
       <div
         id={mobile ? 'mobile-add-actions' : 'desktop-add-actions'}
         hidden={!open}
-        className="absolute right-0 top-full mt-2 z-[60] w-64 rounded-xl border border-border/70 bg-white p-1.5 shadow-xl"
+        className="absolute right-0 top-full mt-2 z-[60] w-64 rounded-xl border border-border/70 bg-card p-1.5 shadow-xl"
       >
         {actions.map((action) => (
           <Link

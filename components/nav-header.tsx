@@ -76,14 +76,14 @@ export function NavHeader() {
   return (
     <>
       {/* Desktop Header */}
-      <header className="bg-white md:bg-white/95 md:backdrop-blur-md border-b border-border/70 sticky top-0 z-50">
+      <header className="bg-card border-b border-border/70 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/" aria-label="Everclose home" className="flex min-h-11 items-center gap-2.5 group">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
-                <Heart className="w-4 h-4 text-white fill-white" />
+              <div className="w-8 h-8 flex items-center justify-center">
+                <Heart className="w-6 h-6 text-primary fill-primary" aria-hidden="true" />
               </div>
-              <span className="text-lg font-semibold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+              <span className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">
                 Everclose
               </span>
             </Link>
@@ -97,7 +97,7 @@ export function NavHeader() {
                     aria-current={isActive ? 'page' : undefined}
                     className={`flex min-h-11 items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                       isActive
-                        ? 'bg-primary/10 text-rose-800'
+                        ? 'bg-secondary text-primary'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                     }`}
                   >
@@ -134,7 +134,7 @@ export function NavHeader() {
       </header>
 
       {/* Mobile Bottom Nav */}
-      <nav aria-label="Main navigation" className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-border/70 z-50 pb-safe">
+      <nav aria-label="Main navigation" className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border/70 z-50 pb-safe">
         <div className="grid grid-cols-4 h-16 px-2">
           {navItems.map((item) => {
             const isActive = isNavActive(item.href);

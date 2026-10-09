@@ -19,6 +19,7 @@ test('primary screens keep navigation and content usable at narrow and desktop s
     ['/reminders', 'reminders'], ['/groups', 'groups'], ['/smart-lists', 'smart-lists'],
     ['/settings', 'settings'], ['/integrations', 'connections'], ['/contacts/new', 'new-person'],
     ['/contacts/duplicates', 'duplicates'], [`${person}/edit`, 'edit-person'],
+    ['/design-system', 'design-system'],
   ];
   const widths = testInfo.project.name.endsWith('mobile') ? [393, 320] : [1280, 768];
   for (const width of widths) {

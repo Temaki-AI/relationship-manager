@@ -79,7 +79,7 @@ export function FirstCircleJourney({ snapshot, onChanged }: { snapshot: FirstSte
   }
 
   return (
-    <section aria-labelledby="first-circle-title" className="relative overflow-hidden rounded-2xl border border-rose-100 bg-[radial-gradient(circle_at_95%_0%,rgba(252,211,214,0.65),transparent_38%),linear-gradient(135deg,#fff8f1_0%,#fff_64%,#f2faf7_100%)] p-5 shadow-sm sm:p-7">
+    <section aria-labelledby="first-circle-title" className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-5 shadow-sm sm:p-7">
       <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full border border-rose-200/50" aria-hidden="true" />
       <div className="relative">
         <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.17em] text-primary"><Heart className="h-3.5 w-3.5" aria-hidden="true" /> Your first circle</p>
@@ -88,11 +88,11 @@ export function FirstCircleJourney({ snapshot, onChanged }: { snapshot: FirstSte
             <h2 id="first-circle-title" className="max-w-2xl text-2xl font-bold tracking-tight sm:text-3xl">Start close, not wide.</h2>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Choose a few people you want to show up for. Add one detail, then capture a real conversation or plan when to reach out. You never need to import everyone.</p>
           </div>
-          <span className="w-fit shrink-0 rounded-full border border-rose-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-rose-800">{snapshot.circleCount} in your circle</span>
+          <span className="w-fit shrink-0 rounded-full border border-rose-200 bg-card/80 px-3 py-1.5 text-xs font-semibold text-rose-800">{snapshot.circleCount} in your circle</span>
         </div>
 
         <div className="mt-6 grid items-start gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-xl border border-white/80 bg-white/85 p-4 shadow-sm sm:p-5">
+          <div className="rounded-xl border border-border/70 bg-muted p-4 shadow-sm sm:p-5">
             <div className="flex items-start gap-3">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-primary"><Users className="h-4 w-4" aria-hidden="true" /></span>
               <div>
@@ -104,7 +104,7 @@ export function FirstCircleJourney({ snapshot, onChanged }: { snapshot: FirstSte
             {snapshot.circlePeople.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {snapshot.circlePeople.map((person) => (
-                  <Link key={person.id} href={`/contacts/${person.id}`} className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-900 hover:bg-rose-100">{person.name}</Link>
+                  <Link key={person.id} href={`/contacts/${person.id}`} className="rounded-full border border-rose-200 bg-secondary px-3 py-1.5 text-xs font-semibold text-rose-900 hover:bg-rose-100">{person.name}</Link>
                 ))}
               </div>
             )}
@@ -122,11 +122,11 @@ export function FirstCircleJourney({ snapshot, onChanged }: { snapshot: FirstSte
                 {selected.length > 0 && <p className="text-xs text-muted-foreground">Selected: {selected.map((person) => person.name).join(', ')}</p>}
                 {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
                 {loading ? <p role="status" className="text-xs text-muted-foreground">Finding people...</p> : (
-                  <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-border/70 bg-white p-1">
+                  <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-border/70 bg-card p-1">
                     {available.length > 0 ? available.map((person) => {
                       const checked = selected.some((item) => item.id === person.id);
                       return (
-                        <label key={person.id} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-3 text-sm hover:bg-rose-50">
+                        <label key={person.id} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-3 text-sm hover:bg-secondary">
                           <input type="checkbox" checked={checked} disabled={!checked && selected.length >= slotsRemaining} onChange={() => toggle(person)} className="h-4 w-4 accent-primary" />
                           <span className="flex-1 truncate">{person.name}</span>
                           {checked && <Check className="h-4 w-4 text-primary" aria-hidden="true" />}
@@ -145,7 +145,7 @@ export function FirstCircleJourney({ snapshot, onChanged }: { snapshot: FirstSte
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            <div className="rounded-xl border border-white/80 bg-white/85 p-4 shadow-sm sm:p-5">
+            <div className="rounded-xl border border-border/70 bg-muted p-4 shadow-sm sm:p-5">
               <div className="flex items-start gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-800"><CalendarDays className="h-4 w-4" aria-hidden="true" /></span>
                 <div>
@@ -159,9 +159,9 @@ export function FirstCircleJourney({ snapshot, onChanged }: { snapshot: FirstSte
               </div>}
               {!nextPerson && <p className="mt-3 text-xs text-muted-foreground">Choose a person first, or add these details from any profile later.</p>}
             </div>
-            <div className="rounded-xl border border-white/80 bg-white/85 p-4 shadow-sm sm:p-5">
+            <div className="rounded-xl border border-border/70 bg-muted p-4 shadow-sm sm:p-5">
               <div className="flex items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800"><MessageSquare className="h-4 w-4" aria-hidden="true" /></span>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-success"><MessageSquare className="h-4 w-4" aria-hidden="true" /></span>
                 <div>
                   <h3 className="font-semibold">03 / Take one real step</h3>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Log a conversation you actually had, or set a reminder for one you want to have. Opening a message app does not count as contact.</p>

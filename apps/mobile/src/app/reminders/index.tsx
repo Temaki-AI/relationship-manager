@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, StatusPill } from '@/components/design-system';
 import { listOpenReminders, type ReminderRecord } from '@/data/reminders';
 import { formatDateTime } from '@/lib/format';
-import { fonts, palette } from '@/theme';
+import { radii, fonts, palette } from '@/theme';
 import { useReminderActions } from '@/native/reminder-actions';
 
 export default function RemindersScreen() {
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   addButton: {
     width: 50,
     height: 50,
-    borderRadius: 18,
+    borderRadius: radii.card,
     backgroundColor: palette.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   emptyBellText: { color: palette.primary, fontFamily: fonts.display, fontSize: 25, fontWeight: '700' },
   emptyTitle: { color: palette.ink, fontFamily: fonts.display, fontSize: 24, fontWeight: '700' },
   emptyText: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 20, textAlign: 'center' },
-  emptyAction: { marginTop: 10, borderRadius: 15, backgroundColor: palette.primary, paddingHorizontal: 18, paddingVertical: 12 },
+  emptyAction: { marginTop: 10, borderRadius: radii.control, backgroundColor: palette.primary, paddingHorizontal: 18, paddingVertical: 12 },
   emptyActionText: { color: palette.white, fontFamily: fonts.bodyDemi, fontSize: 13, fontWeight: '700' },
   reminderCard: {
     borderRadius: 23,
@@ -170,8 +170,8 @@ const styles = StyleSheet.create({
   reminderTitle: { color: palette.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 },
   reminderBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   reminderTime: { flex: 1, color: palette.primary, fontFamily: fonts.bodyMedium, fontSize: 11 },
-  completeButton: { minWidth: 86, minHeight: 44, borderRadius: 13, backgroundColor: palette.mossSoft, alignItems: 'center', justifyContent: 'center' },
+  completeButton: { minWidth: 86, minHeight: 44, borderRadius: radii.control, backgroundColor: palette.mossSoft, alignItems: 'center', justifyContent: 'center' },
   completeText: { color: palette.moss, fontFamily: fonts.bodyDemi, fontSize: 12, fontWeight: '700' },
-  snoozeButton: { minWidth: 70, minHeight: 44, borderRadius: 13, backgroundColor: palette.surfaceWarm, alignItems: 'center', justifyContent: 'center' },
+  snoozeButton: { minWidth: 70, minHeight: 44, borderRadius: radii.control, backgroundColor: palette.surfaceWarm, alignItems: 'center', justifyContent: 'center' },
   snoozeText: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 12 },
 });

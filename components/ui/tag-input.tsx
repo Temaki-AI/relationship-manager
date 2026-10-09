@@ -122,7 +122,7 @@ export function TagInput({ value, onChange, placeholder, className = '', id }: T
         className={`flex h-9 w-full rounded-xl border border-input bg-background px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50 transition-all ${className}`}
       />
       {showDropdown && filtered.length > 0 && (
-        <div className="absolute left-0 right-0 z-50 mt-1 bg-white rounded-xl border border-border shadow-lg overflow-hidden max-h-40 overflow-y-auto">
+        <div className="absolute left-0 right-0 z-50 mt-1 bg-card rounded-xl border border-border shadow-lg overflow-hidden max-h-40 overflow-y-auto">
           {filtered.map((tag, index) => (
             <button
               key={tag}

@@ -5,7 +5,7 @@ import { buttonVariants } from '@/components/ui/button';
 export default function NotFound() {
   return (
     <section className="mx-auto flex min-h-[55vh] max-w-xl flex-col items-center justify-center text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 shadow-sm">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-warning-soft text-amber-600 shadow-sm">
         <Compass className="h-7 w-7" aria-hidden="true" />
       </div>
       <p className="mt-6 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Page not found</p>

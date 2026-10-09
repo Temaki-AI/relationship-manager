@@ -1,14 +1,30 @@
 import type { Config } from "tailwindcss";
+import { motion, radii, typeScale } from './packages/design/src/tokens';
 
 const config: Config = {
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./packages/design/**/*.{ts,tsx}",
   ],
   theme: {
     extend: {
+      fontSize: {
+        '3xl': [`${typeScale.title.fontSize}px`, { lineHeight: `${typeScale.title.lineHeight}px`, letterSpacing: `${typeScale.title.letterSpacing}px` }],
+        xl: [`${typeScale.section.fontSize}px`, { lineHeight: `${typeScale.section.lineHeight}px` }],
+        base: [`${typeScale.body.fontSize}px`, { lineHeight: `${typeScale.body.lineHeight}px` }],
+      },
       colors: {
+        success: { DEFAULT: 'hsl(var(--success))', soft: 'hsl(var(--success-soft))' },
+        warning: { DEFAULT: 'hsl(var(--warning))', soft: 'hsl(var(--warning-soft))' },
+        info: { DEFAULT: 'hsl(var(--info))', soft: 'hsl(var(--info-soft))' },
+        'danger-soft': 'hsl(var(--danger-soft))',
+        'rose-soft': 'hsl(var(--rose-soft))', 'rose-ink': 'hsl(var(--rose-ink))',
+        'sage-soft': 'hsl(var(--sage-soft))', 'sage-ink': 'hsl(var(--sage-ink))',
+        'peach-soft': 'hsl(var(--peach-soft))', 'peach-ink': 'hsl(var(--peach-ink))',
+        'lavender-soft': 'hsl(var(--lavender-soft))', 'lavender-ink': 'hsl(var(--lavender-ink))',
+        'sky-soft': 'hsl(var(--sky-soft))', 'sky-ink': 'hsl(var(--sky-ink))',
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -43,13 +59,20 @@ const config: Config = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: `${radii.card}px`,
+        '2xl': `${radii.dialog}px`,
       },
+      boxShadow: {
+        card: 'var(--shadow-card)',
+        overlay: 'var(--shadow-overlay)',
+      },
+      transitionDuration: { DEFAULT: `${motion.standard}ms` },
       animation: {
-        'fade-in-up': 'fade-in-up 0.4s ease-out forwards',
-        'fade-in': 'fade-in 0.3s ease-out forwards',
-        'scale-in': 'scale-in 0.3s ease-out forwards',
+        'fade-in-up': `fade-in-up ${motion.enter}ms ease-out forwards`,
+        'fade-in': `fade-in ${motion.enter}ms ease-out forwards`,
+        'scale-in': `scale-in ${motion.enter}ms ease-out forwards`,
         'health-fill': 'health-fill 0.8s ease-out forwards',
-        'slide-down': 'slide-down 0.3s ease-out forwards',
+        'slide-down': `slide-down ${motion.enter}ms ease-out forwards`,
       },
       keyframes: {
         'fade-in-up': {

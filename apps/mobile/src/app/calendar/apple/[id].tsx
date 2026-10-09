@@ -2,8 +2,8 @@ import { Stack, useIsFocused, useLocalSearchParams, useRouter } from 'expo-route
 import { useSQLiteContext } from 'expo-sqlite';
 import * as Crypto from 'expo-crypto';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
-import { ActionButton, Surface } from '@/components/design-system';
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { FormInput as TextInput, ActionButton, Surface } from '@/components/design-system';
 import { appleCalendarReview, prepareAppleCalendar, discardAppleCalendar, openAppleCalendarEditor, verifyAppleCalendar, findAppleCalendar, disableAppleCalendarReads, editAppleCalendar } from '@/data/apple-calendar';
 import { appleCalendarAdapter as adapter } from '@/native/apple-calendar';
 import { readSharedCalendarReservation, syncCalendarReservations } from '@/data/calendar-reservations';
@@ -12,7 +12,7 @@ import { useNativeAccount } from '@/native/account';
 import { useNativeSync } from '@/native/sync';
 import { accountScope } from '../../../../../../packages/domain/src/devices';
 import { appleCalendarDraft, readAppleCalendarFacts, type AppleCalendarDraft, type AppleCalendarFacts } from '../../../../../../packages/domain/src/apple-calendar';
-import { fonts, palette } from '@/theme';
+import { radii, fonts, palette } from '@/theme';
 
 type Review = Awaited<ReturnType<typeof appleCalendarReview>>;
 function dayAfter(day: string) { const date = new Date(day); if (!Number.isFinite(date.valueOf())) return ''; date.setUTCDate(date.getUTCDate() + 1); return date.toISOString().slice(0, 10); }
@@ -184,5 +184,5 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 48, gap: 16 }, panel: { padding: 20, gap: 16 }, field: { gap: 8 }, choice: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   title: { fontFamily: fonts.display, fontSize: 30, color: palette.ink }, heading: { fontFamily: fonts.bodyDemi, fontSize: 20, color: palette.ink },
   body: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: palette.muted }, label: { fontFamily: fonts.bodyDemi, color: palette.ink },
-  choiceLabel: { flex: 1, fontFamily: fonts.body, fontSize: 15, color: palette.ink }, input: { borderWidth: 1, borderColor: palette.line, borderRadius: 12, padding: 12, color: palette.ink, fontFamily: fonts.body, minHeight: 48 },
+  choiceLabel: { flex: 1, fontFamily: fonts.body, fontSize: 15, color: palette.ink }, input: { borderWidth: 1, borderColor: palette.input, borderRadius: radii.control, padding: 12, color: palette.ink, fontFamily: fonts.body, minHeight: 48 },
 });

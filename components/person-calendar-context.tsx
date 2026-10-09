@@ -25,7 +25,7 @@ export function PersonCalendarContext({ contactId, refreshKey }: { contactId: st
     }
     void load(); return () => controller.abort();
   }, [contactId, refreshKey, retry]);
-  return <Card className="border-0 shadow-sm"><CardContent className="space-y-3 pt-5 pb-4">
+  return <Card className="border-border/70 shadow-card"><CardContent className="space-y-3 pt-5 pb-4">
     <h2 className="text-sm font-semibold">Saved meetings</h2>
     <p className="text-xs text-muted-foreground">Latest saved context linked to this person or their plans. Invitations do not count as confirmed interactions.</p>
     {loading && <p role="status" className="text-sm">Loading saved meetings…</p>}

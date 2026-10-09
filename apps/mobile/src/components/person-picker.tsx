@@ -1,8 +1,8 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ActionButton } from './design-system';
-import { fonts, palette } from '@/theme';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FormInput as TextInput, ActionButton } from './design-system';
+import { radii, fonts, palette } from '@/theme';
 
 type Person = { id: string; name: string; email: string | null; phone: string | null };
 export function PersonPicker({ value, onChange, excludeId, optional = false, disabled = false, label = 'Choose a person' }: {
@@ -48,6 +48,6 @@ export function PersonPicker({ value, onChange, excludeId, optional = false, dis
 const styles = StyleSheet.create({
   container: { gap: 12 }, label: { fontFamily: fonts.bodyDemi, fontSize: 15, color: palette.ink },
   body: { fontFamily: fonts.body, fontSize: 14, color: palette.muted }, pages: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  choice: { padding: 14, minHeight: 48, borderRadius: 12, backgroundColor: palette.surface, gap: 4 },
-  input: { minHeight: 50, padding: 12, color: palette.ink, fontFamily: fonts.body, backgroundColor: palette.surface, borderRadius: 12, borderWidth: 1, borderColor: palette.line },
+  choice: { padding: 14, minHeight: 48, borderRadius: radii.control, backgroundColor: palette.surface, gap: 4 },
+  input: { minHeight: 50, padding: 12, color: palette.ink, fontFamily: fonts.body, backgroundColor: palette.surface, borderRadius: radii.control, borderWidth: 1, borderColor: palette.input },
 });

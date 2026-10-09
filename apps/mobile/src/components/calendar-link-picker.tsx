@@ -1,10 +1,10 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ActionButton } from './design-system';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FormInput as TextInput, ActionButton } from './design-system';
 import { calendarLinkChoices, type CalendarLinkChoice } from '@/data/calendar-event-links';
 import { useNativeSync } from '@/native/sync';
-import { fonts, palette } from '@/theme';
+import { radii, fonts, palette } from '@/theme';
 
 export function CalendarLinkPicker({ eventId, kind, selected, onChange, disabled }: {
   eventId: string; kind: 'person' | 'plan'; selected: string[]; onChange: (ids: string[]) => void; disabled: boolean;
@@ -59,7 +59,7 @@ export function CalendarLinkPicker({ eventId, kind, selected, onChange, disabled
 const styles = StyleSheet.create({
   container: { gap: 12 }, label: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 15 },
   body: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 },
-  choice: { minHeight: 48, padding: 14, borderRadius: 12, backgroundColor: palette.surface, gap: 4 },
-  input: { minHeight: 50, padding: 12, color: palette.ink, fontFamily: fonts.body, backgroundColor: palette.surface, borderRadius: 12, borderWidth: 1, borderColor: palette.line },
+  choice: { minHeight: 48, padding: 14, borderRadius: radii.control, backgroundColor: palette.surface, gap: 4 },
+  input: { minHeight: 50, padding: 12, color: palette.ink, fontFamily: fonts.body, backgroundColor: palette.surface, borderRadius: radii.control, borderWidth: 1, borderColor: palette.input },
   pages: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });

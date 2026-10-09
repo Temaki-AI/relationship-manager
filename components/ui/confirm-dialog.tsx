@@ -95,9 +95,9 @@ export function ConfirmDialog({
   const SafetyIcon = safetyTone === 'recovery' ? ShieldCheck : AlertTriangle;
   const ActionIcon = actionTone === 'standard' ? CalendarDays : AlertTriangle;
   const safetyClasses = safetyTone === 'recovery'
-    ? 'border-emerald-100 bg-emerald-50/70 text-emerald-900'
-    : 'border-red-100 bg-red-50/70 text-red-900';
-  const safetyIconClasses = safetyTone === 'recovery' ? 'text-emerald-600' : 'text-red-600';
+    ? 'border-success/20 bg-success-soft text-success'
+    : 'border-destructive/20 bg-danger-soft text-destructive';
+  const safetyIconClasses = safetyTone === 'recovery' ? 'text-success' : 'text-destructive';
 
   return (
     <div
@@ -112,10 +112,10 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className={`w-full max-w-md rounded-2xl border ${actionTone === 'standard' ? 'border-border' : 'border-red-100'} bg-background p-5 shadow-2xl animate-fade-in-up sm:p-6`}
+        className={`w-full max-w-md rounded-2xl border ${actionTone === 'standard' ? 'border-border' : 'border-destructive/20'} bg-card p-5 shadow-overlay animate-fade-in-up sm:p-6`}
       >
         <div className="flex items-start gap-3">
-          <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${actionTone === 'standard' ? 'bg-primary/10 text-primary' : 'bg-red-50 text-destructive'}`}>
+          <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${actionTone === 'standard' ? 'bg-secondary text-primary' : 'bg-danger-soft text-destructive'}`}>
             <ActionIcon className="h-5 w-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">

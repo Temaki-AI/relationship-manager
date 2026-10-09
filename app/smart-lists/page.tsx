@@ -126,14 +126,14 @@ export default function SmartListsPage() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search smart lists, people, reasons, or context..."
-          className="pl-10 h-11 bg-white border-border/60 rounded-xl"
+          className="pl-10 h-11 bg-card border-border/60 rounded-xl"
         />
       </div>
 
       {filteredLists.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 stagger-children">
           {filteredLists.map((list) => (
-            <Card key={list.id} className="border-0 shadow-sm">
+            <Card key={list.id} className="border-border/70 shadow-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold">{list.title}</CardTitle>
                 <p className="text-sm text-muted-foreground">{list.description}</p>
@@ -144,7 +144,7 @@ export default function SmartListsPage() {
                     <Link
                       key={entry.id}
                       href={`/contacts/${entry.id}`}
-                      className="flex items-start justify-between gap-3 rounded-xl border border-border/50 bg-white/70 p-3 hover:bg-muted/40 transition-colors"
+                      className="flex items-start justify-between gap-3 rounded-xl border border-border/50 bg-card/70 p-3 hover:bg-muted/40 transition-colors"
                     >
                       <div className="min-w-0">
                         <p className="font-medium text-sm">{entry.name}</p>
@@ -166,7 +166,7 @@ export default function SmartListsPage() {
           ))}
         </div>
       ) : (
-        <Card className="border-0 shadow-sm">
+        <Card className="border-border/70 shadow-card">
           <CardContent className="py-16 text-center">
             <div className="text-4xl mb-3">🔎</div>
             <h3 className="text-lg font-semibold">No smart lists matched</h3>

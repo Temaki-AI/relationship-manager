@@ -36,7 +36,7 @@ export default function ConnectedDevicesPage() {
     <Link href="/settings" className="text-sm underline">Back to Settings</Link>
     <h1 className="text-2xl font-semibold">Connected phones</h1>
     <p className="text-sm text-muted-foreground">Revoking stops future cloud access. An offline phone may still hold its local copy until you remove it on that device.</p>
-    {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {loading ? <p>Loading connected phones…</p> : <>
       {!devices.length && <p>No phones are connected. Start sign-in from the native app.</p>}
       {devices.map((device) => {

@@ -161,7 +161,7 @@ export default function Dashboard() {
 
   if (!overview) {
     return (
-      <Card className="border-0 shadow-sm">
+      <Card className="border-border/70 shadow-card">
         <CardContent className="py-16 text-center">
           <div className="text-4xl mb-4">⚠️</div>
           <h1 className="text-xl font-semibold text-foreground">Workspace intelligence unavailable</h1>
@@ -193,7 +193,7 @@ export default function Dashboard() {
       </div>
 
       {loadError && (
-        <Card className="border-0 shadow-sm bg-amber-50/80">
+        <Card className="border-border/70 shadow-card bg-warning-soft/80">
           <CardContent className="py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-medium text-foreground">Some relationship insights could not be refreshed.</p>
@@ -208,12 +208,12 @@ export default function Dashboard() {
 
       <TodayFocus items={priorityFeed} snoozes={overview.snoozes || []} onChanged={() => setRefreshToken((value) => value + 1)} />
 
-      {overview.firstSteps && !overview.firstSteps.hasLoggedMoment && <details className="rounded-xl border border-border bg-white px-4">
+      {overview.firstSteps && !overview.firstSteps.hasLoggedMoment && <details className="rounded-xl border border-border bg-card px-4">
         <summary className="flex min-h-12 cursor-pointer items-center py-3 text-sm font-medium">Set up your first connections</summary>
         <div className="pb-4"><FirstCircleJourney snapshot={overview.firstSteps} onChanged={() => setRefreshToken((value) => value + 1)} /></div>
       </details>}
 
-      <details className="rounded-xl border border-border bg-white px-4">
+      <details className="rounded-xl border border-border bg-card px-4">
         <summary className="flex min-h-12 cursor-pointer items-center justify-between gap-3 py-3 text-sm font-medium">
           <span>Relationship overview</span><span className="text-muted-foreground">{overview.stats.totalContacts} people</span>
         </summary>
@@ -225,7 +225,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 stagger-children">
         {spotlightLists.length > 0 ? (
           spotlightLists.map((list) => (
-            <Card key={list.id} className="border-0 shadow-sm">
+            <Card key={list.id} className="border-border/70 shadow-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold">{list.title}</CardTitle>
                 <p className="text-sm text-muted-foreground">{list.description}</p>
@@ -252,10 +252,10 @@ export default function Dashboard() {
             </Card>
           ))
         ) : (
-          <Card className="border-0 shadow-sm lg:col-span-3">
+          <Card className="border-border/70 shadow-card lg:col-span-3">
             <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-3">
-                <span className="rounded-xl bg-rose-50 p-2.5 text-primary"><Sparkles className="h-5 w-5" /></span>
+                <span className="rounded-xl bg-secondary p-2.5 text-primary"><Sparkles className="h-5 w-5" /></span>
                 <div>
                   <h3 className="font-semibold">Your relationship patterns are taking shape</h3>
                   <p className="mt-1 max-w-xl text-sm text-muted-foreground">As you add people and log moments, smart lists will surface connections worth revisiting.</p>

@@ -30,7 +30,7 @@ import {
 import { listOpenReminders, type ReminderRecord } from '@/data/reminders';
 import { getRelationshipState, type ContactRecord } from '@/domain/contact';
 import { formatDateTime, formatRelativeDate } from '@/lib/format';
-import { fonts, palette } from '@/theme';
+import { radii, fonts, palette } from '@/theme';
 import { useNativeSync } from '@/native/sync';
 import { useContactPhoto } from '@/native/contact-photo';
 import { readContactMethods, contactMethodHref, displayContactMethodLabel } from '../../../../../packages/domain/src/contact-methods';
@@ -287,10 +287,10 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: palette.canvas },
   centered: { flex: 1, backgroundColor: palette.canvas, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 30 },
   content: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 42, gap: 16 },
-  sections: { flexDirection: 'row', backgroundColor: palette.surface, borderRadius: 12, padding: 4, gap: 4, borderWidth: 1, borderColor: palette.line },
+  sections: { flexDirection: 'row', backgroundColor: palette.surface, borderRadius: radii.control, padding: 4, gap: 4, borderWidth: 1, borderColor: palette.line },
   sectionsLarge: { flexDirection: 'column' },
   sectionTabLarge: { flex: 0 },
-  sectionTab: { flex: 1, minHeight: 44, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
+  sectionTab: { flex: 1, minHeight: 44, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', borderRadius: radii.small },
   sectionSelected: { backgroundColor: palette.ink },
   sectionLabel: { color: palette.muted, fontFamily: fonts.bodyDemi, fontSize: 14 },
   sectionSelectedLabel: { color: palette.white },
@@ -311,20 +311,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     minHeight: 48,
-    borderRadius: 15,
+    borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: '#EFC9D3',
+    borderColor: palette.primarySoft,
     backgroundColor: palette.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   touchText: { color: palette.primary, fontFamily: fonts.bodyDemi, fontSize: 14, fontWeight: '700' },
   lastTouch: { color: palette.muted, fontFamily: fonts.body, fontSize: 12 },
-  reminderCallout: { padding: 18, borderRadius: 22, gap: 15, backgroundColor: '#2B2424', borderColor: '#2B2424' },
+  reminderCallout: { padding: 18, borderRadius: radii.card, gap: 15, backgroundColor: palette.ink, borderColor: palette.ink },
   calloutCopy: { gap: 3 },
   calloutTitle: { color: palette.white, fontFamily: fonts.display, fontSize: 21, fontWeight: '700' },
-  calloutText: { color: '#D8CCCA', fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
-  calloutButton: { alignSelf: 'flex-start', borderRadius: 14, backgroundColor: palette.primary, paddingHorizontal: 16, paddingVertical: 11 },
+  calloutText: { color: palette.surfaceWarm, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
+  calloutButton: { alignSelf: 'flex-start', borderRadius: radii.control, backgroundColor: palette.primary, paddingHorizontal: 16, paddingVertical: 11 },
   calloutButtonText: { color: palette.white, fontFamily: fonts.bodyDemi, fontSize: 12, fontWeight: '700' },
   notes: { color: palette.muted, fontFamily: fonts.body, fontSize: 15, lineHeight: 23 },
   emptySection: { color: palette.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 },
@@ -336,6 +336,6 @@ const styles = StyleSheet.create({
   timelineMeta: { color: palette.muted, fontFamily: fonts.body, fontSize: 11 },
   pressed: { opacity: 0.72, transform: [{ scale: 0.99 }] },
   missingTitle: { color: palette.ink, fontFamily: fonts.display, fontSize: 24, fontWeight: '700', textAlign: 'center' },
-  returnButton: { borderRadius: 15, backgroundColor: palette.primary, paddingHorizontal: 18, paddingVertical: 12 },
+  returnButton: { borderRadius: radii.control, backgroundColor: palette.primary, paddingHorizontal: 18, paddingVertical: 12 },
   returnText: { color: palette.white, fontFamily: fonts.bodyDemi, fontSize: 13, fontWeight: '700' },
 });

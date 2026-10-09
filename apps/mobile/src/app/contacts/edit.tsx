@@ -1,12 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ActionButton } from '@/components/design-system';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FormInput as TextInput, ActionButton } from '@/components/design-system';
 import { getContactForEditing, updateContact } from '@/data/contacts';
 import { contactDraftKey, contactForm } from '@/data/contact-drafts';
 import { useContactForm } from '@/native/contact-form';
-import { fonts, palette } from '@/theme';
+import { radii, fonts, palette } from '@/theme';
 
 export default function EditContactScreen() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -71,6 +71,6 @@ const styles = StyleSheet.create({
   body: { color: palette.muted, fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
   label: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 14 },
   error: { color: palette.primary, fontFamily: fonts.body, fontSize: 15 },
-  input: { color: palette.ink, backgroundColor: palette.surface, fontFamily: fonts.body, fontSize: 15,
-    minHeight: 51, borderWidth: 1, borderColor: palette.line, borderRadius: 16, padding: 14 },
+  input: { color: palette.ink, backgroundColor: palette.surface, fontFamily: fonts.body, fontSize: 16,
+    minHeight: 51, borderWidth: 1, borderColor: palette.input, borderRadius: radii.control, padding: 14 },
 });

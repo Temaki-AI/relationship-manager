@@ -3,6 +3,7 @@ import { twMerge } from "tailwind-merge";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { normalizeWebUrl } from "./contact-input.ts";
 import { isEmbeddedContactPhoto } from "./contact-photo.ts";
+import { avatarTone } from '../packages/design/src/tokens.ts';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -97,18 +98,7 @@ export function getInitials(name: string): string {
 }
 
 export function getAvatarColor(name: string): string {
-  const colors = [
-    'from-rose-700 to-pink-800',
-    'from-violet-700 to-purple-800',
-    'from-blue-700 to-indigo-800',
-    'from-emerald-700 to-teal-800',
-    'from-amber-700 to-orange-800',
-    'from-cyan-700 to-blue-800',
-    'from-fuchsia-700 to-pink-800',
-    'from-lime-700 to-green-800',
-  ];
-  const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
-  return colors[index];
+  return avatarTone(name).className;
 }
 
 export function getContactAvatar(contact: { name: string; email: string | null; photo_url: string | null }): {

@@ -6,13 +6,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ActionButton, Avatar, Eyebrow, SectionHeading, StatusPill, Surface } from '@/components/design-system';
+import { ActionButton, Avatar, BrandLockup, Eyebrow, SectionHeading, StatusPill, Surface } from '@/components/design-system';
 import { Disclosure } from '@/components/disclosure';
 import { getContact, getDashboardSnapshot, logInteraction, type DashboardSnapshot, type InteractionType } from '@/data/contacts';
 import { getTodayQueue, type TodayPerson } from '@/data/today';
 import { getPromptReview, listSnoozedPrompts, resolvePromptReview, savePromptSnooze, type SnoozedPrompt } from '@/data/today-snoozes';
 import { formatDateTime, getGreeting } from '@/lib/format';
-import { fonts, palette } from '@/theme';
+import { fonts, palette, radii, spacing, targets, typeScale } from '@/theme';
 import { useNativeSync } from '@/native/sync';
 import { useNativeAccount } from '@/native/account';
 import { useReminderActions } from '@/native/reminder-actions';
@@ -160,13 +160,14 @@ export default function TodayScreen() {
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.topBar}>
-          <Text accessibilityRole="header" maxFontSizeMultiplier={2} style={styles.title}>Today</Text>
+          <BrandLockup />
           <Pressable accessibilityRole="button" accessibilityLabel="Account and sync" style={styles.accountButton}
             onPress={() => router.push('/settings')}>
             <StatusPill tone={account ? 'moss' : 'amber'} label={account ? 'Account & sync' : 'Sign in'} />
           </Pressable>
         </View>
         <View style={styles.heroCopy}>
+          <Text accessibilityRole="header" maxFontSizeMultiplier={2} style={styles.title}>Today</Text>
           <Eyebrow>{getGreeting()}</Eyebrow>
         </View>
         {!!error && <Surface style={styles.messageCard}>
@@ -199,7 +200,7 @@ export default function TodayScreen() {
                 ? `Last recorded: ${LOG_OPTIONS.find((item) => item.type === person.latestInteraction!.type)?.label || 'Connected'} · ${person.latestInteraction.date}${person.latestInteraction.summary ? `\n${person.latestInteraction.summary}` : ''}`
                 : 'No conversation recorded yet.'}</Text>
               <View style={styles.actions}>
-                <QueueAction label="Reach out" accessibilityLabel={`Reach out to ${person.contact.name}`} disabled={busy} onPress={() => { void reachOut(person); }} />
+                <QueueAction primary label="Reach out" accessibilityLabel={`Reach out to ${person.contact.name}`} disabled={busy} onPress={() => { void reachOut(person); }} />
                 <QueueAction label="Log" accessibilityLabel={`Log conversation with ${person.contact.name}`} disabled={busy} onPress={() => chooseLog(person)} />
                 {!!person.reminder && <>
                   <QueueAction label="Done" accessibilityLabel={`Complete reminder for ${person.contact.name}: ${person.reminder.title}`} disabled={busy}
@@ -251,10 +252,10 @@ export default function TodayScreen() {
   );
 }
 
-function QueueAction({ label, accessibilityLabel, disabled, onPress }: { label: string; accessibilityLabel: string; disabled: boolean; onPress: () => void }) {
+function QueueAction({ label, accessibilityLabel, disabled, onPress, primary = false }: { primary?: boolean; label: string; accessibilityLabel: string; disabled: boolean; onPress: () => void }) {
   return <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} accessibilityState={{ disabled }}
-    disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.action, disabled && styles.disabled, pressed && styles.pressed]}>
-    <Text style={styles.actionText}>{label}</Text>
+    disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.action, primary && styles.actionPrimary, disabled && styles.disabled, pressed && styles.pressed]}>
+    <Text maxFontSizeMultiplier={2} style={[styles.actionText, primary && styles.actionPrimaryText]}>{label}</Text>
   </Pressable>;
 }
 function Metric({ value, label }: { value: number; label: string }) {
@@ -266,11 +267,11 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   accountButton: { minHeight: 44, justifyContent: 'center' },
   heroCopy: { gap: 4 },
-  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 28, fontWeight: '700', lineHeight: 35, letterSpacing: -0.4 },
+  title: { color: palette.ink, fontFamily: fonts.display, ...typeScale.title },
   subtitle: { color: palette.muted, fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
   loading: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
   sectionBlock: { gap: 13 },
-  personCard: { padding: 18, gap: 13 },
+  personCard: { padding: spacing.xl, gap: spacing.md },
   identity: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
   personName: { flex: 1, color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 20, fontWeight: '700' },
   reason: { gap: 3 },
@@ -278,7 +279,9 @@ const styles = StyleSheet.create({
   reasonDetail: { color: palette.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 },
   lastConversation: { color: palette.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, borderTopWidth: 1, borderTopColor: palette.line, paddingTop: 10 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  action: { minWidth: 64, minHeight: 44, paddingHorizontal: 12, paddingVertical: 12, borderRadius: 13, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  action: { minWidth: 64, minHeight: targets.comfortable, paddingHorizontal: 12, paddingVertical: 12, borderRadius: radii.control, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  actionPrimary: { backgroundColor: palette.primary },
+  actionPrimaryText: { color: palette.white },
   actionText: { color: palette.primary, fontFamily: fonts.bodyDemi, fontSize: 13 },
   actionHint: { color: palette.muted, fontFamily: fonts.body, fontSize: 11, lineHeight: 17 },
   disabled: { opacity: 0.5 },
@@ -286,7 +289,7 @@ const styles = StyleSheet.create({
   notice: { color: palette.moss, fontFamily: fonts.bodyMedium, fontSize: 14, lineHeight: 21 },
   messageCard: { padding: 18, gap: 12 },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  metric: { flex: 1, minWidth: 120, padding: 16, borderRadius: 20, gap: 4 },
+  metric: { flex: 1, minWidth: 120, padding: 16, borderRadius: radii.card, gap: 4 },
   metricValue: { color: palette.ink, fontFamily: fonts.display, fontSize: 27, fontWeight: '700' },
   metricLabel: { color: palette.muted, fontFamily: fonts.bodyMedium, fontSize: 12 },
   privacyTitle: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 14 },
