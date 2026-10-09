@@ -1,58 +1,76 @@
 import type { ReactNode } from 'react';
+import { forwardRef, useState } from 'react';
 import {
   Image,
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
+  type TextInputProps,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
 
 import { getInitials } from '@/domain/contact';
-import { fonts, palette, shadows } from '@/theme';
+import { SymbolView } from 'expo-symbols';
+import { avatarTone, fonts, palette, radii, shadows, spacing, targets, typeScale } from '@/theme';
 
 export function BrandLockup() {
   return (
-    <View style={styles.brandLockup} accessibilityLabel="Bonds">
-      <Image source={require('@/assets/images/icon.png')} style={styles.brandIcon} />
-      <Text style={styles.brandName}>Bonds</Text>
+    <View style={styles.brandLockup} accessibilityLabel="Everclose">
+      <SymbolView name="heart.fill" tintColor={palette.primary} size={24} />
+      <Text maxFontSizeMultiplier={2} style={styles.brandName}>Everclose</Text>
     </View>
   );
 }
 
-export function Surface({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  return <View style={[styles.surface, shadows.card, style]}>{children}</View>;
+export function Surface({ children, style, tone = 'default' }: { children: ReactNode; style?: StyleProp<ViewStyle>; tone?: 'default' | 'warm' | 'rose' | 'sage' }) {
+  const backgroundColor = tone === 'rose' ? palette.primarySoft : tone === 'sage' ? palette.mossSoft : tone === 'warm' ? palette.surfaceWarm : palette.surface;
+  return <View style={[styles.surface, shadows.card, { backgroundColor }, style]}>{children}</View>;
 }
 
 export function Eyebrow({ children }: { children: ReactNode }) {
   return <Text style={styles.eyebrow}>{children}</Text>;
 }
 
+/** Shared field chrome; callers retain keyboard, draft and validation behavior. */
+export const FormInput = forwardRef<TextInput, TextInputProps & { invalid?: boolean }>(function FormInput(
+  { style, invalid = false, onFocus, onBlur, multiline, editable = true, ...props }, ref,
+) {
+  const [focused, setFocused] = useState(false);
+  return <TextInput {...props} ref={ref} multiline={multiline} editable={editable}
+    placeholderTextColor={props.placeholderTextColor ?? palette.muted}
+    onFocus={(event) => { setFocused(true); onFocus?.(event); }}
+    onBlur={(event) => { setFocused(false); onBlur?.(event); }}
+    style={[styles.input, multiline && styles.inputMultiline, style,
+      !editable && styles.inputDisabled, focused && styles.inputFocused, invalid && styles.inputInvalid]} />;
+});
+
 export function SectionHeading({ title, action }: { title: string; action?: ReactNode }) {
   return (
     <View style={styles.sectionHeading}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text accessibilityRole="header" maxFontSizeMultiplier={2} style={styles.sectionTitle}>{title}</Text>
       {action}
     </View>
   );
 }
 
-export function Avatar({ name, size = 48 }: { name: string; size?: number }) {
-  const colors = ['#9F2447', '#315C72', '#2D6D55', '#7A4A1D', '#6D3B67'];
-  const colorIndex = Array.from(name).reduce((sum, character) => sum + character.charCodeAt(0), 0)
-    % colors.length;
+export function Avatar({ name, size = 48, photo = null }: { name: string; size?: number; photo?: string | null }) {
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
+  const tone = avatarTone(name);
   return (
     <View
       accessible={false}
       style={[
         styles.avatar,
-        { width: size, height: size, borderRadius: Math.round(size * 0.36), backgroundColor: colors[colorIndex] },
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: tone.background },
       ]}
     >
-      <Text style={[styles.avatarText, { fontSize: Math.max(12, Math.round(size * 0.32)) }]}>
+      {photo && photo !== failedPhoto ? <Image accessible={false} source={{ uri: photo }} resizeMode="cover"
+        style={{ width: size, height: size, borderRadius: size / 2 }} onError={() => setFailedPhoto(photo)} /> : <Text allowFontScaling={false} style={[styles.avatarText, { color: tone.foreground, fontSize: Math.max(12, Math.round(size * 0.32)) }]}>
         {getInitials(name)}
-      </Text>
+      </Text>}
     </View>
   );
 }
@@ -61,17 +79,20 @@ export function ActionButton({
   label,
   onPress,
   disabled = false,
+  selected,
   variant = 'primary',
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary' | 'quiet';
+  selected?: boolean;
+  variant?: 'primary' | 'secondary' | 'quiet' | 'destructive';
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled, selected }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -79,13 +100,14 @@ export function ActionButton({
         variant === 'primary' && styles.actionPrimary,
         variant === 'secondary' && styles.actionSecondary,
         variant === 'quiet' && styles.actionQuiet,
+        variant === 'destructive' && styles.actionDestructive,
         pressed && !disabled && styles.actionPressed,
         disabled && styles.actionDisabled,
       ]}
     >
-      <Text style={[
+      <Text maxFontSizeMultiplier={2} style={[
         styles.actionLabel,
-        variant === 'primary' ? styles.actionPrimaryLabel : styles.actionSecondaryLabel,
+        variant === 'primary' || variant === 'destructive' ? styles.actionPrimaryLabel : styles.actionSecondaryLabel,
       ]}>
         {label}
       </Text>
@@ -101,7 +123,7 @@ export function StatusPill({ tone, label }: { tone: 'moss' | 'amber' | 'rose'; l
       tone === 'amber' && styles.pillAmber,
       tone === 'rose' && styles.pillRose,
     ]}>
-      <Text style={[
+      <Text maxFontSizeMultiplier={2} style={[
         styles.pillText,
         tone === 'moss' && styles.pillTextMoss,
         tone === 'amber' && styles.pillTextAmber,
@@ -114,38 +136,45 @@ export function StatusPill({ tone, label }: { tone: 'moss' | 'amber' | 'rose'; l
 }
 
 const styles = StyleSheet.create({
+  input: { minHeight: targets.comfortable, borderRadius: radii.control, borderWidth: 1, borderColor: palette.input,
+    backgroundColor: palette.surface, color: palette.ink, fontFamily: fonts.body, fontSize: typeScale.body.fontSize,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  inputMultiline: { minHeight: 96, textAlignVertical: 'top' },
+  inputFocused: { borderColor: palette.primary, borderWidth: 2 },
+  inputInvalid: { borderColor: palette.danger, borderWidth: 2 },
+  inputDisabled: { backgroundColor: palette.surfaceWarm, opacity: 0.6 },
   brandLockup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  brandIcon: { width: 34, height: 34, borderRadius: 10 },
-  brandName: { color: palette.ink, fontFamily: fonts.display, fontSize: 25, fontWeight: '700' },
-  surface: { backgroundColor: palette.surface, borderRadius: 26, borderWidth: 1, borderColor: palette.line },
+  brandName: { color: palette.primary, fontFamily: fonts.bodyDemi, fontSize: 14, letterSpacing: 2, textTransform: 'uppercase' },
+  surface: { backgroundColor: palette.surface, borderRadius: radii.card, borderWidth: StyleSheet.hairlineWidth, borderColor: palette.line },
   eyebrow: {
     color: palette.primary,
     fontFamily: fonts.bodyDemi,
-    fontSize: 11,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
+    fontSize: typeScale.body.fontSize,
+    letterSpacing: 0,
   },
-  sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { color: palette.ink, fontFamily: fonts.display, fontSize: 24, fontWeight: '700' },
+  sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
+  sectionTitle: { ...typeScale.section, color: palette.ink, fontFamily: fonts.bodyDemi, flexShrink: 1 },
   avatar: { alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: palette.white, fontFamily: fonts.bodyDemi, fontWeight: '700' },
   actionButton: {
-    minHeight: 50,
-    borderRadius: 17,
-    paddingHorizontal: 20,
+    minHeight: targets.comfortable,
+    borderRadius: radii.control,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
   },
   actionPrimary: { backgroundColor: palette.primary, borderColor: palette.primary },
-  actionSecondary: { backgroundColor: palette.surface, borderColor: palette.line },
-  actionQuiet: { backgroundColor: palette.primarySoft, borderColor: palette.primarySoft },
+  actionDestructive: { backgroundColor: palette.danger, borderColor: palette.danger },
+  actionSecondary: { backgroundColor: palette.primarySoft, borderColor: palette.primarySoft },
+  actionQuiet: { backgroundColor: 'transparent', borderColor: 'transparent' },
   actionPressed: { opacity: 0.78, transform: [{ scale: 0.99 }] },
   actionDisabled: { opacity: 0.45 },
-  actionLabel: { fontFamily: fonts.bodyDemi, fontSize: 15, fontWeight: '700' },
+  actionLabel: { fontFamily: fonts.bodyDemi, fontSize: 15, fontWeight: '700', textAlign: 'center' },
   actionPrimaryLabel: { color: palette.white },
   actionSecondaryLabel: { color: palette.primary },
-  pill: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  pill: { alignSelf: 'flex-start', borderRadius: radii.pill, paddingHorizontal: 10, paddingVertical: 5 },
   pillMoss: { backgroundColor: palette.mossSoft },
   pillAmber: { backgroundColor: palette.amberSoft },
   pillRose: { backgroundColor: palette.primarySoft },

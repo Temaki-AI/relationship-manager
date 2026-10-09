@@ -1,17 +1,18 @@
 import type { D1Database } from '@cloudflare/workers-types';
 
-export const CLOUD_READINESS_MIGRATION = '0023_married_zaran.sql';
+export const CLOUD_READINESS_MIGRATION = '0050_calendar_publication_reviews.sql';
+const requiredMigrations = ['0048_gmail_recurring.sql', CLOUD_READINESS_MIGRATION];
 
 export async function getCloudReadinessReport(
   db: Pick<D1Database, 'prepare'>,
   environment: Record<string, string | undefined>
 ) {
-  const migration = await db.prepare('SELECT name FROM d1_migrations WHERE name = ? LIMIT 1')
-    .bind(CLOUD_READINESS_MIGRATION).first<{ name: string }>();
+  const migrations = await Promise.all(requiredMigrations.map((name) =>
+    db.prepare('SELECT name FROM d1_migrations WHERE name = ? LIMIT 1').bind(name).first<{ name: string }>()));
   const authenticationConfigured = [
     'BETTER_AUTH_URL', 'BETTER_AUTH_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET',
   ].every((name) => Boolean(environment[name]?.trim()));
-  const schemaCurrent = migration?.name === CLOUD_READINESS_MIGRATION;
+  const schemaCurrent = migrations.every((migration, i) => migration?.name === requiredMigrations[i]);
   const ready = authenticationConfigured && schemaCurrent;
 
   return {

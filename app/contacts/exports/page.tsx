@@ -128,7 +128,7 @@ export default function ContactExportsPage() {
       <h1 className="text-2xl font-bold sm:text-3xl">Contact exports</h1>
       <p className="mt-2 text-sm text-muted-foreground">Prepare a complete contacts file, even for a large workspace. Keep your workspace unchanged while the export runs.</p>
     </header>
-    <div className="rounded-2xl border border-border/70 bg-white p-5 sm:p-6">
+    <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6">
       <h2 className="font-semibold">Create an export</h2>
       <p className="mt-1 text-sm text-muted-foreground">The page prepares small batches and saves progress. You can leave and resume later. Downloads expire after six days, and expired files are scheduled for removal. You can remove them sooner.</p>
       <div className="mt-4 flex flex-wrap gap-2">
@@ -137,13 +137,13 @@ export default function ContactExportsPage() {
       </div>
       {createAttempt && <p className="mt-3 text-xs text-muted-foreground">If starting failed, choose {createAttempt.format === 'csv' ? 'Prepare CSV' : 'Prepare vCard'} again to retry the same request safely.</p>}
     </div>
-    {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900"><p>{error}</p><Button className="mt-3" variant="outline" onClick={() => setReload((value) => value + 1)}><RefreshCw className="h-4 w-4" />Refresh status</Button></div>}
+    {error && <div role="alert" className="rounded-xl border border-red-200 bg-danger-soft p-4 text-sm text-destructive"><p>{error}</p><Button className="mt-3" variant="outline" onClick={() => setReload((value) => value + 1)}><RefreshCw className="h-4 w-4" />Refresh status</Button></div>}
     {loading && <p role="status">Loading exports...</p>}
     {!loading && !jobs.length && <div className="rounded-2xl border border-dashed p-8 text-center"><Download className="mx-auto h-8 w-8 text-muted-foreground" /><h2 className="mt-4 font-semibold">No exports yet</h2><p className="mt-2 text-sm text-muted-foreground">Choose a format above to make your first contacts file.</p></div>}
     {jobs.map((job) => {
       const expired = new Date(job.expiresAt).getTime() <= Date.now();
       const active = job.state === 'running' || job.state === 'finalizing';
-      return <article key={job.id} className="rounded-2xl border border-border/70 bg-white p-5 sm:p-6">
+      return <article key={job.id} className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6">
         <div className="flex items-start gap-3"><FileText className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div className="min-w-0 flex-1">
           <h2 className="font-semibold">{job.format === 'csv' ? 'CSV' : 'vCard'} contacts</h2>
           <p className="mt-1 text-sm text-muted-foreground">{job.total.toLocaleString()} contacts · Started {new Date(job.createdAt).toLocaleDateString()}</p>

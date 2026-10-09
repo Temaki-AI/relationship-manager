@@ -2,6 +2,8 @@ import { eq } from 'drizzle-orm';
 import { getCloudAuth, isGoogleAuthEnabled } from './auth';
 import { getCloudDb } from './db';
 import { workspaceMembers, workspaces } from './schema';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { DeviceSessionError, requireDeviceWorkspace } from './device-api';
 
 export class CloudAuthenticationError extends Error {
   readonly status = 401;
@@ -26,7 +28,16 @@ export async function getCloudSession(headers: Headers) {
   return getCloudAuth().api.getSession({ headers });
 }
 
-export async function requireCloudWorkspace(headers: Headers) {
+export async function requireCloudWorkspace(headers: Headers, allowDevice = false) {
+  if (allowDevice && headers.has('authorization')) {
+    try {
+      const identity = await requireDeviceWorkspace(getCloudflareContext().env.DB, headers);
+      return { ...identity, session: null, authMethod: 'device' as const };
+    } catch (error) {
+      if (error instanceof DeviceSessionError) throw new CloudAuthenticationError(error.message);
+      throw error;
+    }
+  }
   const session = await getCloudSession(headers);
   if (!session) throw new CloudAuthenticationError();
 
@@ -44,5 +55,7 @@ export async function requireCloudWorkspace(headers: Headers) {
     workspaceId: membership.workspaceId,
     role: membership.role,
     lifecycle: membership.lifecycle,
+    authMethod: 'web' as const,
+    deviceId: undefined,
   };
 }

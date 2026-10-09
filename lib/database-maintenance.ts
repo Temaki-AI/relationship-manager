@@ -341,6 +341,9 @@ export function restoreDatabaseBackup(
         ).run();
       }
 
+      // A previously opened source form must not replay into a replacement dataset.
+      db.prepare("UPDATE app_metadata SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = 'source-write-epoch'").run(randomUUID());
+
       assertDatabaseIntegrity(db);
     });
 

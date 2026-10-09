@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, type ReactNode } from 'react';
-import { AlertTriangle, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, CalendarDays, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 type ConfirmDialogProps = {
@@ -11,6 +11,7 @@ type ConfirmDialogProps = {
   safetyNote: string;
   safetyTone: 'recovery' | 'irreversible';
   confirmLabel: string;
+  actionTone?: 'standard' | 'destructive';
   pendingLabel?: string;
   pending?: boolean;
   confirmDisabled?: boolean;
@@ -28,6 +29,7 @@ export function ConfirmDialog({
   safetyNote,
   safetyTone,
   confirmLabel,
+  actionTone = 'destructive',
   pendingLabel = 'Working...',
   pending = false,
   confirmDisabled = false,
@@ -91,10 +93,11 @@ export function ConfirmDialog({
 
   if (!open) return null;
   const SafetyIcon = safetyTone === 'recovery' ? ShieldCheck : AlertTriangle;
+  const ActionIcon = actionTone === 'standard' ? CalendarDays : AlertTriangle;
   const safetyClasses = safetyTone === 'recovery'
-    ? 'border-emerald-100 bg-emerald-50/70 text-emerald-900'
-    : 'border-red-100 bg-red-50/70 text-red-900';
-  const safetyIconClasses = safetyTone === 'recovery' ? 'text-emerald-600' : 'text-red-600';
+    ? 'border-success/20 bg-success-soft text-success'
+    : 'border-destructive/20 bg-danger-soft text-destructive';
+  const safetyIconClasses = safetyTone === 'recovery' ? 'text-success' : 'text-destructive';
 
   return (
     <div
@@ -109,11 +112,11 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="w-full max-w-md rounded-2xl border border-red-100 bg-background p-5 shadow-2xl animate-fade-in-up sm:p-6"
+        className={`w-full max-w-md rounded-2xl border ${actionTone === 'standard' ? 'border-border' : 'border-destructive/20'} bg-card p-5 shadow-overlay animate-fade-in-up sm:p-6`}
       >
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-50 text-destructive">
-            <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+          <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${actionTone === 'standard' ? 'bg-secondary text-primary' : 'bg-danger-soft text-destructive'}`}>
+            <ActionIcon className="h-5 w-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
             <h2 id={titleId} className="text-lg font-semibold text-foreground">{title}</h2>
@@ -136,7 +139,7 @@ export function ConfirmDialog({
               {secondaryLabel}
             </Button>
           )}
-          <Button type="button" variant="destructive" onClick={onConfirm} disabled={pending || confirmDisabled} className="h-11 sm:h-9">
+          <Button type="button" variant={actionTone === 'standard' ? 'default' : 'destructive'} onClick={onConfirm} disabled={pending || confirmDisabled} className="h-11 sm:h-9">
             {pending ? pendingLabel : confirmLabel}
           </Button>
         </div>

@@ -29,13 +29,13 @@ export function LoadError({
     <Card
       role="alert"
       aria-labelledby={headingId}
-      className="border-amber-300 bg-amber-50 text-amber-950 shadow-sm"
+      className="border-warning/20 bg-warning-soft text-warning"
     >
       <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start">
-        <AlertTriangle className="h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
+        <AlertTriangle className="h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
         <div className="min-w-0 flex-1">
           <h2 id={headingId} className="font-semibold">{title}</h2>
-          <p className="mt-1 text-sm leading-relaxed text-amber-900">{message}</p>
+          <p className="mt-1 text-sm leading-relaxed">{message}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button type="button" size="sm" onClick={onRetry} disabled={retrying}>
               <RefreshCw className={`h-3.5 w-3.5 ${retrying ? 'animate-spin' : ''}`} aria-hidden="true" />

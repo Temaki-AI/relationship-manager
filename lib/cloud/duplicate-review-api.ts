@@ -27,7 +27,7 @@ const IDENTITY_SQL = `SELECT c.id, c.name, c.email, c.phone, c.birthday,
   CASE WHEN json_valid(c.custom_fields) THEN json_object('vcard', json_object(
     'additional_emails', json_extract(c.custom_fields, '$.vcard.additional_emails'),
     'additional_phones', json_extract(c.custom_fields, '$.vcard.additional_phones')))
-    ELSE NULL END AS custom_fields,
+    ELSE NULL END AS custom_fields, c.contact_methods,
   c.created_at, 100 * (${ACTIVITY_SQL}) + ${COMPLETENESS_SQL} AS quality_score
   FROM contacts c WHERE c.workspace_id = ? AND c.id > ? ORDER BY c.id LIMIT ?`;
 
@@ -38,7 +38,7 @@ const DETAILS_SQL = `SELECT c.id, c.name, c.nickname, c.email, c.phone,
   CASE WHEN json_valid(c.custom_fields) THEN json_object('vcard', json_object(
     'additional_emails', json_extract(c.custom_fields, '$.vcard.additional_emails'),
     'additional_phones', json_extract(c.custom_fields, '$.vcard.additional_phones')))
-    ELSE NULL END AS custom_fields,
+    ELSE NULL END AS custom_fields, c.contact_methods,
   c.last_contacted, c.contact_frequency, c.created_at, c.updated_at,
   (SELECT COUNT(*) FROM interactions i WHERE i.workspace_id = c.workspace_id AND i.contact_id = c.id) AS interaction_count,
   (SELECT COUNT(*) FROM reminders r WHERE r.workspace_id = c.workspace_id AND r.contact_id = c.id) AS reminder_count,

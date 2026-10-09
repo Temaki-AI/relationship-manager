@@ -32,7 +32,7 @@ export function Avatar({ contact, size = 'md', className = '' }: AvatarProps) {
   if (avatar.type === 'initials' || imageError) {
     return (
       <div
-        className={`${sizeClasses[size]} rounded-full sm:rounded-2xl bg-slate-800 bg-gradient-to-br ${avatar.color} flex items-center justify-center text-white font-bold shadow-lg flex-shrink-0 ${className}`}
+        className={`${sizeClasses[size]} rounded-full ${avatar.color} flex items-center justify-center font-semibold flex-shrink-0 ${className}`}
       >
         {avatar.initials}
       </div>
@@ -41,7 +41,7 @@ export function Avatar({ contact, size = 'md', className = '' }: AvatarProps) {
 
   // Show image with fallback to initials on error
   return (
-    <div className={`${sizeClasses[size]} rounded-full sm:rounded-2xl overflow-hidden shadow-lg flex-shrink-0 ${className}`}>
+    <div className={`${sizeClasses[size]} rounded-full overflow-hidden flex-shrink-0 ${className}`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={avatar.url}

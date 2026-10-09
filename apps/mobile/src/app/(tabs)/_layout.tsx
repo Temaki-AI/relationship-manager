@@ -1,30 +1,32 @@
 import { SymbolView } from 'expo-symbols';
 import { Tabs } from 'expo-router';
 import type { ColorValue } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { fonts, palette } from '@/theme';
 
 function TabIcon({ name, color }: {
-  name: 'heart.fill' | 'person.2.fill' | 'bell.fill';
+  name: 'heart.fill' | 'person.2.fill' | 'gearshape' | 'calendar';
   color: ColorValue;
 }) {
   return <SymbolView name={name} tintColor={color} size={21} />;
 }
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: palette.canvas },
         tabBarActiveTintColor: palette.primary,
-        tabBarInactiveTintColor: palette.faint,
+        tabBarInactiveTintColor: palette.muted,
         tabBarStyle: {
           backgroundColor: palette.surface,
           borderTopColor: palette.line,
-          height: 86,
+          height: 56 + Math.max(insets.bottom, 8),
           paddingTop: 8,
-          paddingBottom: 22,
+          paddingBottom: Math.max(insets.bottom, 8),
         },
         tabBarLabelStyle: { fontFamily: fonts.bodyDemi, fontSize: 11 },
       }}
@@ -46,11 +48,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="reminders"
+        name="agenda"
+        options={{ title: 'Calendar', tabBarAccessibilityLabel: 'Calendar', tabBarIcon: ({ color }) => <TabIcon name="calendar" color={color} /> }}
+      />
+      <Tabs.Screen
+        name="settings"
         options={{
-          title: 'Reminders',
-          tabBarAccessibilityLabel: 'Reminders',
-          tabBarIcon: ({ color }) => <TabIcon name="bell.fill" color={color} />,
+          title: 'Settings',
+          tabBarAccessibilityLabel: 'Settings',
+          tabBarIcon: ({ color }) => <TabIcon name="gearshape" color={color} />,
         }}
       />
     </Tabs>

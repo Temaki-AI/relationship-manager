@@ -15,6 +15,10 @@ export type ContactDraft = {
 
 export type ContactRecord = {
   id: string;
+  contact_methods: string;
+  source_links?: string;
+  provider_links?: string;
+  device_links?: string;
   remote_id: number | null;
   device_contact_id: string | null;
   name: string;

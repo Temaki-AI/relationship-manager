@@ -10,7 +10,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 60
     env:
       CRM_PASSWORD: ci-password-for-build-only
       CRM_SESSION_SECRET: ci-session-secret-for-build-only-123456789

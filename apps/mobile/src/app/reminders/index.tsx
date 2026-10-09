@@ -3,7 +3,6 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -12,18 +11,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, BrandLockup, StatusPill } from '@/components/design-system';
-import { completeReminder, listOpenReminders, type ReminderRecord } from '@/data/reminders';
+import { Avatar, StatusPill } from '@/components/design-system';
+import { listOpenReminders, type ReminderRecord } from '@/data/reminders';
 import { formatDateTime } from '@/lib/format';
-import { cancelReminderNotification } from '@/native/notifications';
-import { fonts, palette } from '@/theme';
+import { radii, fonts, palette } from '@/theme';
+import { useReminderActions } from '@/native/reminder-actions';
 
 export default function RemindersScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
   const [reminders, setReminders] = useState<ReminderRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [completingId, setCompletingId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
 
   const loadReminders = useCallback(async () => {
@@ -32,25 +30,14 @@ export default function RemindersScreen() {
     setLoading(false);
   }, [db]);
 
+  const { busyId: completingId, markComplete, chooseSnooze, sheet } = useReminderActions(loadReminders);
+
   useFocusEffect(useCallback(() => {
     void loadReminders();
   }, [loadReminders]));
 
-  async function markComplete(reminder: ReminderRecord) {
-    setCompletingId(reminder.id);
-    try {
-      const notificationId = await completeReminder(db, reminder.id);
-      await cancelReminderNotification(notificationId);
-      await loadReminders();
-    } catch {
-      Alert.alert('Could not complete reminder', 'Your reminder is unchanged. Please try again.');
-    } finally {
-      setCompletingId(null);
-    }
-  }
-
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <FlatList
         data={reminders}
         keyExtractor={(reminder) => reminder.id}
@@ -58,11 +45,10 @@ export default function RemindersScreen() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={(
           <View style={styles.header}>
-            <BrandLockup />
-            <View style={styles.headingRow}>
+                        <View style={styles.headingRow}>
               <View style={styles.headingCopy}>
-                <Text style={styles.title}>Gentle nudges</Text>
-                <Text style={styles.subtitle}>Follow through without turning friendship into a task list.</Text>
+                <Text style={styles.title}>Reminders</Text>
+                <Text style={styles.subtitle}>Your open reminders, ordered by date.</Text>
               </View>
               <Pressable
                 accessibilityRole="button"
@@ -94,28 +80,30 @@ export default function RemindersScreen() {
         renderItem={({ item }) => {
           const overdue = new Date(item.remind_at).getTime() <= currentTime;
           return (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Open ${item.contact_name}`}
-              onPress={() => router.push({ pathname: '/contacts/[id]', params: { id: item.contact_id } })}
-              style={({ pressed }) => [styles.reminderCard, pressed && styles.cardPressed]}
-            >
-              <View style={styles.reminderTop}>
+            <View style={styles.reminderCard}>
+              <Pressable accessibilityRole="button"
+                accessibilityLabel={`Open ${item.contact_name}. Reminder: ${item.title}. ${overdue ? 'Due' : 'Upcoming'} ${formatDateTime(item.remind_at)}`}
+                onPress={() => router.push({ pathname: '/contacts/[id]', params: { id: item.contact_id } })}
+                style={({ pressed }) => [styles.reminderTop, pressed && styles.cardPressed]}>
                 <Avatar name={item.contact_name} size={44} />
                 <View style={styles.reminderCopy}>
                   <Text style={styles.contactName}>{item.contact_name}</Text>
                   <Text style={styles.reminderTitle}>{item.title}</Text>
                 </View>
                 <StatusPill tone={overdue ? 'rose' : 'amber'} label={overdue ? 'Due' : 'Upcoming'} />
-              </View>
+              </Pressable>
               <View style={styles.reminderBottom}>
                 <Text style={styles.reminderTime}>{formatDateTime(item.remind_at)}</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Snooze reminder for ${item.contact_name}: ${item.title}`}
+                  disabled={completingId !== null} onPress={() => chooseSnooze(item)}
+                  style={({ pressed }) => [styles.snoozeButton, pressed && styles.pressed]}>
+                  <Text style={styles.snoozeText}>Snooze</Text>
+                </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Complete reminder for ${item.contact_name}`}
-                  disabled={completingId === item.id}
-                  onPress={(event) => {
-                    event.stopPropagation();
+                  accessibilityLabel={`Complete reminder for ${item.contact_name}: ${item.title}`}
+                  disabled={completingId !== null}
+                  onPress={() => {
                     void markComplete(item);
                   }}
                   style={({ pressed }) => [styles.completeButton, pressed && styles.pressed]}
@@ -125,10 +113,11 @@ export default function RemindersScreen() {
                     : <Text style={styles.completeText}>Complete</Text>}
                 </Pressable>
               </View>
-            </Pressable>
+            </View>
           );
         }}
       />
+      {sheet}
     </SafeAreaView>
   );
 }
@@ -139,12 +128,12 @@ const styles = StyleSheet.create({
   header: { gap: 20, marginBottom: 10 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   headingCopy: { flex: 1, gap: 4 },
-  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 36, fontWeight: '700', letterSpacing: -0.8 },
+  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 28, fontWeight: '700', letterSpacing: -0.8 },
   subtitle: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 20 },
   addButton: {
     width: 50,
     height: 50,
-    borderRadius: 18,
+    borderRadius: radii.card,
     backgroundColor: palette.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -164,7 +153,7 @@ const styles = StyleSheet.create({
   emptyBellText: { color: palette.primary, fontFamily: fonts.display, fontSize: 25, fontWeight: '700' },
   emptyTitle: { color: palette.ink, fontFamily: fonts.display, fontSize: 24, fontWeight: '700' },
   emptyText: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 20, textAlign: 'center' },
-  emptyAction: { marginTop: 10, borderRadius: 15, backgroundColor: palette.primary, paddingHorizontal: 18, paddingVertical: 12 },
+  emptyAction: { marginTop: 10, borderRadius: radii.control, backgroundColor: palette.primary, paddingHorizontal: 18, paddingVertical: 12 },
   emptyActionText: { color: palette.white, fontFamily: fonts.bodyDemi, fontSize: 13, fontWeight: '700' },
   reminderCard: {
     borderRadius: 23,
@@ -181,6 +170,8 @@ const styles = StyleSheet.create({
   reminderTitle: { color: palette.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 },
   reminderBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   reminderTime: { flex: 1, color: palette.primary, fontFamily: fonts.bodyMedium, fontSize: 11 },
-  completeButton: { minWidth: 86, minHeight: 38, borderRadius: 13, backgroundColor: palette.mossSoft, alignItems: 'center', justifyContent: 'center' },
+  completeButton: { minWidth: 86, minHeight: 44, borderRadius: radii.control, backgroundColor: palette.mossSoft, alignItems: 'center', justifyContent: 'center' },
   completeText: { color: palette.moss, fontFamily: fonts.bodyDemi, fontSize: 12, fontWeight: '700' },
+  snoozeButton: { minWidth: 70, minHeight: 44, borderRadius: radii.control, backgroundColor: palette.surfaceWarm, alignItems: 'center', justifyContent: 'center' },
+  snoozeText: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 12 },
 });

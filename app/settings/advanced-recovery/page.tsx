@@ -257,12 +257,12 @@ export default function AdvancedRecoveryPage() {
           .catch((reason) => setError(reason instanceof Error ? reason.message : 'Refresh failed'))
           .finally(() => setLoading(false)); }} />}
       {status && !status.enabled && !activeRestore && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <div className="rounded-xl border border-amber-200 bg-warning-soft p-4 text-sm text-amber-950">
           Advanced recovery is not enabled for this workspace. The standard backup and restore options remain available in Data & recovery.
         </div>
       )}
       {error && status && (
-        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-950">
+        <div role="alert" className="rounded-xl border border-red-200 bg-danger-soft p-4 text-sm text-red-950">
           <p className="font-semibold">The current step needs attention.</p>
           <p className="mt-1">{error} {restore && isApplying
             ? 'Your workspace remains locked until application or rollback completes.'
@@ -273,12 +273,12 @@ export default function AdvancedRecoveryPage() {
       {status && (status.enabled || activeRestore) && (
         <>
           {restore && (
-            <Card className={`border shadow-sm ${isApplying ? 'border-amber-300 bg-amber-50/50' : 'border-border'}`}>
+            <Card className={`border shadow-sm ${isApplying ? 'border-amber-300 bg-warning-soft/50' : 'border-border'}`}>
               <CardHeader>
                 <div className="flex items-start gap-3">
                   {restore.state === 'completed' || restore.state === 'rolled_back'
-                    ? <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-700" />
-                    : <ShieldCheck className="mt-0.5 h-5 w-5 text-amber-700" />}
+                    ? <CheckCircle2 className="mt-0.5 h-5 w-5 text-success" />
+                    : <ShieldCheck className="mt-0.5 h-5 w-5 text-warning" />}
                   <div>
                     <CardTitle className="text-lg">{restore.state === 'rolled_back' ? 'Rollback complete'
                       : restore.state === 'completed' ? 'Restore complete' : 'Current restore'}</CardTitle>
@@ -288,29 +288,29 @@ export default function AdvancedRecoveryPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-wrap gap-2 text-xs">
-                  <span className="rounded-full bg-white px-3 py-1.5 font-medium capitalize shadow-sm">{restore.state.replaceAll('_', ' ')}</span>
-                  {isApplying && <span className="rounded-full bg-white px-3 py-1.5 shadow-sm">
+                  <span className="rounded-full bg-card px-3 py-1.5 font-medium capitalize shadow-sm">{restore.state.replaceAll('_', ' ')}</span>
+                  {isApplying && <span className="rounded-full bg-card px-3 py-1.5 shadow-sm">
                     {restore.source === 'rollback' ? 'Rolling back' : 'Applying snapshot'} · chunk {restore.chunkIndex + 1}
                   </span>}
-                  <span className="rounded-full bg-white px-3 py-1.5 shadow-sm">Updated {stamp(restore.updatedAt)}</span>
+                  <span className="rounded-full bg-card px-3 py-1.5 shadow-sm">Updated {stamp(restore.updatedAt)}</span>
                 </div>
                 {restore.state === 'ready' && (
-                  <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-950">
+                  <p className="rounded-lg border border-emerald-200 bg-success-soft p-3 text-sm text-emerald-950">
                     The selected snapshot and your current data have both been verified. Nothing has been replaced yet.
                   </p>
                 )}
                 {isApplying && restore.background === 'running' && (
-                  <p className="rounded-lg border border-amber-200 bg-white/80 p-3 text-sm text-amber-950">
+                  <p className="rounded-lg border border-amber-200 bg-card/80 p-3 text-sm text-amber-950">
                     Recovery is progressing in the background. You can leave this page; your CRM remains unavailable until verification finishes.
                   </p>
                 )}
                 {isApplying && restore.background === 'paused' && (
-                  <p className="rounded-lg border border-amber-200 bg-white/80 p-3 text-sm text-amber-950">
+                  <p className="rounded-lg border border-amber-200 bg-card/80 p-3 text-sm text-amber-950">
                     Recovery is paused on the server. A step already in progress may finish; your CRM remains locked until you resume or roll back.
                   </p>
                 )}
                 {isApplying && restore.background === 'failed' && (
-                  <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-950">
+                  <p role="alert" className="rounded-lg border border-red-200 bg-danger-soft p-3 text-sm text-red-950">
                     Background progress stopped after repeated errors. Resume to retry or roll back to the verified pre-restore data.
                   </p>
                 )}
@@ -350,7 +350,7 @@ export default function AdvancedRecoveryPage() {
             </Card>
           )}
 
-          <Card className="border-0 shadow-sm">
+          <Card className="border-border/70 shadow-card">
             <CardHeader>
               <CardTitle className="text-lg">Private snapshots</CardTitle>
               <p className="text-sm text-muted-foreground">

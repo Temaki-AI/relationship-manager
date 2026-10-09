@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getSessionCookie } from 'better-auth/cookies';
 import { getCloudApiRewrite } from '@/lib/cloud/api-rewrite';
+import { isNativeDeviceApiPath, parseDeviceBearer } from '@/packages/domain/src/devices';
 import {
   AUTHENTICATED_BY_HEADER,
   authenticateRequest,
@@ -157,7 +158,9 @@ export async function middleware(request: NextRequest) {
   let authenticatedBy: 'bearer' | 'session' | null = null;
   if (!publicPath) {
     if (cloudAuthentication) {
-      if (!getSessionCookie(request.headers)) {
+      const deviceCandidate = isNativeDeviceApiPath(request.nextUrl.pathname)
+        && parseDeviceBearer(request.headers.get('authorization'));
+      if (!deviceCandidate && !getSessionCookie(request.headers)) {
         if (isApiRequest) {
           return finalize(jsonError('Authentication required.', 401));
         }
@@ -165,7 +168,7 @@ export async function middleware(request: NextRequest) {
         loginUrl.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
         return finalize(NextResponse.redirect(loginUrl), '');
       }
-      authenticatedBy = 'session';
+      authenticatedBy = deviceCandidate ? 'bearer' : 'session';
     } else if (auth?.mode === 'misconfigured') {
       const response = isApiRequest
         ? jsonError('Authentication is not configured securely.', 503)

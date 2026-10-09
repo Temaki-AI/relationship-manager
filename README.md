@@ -23,10 +23,12 @@ A local-first personal CRM to help you maintain meaningful relationships. Track 
 The Data Connections screen lists only workflows that are implemented in the current
 release. vCard and CSV transfer, encrypted backups, and the optional LinkedIn browser
 capture are explicit user-triggered operations. Bonds does not claim or manufacture
-Google, Microsoft, email, calendar, or mobile sync state; those accounts are not read
+Google, Microsoft, email, or calendar sync state; those accounts are not read
 automatically.
 
 Product direction is documented in the [competitive analysis and phased roadmap](docs/competitive-analysis-roadmap.md).
+
+The current [product development plan](docs/product-development-plan.md) covers the shared web/iOS experience, connected contacts, email and calendar synchronization, and release milestones.
 
 ## Tech Stack
 
@@ -39,10 +41,19 @@ Product direction is documented in the [competitive analysis and phased roadmap]
 ### Native iOS Foundation
 
 The offline-first Expo application lives in `apps/mobile` with an independent lockfile.
-It already includes device-local SQLite migrations, UUID entities, a durable future-sync
-outbox, manual and one-person system contact capture, relationship touch logging, and
-iOS-scheduled local reminders. It does not yet sync with the web installation. See
-`apps/mobile/README.md` for the current privacy and architecture boundary.
+It includes account sign-in through the system browser, revocable phone sessions,
+separate SQLite caches for each account, a durable workspace outbox, manual capture and
+reviewed selected iPhone Contacts import/attachment, relationship touch logging, and
+iOS-scheduled local reminders. Selected fields sync with the account; saved iPhone source
+details currently remain on the choosing phone. Ongoing iPhone address-book sync remains
+planned.
+The development implementation syncs contacts, interaction history, reminders, plans,
+family and relationships with the cloud service and offers review of conflicting or
+pre-restore edits. Native agenda and context forms support offline editing and confirmed
+plan completion without duplicate interaction history.
+Server migrations 0024–0035, real Google OAuth and a device journey
+must be verified before rollout; these changes have not been deployed. See the
+[mobile guide](apps/mobile/README.md) and [sync protocol](docs/contact-sync.md).
 
 ## Getting Started
 
@@ -57,19 +68,34 @@ iOS-scheduled local reminders. It does not yet sync with the web installation. S
 # Install exactly the locked dependencies
 npm ci
 
-# Run development server
+# Initialize isolated Cloudflare development storage and local secrets file
+npm run setup:dev
+
+# Fill GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env.development.local
+# Google callback: http://localhost:3100/api/auth/callback/google
+npm run check:dev
+
+# Run cloud-mode development with Google sign-in
 npm run dev
 
 # Open http://localhost:3100
 ```
 
-The app will automatically:
-- Create the SQLite database (`data/relationships.db`)
-- Initialize the schema
-- Seed sample contacts once in development
+The default development command uses the cloud API handlers with Google sign-in,
+isolated local D1/R2 storage, and an empty workspace after your first login. It does
+not connect to production data or seed demo contacts. Setup keeps credentials in
+the ignored, owner-only `.env.development.local` file and applies all D1 migrations
+locally. Missing credentials stop startup instead of falling back to SQLite.
 
-Production databases start empty. Set `SEED_DEMO_DATA=true` to explicitly seed an
-empty database, or `SEED_DEMO_DATA=false` to disable development seeding. Once a
+See [the development guide](docs/development.md) for Google OAuth setup, the local
+Workers preview, runtime differences, and verification commands.
+
+For the separate single-user SQLite version, explicitly run `npm run dev:local`.
+It uses `data/relationships.db`, preserves existing data, and disables automatic
+demo seeding. It does not exercise the cloud login or D1/R2 handlers.
+
+Production databases start empty. In a direct SQLite installation, set
+`SEED_DEMO_DATA=true` to explicitly seed an empty database. Once a
 database has contained contacts, deleting them all will not cause demo contacts to
 reappear on restart.
 
@@ -329,7 +355,7 @@ CRM_API_TOKEN=replace-with-at-least-32-random-characters
 3. Save the CRM URL and API token in the extension popup
 4. Have the extension `POST` to `http://localhost:3100/api/import/linkedin`
 
-For the unpacked extension in this repo, load [browser-extension/README.md](/Users/fernandoamaral/Dev/Personal CRM/browser-extension/README.md) and use the bundled stable extension ID above.
+For the unpacked extension in this repo, load [browser-extension/README.md](browser-extension/README.md) and use the bundled stable extension ID above.
 
 Example payload:
 

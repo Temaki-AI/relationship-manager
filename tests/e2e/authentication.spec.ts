@@ -21,8 +21,8 @@ test.afterEach(async ({ page }) => {
 
 async function getSignOutButton(page: Page) {
   const button = page.getByRole('button', { name: 'Sign out', exact: true });
-  if ((page.viewportSize()?.width || 0) < 640 && !await button.isVisible()) {
-    await page.getByRole('button', { name: 'More navigation' }).click();
+  if ((page.viewportSize()?.width || 0) < 768 && !await button.isVisible()) {
+    await page.getByRole('navigation', { name: 'Main navigation', exact: true }).getByRole('link', { name: 'Settings', exact: true }).click();
   }
   await expect(button).toBeVisible();
   return button;
@@ -56,7 +56,7 @@ test('a mistyped password and failed logout remain safely retryable', async ({ p
   });
   await (await getSignOutButton(page)).click();
   await expect(page.getByRole('alert').getByText(/session is still active/i)).toBeVisible();
-  await expect(page).toHaveURL((url) => url.pathname === '/contacts');
+  await expect(page).toHaveURL((url) => url.pathname === ((page.viewportSize()?.width || 0) < 768 ? '/settings' : '/contacts'));
 
   await page.unroute('**/api/auth/logout');
   await (await getSignOutButton(page)).click();

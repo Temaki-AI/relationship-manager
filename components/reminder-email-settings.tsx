@@ -62,7 +62,7 @@ export function ReminderEmailSettings() {
   }
 
   return (
-    <Card className="border-0 shadow-sm animate-fade-in-up">
+    <Card className="border-border/70 shadow-card animate-fade-in-up">
       <CardContent className="space-y-4 py-5">
         <div className="flex items-start gap-3">
           <div className="rounded-xl bg-blue-50 p-2.5 text-blue-600"><Mail className="h-5 w-5" aria-hidden="true" /></div>
@@ -120,17 +120,17 @@ export function ReminderEmailSettings() {
           </div>
         )}
         {settings?.enabled && settings.available && (
-          <p className="text-xs text-emerald-700" role="status">Email alerts are on for due reminders and contact or child birthdays. Quiet hours use your selected time zone.</p>
+          <p className="text-xs text-success" role="status">Email alerts are on for due reminders and contact or child birthdays. Quiet hours use your selected time zone.</p>
         )}
         {settings && settings.failedCount > 0 && (
-          <p className="text-xs text-amber-800" role="status">
+          <p className="text-xs text-warning" role="status">
             {settings.failedCount} {settings.failedCount === 1 ? 'email alert could' : 'email alerts could'} not be delivered after retries. Check Reminders and Calendar for anything due.
           </p>
         )}
         {settings?.lastSentAt && (
           <p className="text-xs text-muted-foreground">Last email sent {new Date(settings.lastSentAt).toLocaleString()}.</p>
         )}
-        {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
+        {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
       </CardContent>
     </Card>
   );

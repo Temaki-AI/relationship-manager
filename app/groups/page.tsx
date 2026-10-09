@@ -53,10 +53,10 @@ const EMPTY_PAGE: DirectoryPage = {
 };
 
 const TAG_COLORS = [
-  'bg-rose-500',
+  'bg-secondary0',
   'bg-blue-500',
-  'bg-emerald-500',
-  'bg-amber-500',
+  'bg-success-soft0',
+  'bg-warning-soft0',
   'bg-orange-500',
   'bg-indigo-500',
   'bg-cyan-500',
@@ -93,12 +93,12 @@ function DirectoryLoadError({
   onRetry: () => void;
 }) {
   return (
-    <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
+    <div role="alert" className="rounded-xl border border-amber-300 bg-warning-soft p-4 text-amber-950">
       <div className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">This contact list could not be loaded</p>
-          <p className="mt-1 text-xs leading-relaxed text-amber-900">{message}</p>
+          <p className="mt-1 text-xs leading-relaxed text-warning">{message}</p>
           <Button type="button" variant="outline" size="sm" className="mt-3" disabled={retrying} onClick={onRetry}>
             <RefreshCw className={`h-3.5 w-3.5 ${retrying ? 'animate-spin' : ''}`} aria-hidden="true" />
             {retrying ? 'Trying again...' : 'Try again'}
@@ -375,7 +375,7 @@ export default function GroupsPage() {
               && visibleAvailableIds.every((id) => selectedIds.has(id));
 
             return (
-              <Card key={group.tag.toLowerCase()} className="border-0 shadow-sm">
+              <Card key={group.tag.toLowerCase()} className="border-border/70 shadow-card">
                 <CardContent className="pb-4 pt-4">
                   <button
                     type="button"
@@ -560,7 +560,7 @@ export default function GroupsPage() {
           <Pager pagination={groupsPagination} onPageChange={setGroupPage} />
         </div>
       ) : (
-        <Card className="border-0 shadow-sm animate-scale-in">
+        <Card className="border-border/70 shadow-card animate-scale-in">
           <CardContent className="py-16 text-center">
             <Tag className="mx-auto h-12 w-12 text-muted-foreground" />
             <h2 className="mt-4 text-lg font-semibold">No groups yet</h2>

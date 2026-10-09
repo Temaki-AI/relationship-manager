@@ -20,6 +20,7 @@ import { cloudCalendarEvents } from '@/lib/cloud/calendar-directory';
 import { CalendarRangeError } from '@/lib/calendar-directory';
 import { dateInTimeZone, nextBirthdayOccurrence, normalizeTimeZone } from '@/lib/civil-date';
 import { MAX_NOTIFICATION_CANDIDATES } from '@/lib/reminder-directory';
+import { CalendarScheduleError, calendarScheduleState, calendarScheduleStatement, readCalendarScheduleInput, withCalendarScheduleRevision, type CalendarScheduleKind, type CalendarScheduleRecord } from '@/lib/calendar-schedule';
 import { birthdayStatsSQL, checkInStatsSQL, statsResponse, statsToday } from '@/lib/stats-directory';
 
 type DB = CloudflareEnv['DB'];
@@ -47,14 +48,38 @@ async function ownedContact(db: DB, workspaceId: string, contactId: number) {
     .bind(workspaceId, contactId).first());
 }
 
+async function scheduleRecord(db: DB, workspaceId: string, kind: CalendarScheduleKind, id: number) {
+  return db.prepare(`SELECT r.*, s.epoch AS schedule_epoch FROM ${kind === 'plan' ? 'plans' : 'reminders'} r
+    JOIN workspace_sync_state s ON s.workspace_id = r.workspace_id JOIN workspaces w ON w.id = s.workspace_id
+    WHERE r.workspace_id = ? AND r.id = ? AND s.paused = 0 AND w.lifecycle = 'active'`).bind(workspaceId, id).first<CalendarScheduleRecord>();
+}
+async function reschedule(requestBody: Record<string, unknown>, workspaceId: string, kind: CalendarScheduleKind, id: number) {
+  const db = getCloudflareContext().env.DB;
+  const input = readCalendarScheduleInput(kind, requestBody);
+  const current = await scheduleRecord(db, workspaceId, kind, id);
+  if (!current) throw new CalendarScheduleError('This event is no longer available.', 404);
+  if (calendarScheduleState(kind, current, input) === 'confirmed') return json({ [kind]: withCalendarScheduleRevision(kind, current), dateChanged: false });
+  const statement = calendarScheduleStatement(kind, current, input.at);
+  const updated = await db.prepare(statement.sql).bind(...statement.values).first<CalendarScheduleRecord>();
+  if (updated) return json({ [kind]: withCalendarScheduleRevision(kind, { ...updated, schedule_epoch: current.schedule_epoch }), dateChanged: true });
+  const latest = await scheduleRecord(db, workspaceId, kind, id);
+  if (latest && calendarScheduleState(kind, latest, input) === 'confirmed') return json({ [kind]: withCalendarScheduleRevision(kind, latest), dateChanged: false });
+  throw new CalendarScheduleError('This event changed after you opened it. Review it again.', latest ? 409 : 404);
+}
+
 async function reminders(request: Request, workspaceId: string, id?: number) {
   const db = getCloudflareContext().env.DB;
+  if (id && request.method === 'GET') {
+    const reminder = await scheduleRecord(db, workspaceId, 'reminder', id);
+    return reminder ? json({ reminder: withCalendarScheduleRevision('reminder', reminder) }, 200, { 'Cache-Control': 'no-store' }) : json({ error: 'Reminder not found' }, 404);
+  }
   if (id && request.method === 'DELETE') {
     const result = await db.prepare('DELETE FROM reminders WHERE workspace_id = ? AND id = ?').bind(workspaceId, id).run();
     return json({ success: true, alreadyDeleted: result.meta.changes === 0 });
   }
   if (id && request.method === 'PATCH') {
     const body = await readCloudObject(request);
+    if (Object.hasOwn(body, 'calendar_schedule')) return await reschedule(body, workspaceId, 'reminder', id);
     if (body.completed === true) {
       const completedAt = new Date().toISOString();
       const result = await db.prepare('UPDATE reminders SET completed_at = ? WHERE workspace_id = ? AND id = ? AND completed_at IS NULL')
@@ -134,9 +159,10 @@ async function interactions(request: Request, workspaceId: string, id?: number) 
     const current = await db.prepare('SELECT * FROM interactions WHERE workspace_id = ? AND id = ?').bind(workspaceId, id).first<Interaction>();
     if (!current) return json({ error: 'Interaction not found' }, 404);
     if (getInteractionEditRevision(current) !== expected) return json({ error: 'This interaction changed after you opened it.', current_edit_revision: getInteractionEditRevision(current) }, 409);
-    const interaction = await db.prepare(`UPDATE interactions SET date = ?, type = ?, summary = ?, notes = ?
-      WHERE workspace_id = ? AND id = ? AND contact_id IS ? AND date IS ? AND type IS ? AND summary IS ? AND notes IS ? RETURNING *`)
-      .bind(date, type, summary, notes, workspaceId, id, current.contact_id, current.date, current.type, current.summary, current.notes).first<Interaction>();
+    const interaction = await db.prepare(`UPDATE interactions SET occurred_at = CASE WHEN date IS ? THEN occurred_at ELSE NULL END,
+      date = ?, type = ?, summary = ?, notes = ?
+      WHERE workspace_id = ? AND id = ? AND contact_id IS ? AND date IS ? AND type IS ? AND summary IS ? AND notes IS ? AND occurred_at IS ? RETURNING *`)
+      .bind(date, date, type, summary, notes, workspaceId, id, current.contact_id, current.date, current.type, current.summary, current.notes, current.occurred_at ?? null).first<Interaction>();
     if (interaction) return json({ interaction: withInteractionEditRevision(interaction) });
     const latest = await db.prepare('SELECT * FROM interactions WHERE workspace_id = ? AND id = ?').bind(workspaceId, id).first<Interaction>();
     return latest ? json({ error: 'This interaction changed after you opened it.', current_edit_revision: getInteractionEditRevision(latest) }, 409)
@@ -155,12 +181,17 @@ async function interactions(request: Request, workspaceId: string, id?: number) 
 
 async function plans(request: Request, workspaceId: string, id?: number) {
   const db = getCloudflareContext().env.DB;
+  if (id && request.method === 'GET') {
+    const plan = await scheduleRecord(db, workspaceId, 'plan', id);
+    return plan ? json({ plan: withCalendarScheduleRevision('plan', plan) }, 200, { 'Cache-Control': 'no-store' }) : json({ error: 'Plan not found' }, 404);
+  }
   if (id && request.method === 'DELETE') {
     const result = await db.prepare('DELETE FROM plans WHERE workspace_id = ? AND id = ?').bind(workspaceId, id).run();
     return json({ success: true, alreadyDeleted: result.meta.changes === 0 });
   }
   if (id && request.method === 'PATCH') {
     const body = await readCloudObject(request);
+    if (Object.hasOwn(body, 'calendar_schedule')) return await reschedule(body, workspaceId, 'plan', id);
     if (body.completed === true) {
       const completedAt = new Date().toISOString();
       const date = completedAt.slice(0, 10);
@@ -268,14 +299,14 @@ async function integrations(workspaceId: string) {
   });
 }
 
-export async function handleCloudCore(request: Request, workspaceId: string, path: string[]) {
+export async function handleCloudCore(request: Request, workspaceId: string, path: string[], userId?: string) {
   try {
     const id = parsePositiveInteger(path[1]) || undefined;
     if (path[0] === 'reminders') return await reminders(request, workspaceId, id);
     if (path[0] === 'interactions') return await interactions(request, workspaceId, id);
     if (path[0] === 'plans') return await plans(request, workspaceId, id);
     if (path[0] === 'groups') return await groups(request, workspaceId, id);
-    if (path[0] === 'calendar' && request.method === 'GET') return json(await cloudCalendarEvents(request, workspaceId));
+    if (path[0] === 'calendar' && request.method === 'GET') return json(await cloudCalendarEvents(request, workspaceId, userId));
     if (path[0] === 'stats' && request.method === 'GET') return await stats(request, workspaceId);
     if (path[0] === 'integrations' && request.method === 'GET') return await integrations(workspaceId);
     if (path.join('/') === 'intelligence/overview' && request.method === 'GET') return json(await cloudIntelligenceOverview(workspaceId, request));
@@ -287,6 +318,7 @@ export async function handleCloudCore(request: Request, workspaceId: string, pat
     if (recoveryError) return recoveryError;
     if (error instanceof IdempotencyError || error instanceof RequestBodyError) return json({ error: error.message }, error.status);
     if (error instanceof InteractionRevisionError) return json({ error: error.message }, 400);
+    if (error instanceof CalendarScheduleError) return json({ error: error.message }, error.status);
     if (error instanceof SyntaxError) return json({ error: 'Request body must be valid JSON.' }, 400);
     console.error('cloud.core.failed', error);
     return json({ error: 'Cloud operation failed.' }, 500);

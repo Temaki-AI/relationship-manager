@@ -1,3 +1,4 @@
+import { contactMethodIdentity, mergeContactMethods, readContactMethods } from '../packages/domain/src/contact-methods.ts';
 import type Database from 'better-sqlite3';
 import type { Contact } from './db.ts';
 
@@ -9,7 +10,7 @@ export type DuplicateSignal = {
   value: string;
 };
 
-export type DuplicateIdentity = Pick<Contact, 'id' | 'name' | 'email' | 'phone' | 'birthday' | 'custom_fields' | 'created_at'>
+export type DuplicateIdentity = Pick<Contact, 'id' | 'name' | 'email' | 'phone' | 'birthday' | 'custom_fields' | 'created_at' | 'contact_methods'>
   & Partial<Pick<Contact, 'nickname' | 'photo_url' | 'how_we_met' | 'notes' | 'gift_ideas' | 'last_contacted'>>
   & {
   interaction_count?: number;
@@ -119,29 +120,37 @@ function uniqueStrings(values: string[], normalize: (value: string) => string | 
   return result;
 }
 
-function getAllEmails(contact: Pick<Contact, 'email' | 'custom_fields'>): string[] {
+function getAllEmails(contact: Pick<Contact, 'email' | 'custom_fields' | 'contact_methods'>): string[] {
   return uniqueStrings(
-    [contact.email || '', ...getCustomStringList(contact, 'additional_emails')],
+    [contact.email || '', ...(contact.contact_methods === undefined ? getCustomStringList(contact, 'additional_emails') : []), ...readContactMethods(contact.contact_methods).filter((item) => item.kind === 'email').map((item) => item.value)],
     normalizeEmailIdentity
   );
 }
 
-function getAllPhones(contact: Pick<Contact, 'phone' | 'custom_fields'>): string[] {
+function getAllPhones(contact: Pick<Contact, 'phone' | 'custom_fields' | 'contact_methods'>): string[] {
   return uniqueStrings(
-    [contact.phone || '', ...getCustomStringList(contact, 'additional_phones')],
+    [contact.phone || '', ...(contact.contact_methods === undefined ? getCustomStringList(contact, 'additional_phones') : []), ...readContactMethods(contact.contact_methods).filter((item) => item.kind === 'phone').map((item) => item.value)],
     normalizePhoneIdentity
   );
 }
 
-export function getDuplicateSignals(contact: Pick<Contact, 'email' | 'phone' | 'birthday' | 'name' | 'custom_fields'>): DuplicateSignal[] {
+export function getDuplicateSignals(contact: Pick<Contact, 'email' | 'phone' | 'birthday' | 'name' | 'custom_fields' | 'contact_methods'>): DuplicateSignal[] {
   const signals: DuplicateSignal[] = [];
   for (const email of getAllEmails(contact)) {
     const identity = normalizeEmailIdentity(email);
     if (identity) signals.push({ key: `email:${identity}`, kind: 'email', value: email });
   }
-  for (const phone of getAllPhones(contact)) {
-    const identity = normalizePhoneIdentity(phone);
-    if (identity) signals.push({ key: `phone:${identity}`, kind: 'phone', value: phone });
+  const phoneMethods = readContactMethods(contact.contact_methods).filter((item) => item.kind === 'phone');
+  const legacyPhones = [contact.phone || '', ...(contact.contact_methods === undefined ? getCustomStringList(contact, 'additional_phones') : [])];
+  const comparable = (value: string) => contactMethodIdentity({ kind: 'phone', value, country: null });
+  const candidates = [...phoneMethods, ...legacyPhones.filter((value) => value && !phoneMethods.some((item) => comparable(item.value) === comparable(value)))
+    .map((value) => ({ kind: 'phone' as const, value, country: null }))];
+  const seen = new Set<string>();
+  for (const method of candidates) {
+    if (!normalizePhoneIdentity(method.value)) continue;
+    const key = contactMethodIdentity(method);
+    if (!seen.has(key)) signals.push({ key, kind: 'phone', value: method.value });
+    seen.add(key);
   }
   if (contact.birthday) {
     const name = normalizeNameIdentity(contact.name);
@@ -344,6 +353,7 @@ export function buildMergedContact(primary: Contact, duplicates: Contact[], merg
 
   return {
     ...primary,
+    contact_methods: mergeContactMethods(contacts.map((contact) => contact.contact_methods)),
     nickname: contacts.find((contact) => contact.nickname)?.nickname || null,
     email: selectedEmail,
     phone: selectedPhone,
@@ -542,6 +552,7 @@ export function mergeContacts(
     db.prepare(`DELETE FROM contact_group_members WHERE contact_id IN (${placeholders})`).run(...ids);
 
     const movedConnections = moveContactConnections(db, primaryId, ids, mergedAt);
+    db.prepare(`UPDATE contact_source_links SET contact_id = ? WHERE contact_id IN (${placeholders})`).run(primaryId, ...ids);
 
     const moved = {
       interactions: db.prepare(`UPDATE interactions SET contact_id = ? WHERE contact_id IN (${placeholders})`).run(primaryId, ...ids).changes,
@@ -557,7 +568,7 @@ export function mergeContacts(
       UPDATE contacts SET
         name = ?, nickname = ?, email = ?, phone = ?, photo_url = ?, birthday = ?, birthday_reminder_days = ?, how_we_met = ?,
         tags = ?, notes = ?, gift_ideas = ?, custom_fields = ?, last_contacted = ?,
-        contact_frequency = ?, updated_at = ?
+        contact_frequency = ?, updated_at = ?, contact_methods = ?
       WHERE id = ?
     `).run(
       merged.name,
@@ -575,6 +586,7 @@ export function mergeContacts(
       merged.last_contacted,
       merged.contact_frequency,
       mergedAt,
+      merged.contact_methods ?? '[]',
       primaryId
     );
 

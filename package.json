@@ -8,14 +8,20 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "dev": "next dev -p 3100",
+    "design:tokens": "node scripts/generate-design-tokens.mjs",
+    "dev": "npm run dev:cloud",
+    "dev:cloud": "node scripts/development.mjs cloud",
+    "dev:local": "node scripts/development.mjs local",
+    "setup:dev": "node scripts/development.mjs setup",
+    "setup:google": "node scripts/import-google-development.mjs",
+    "check:dev": "node scripts/development.mjs check",
     "build": "node scripts/build.mjs",
     "build:cloud": "AUTH_MODE=google NEXT_PUBLIC_AUTH_MODE=google opennextjs-cloudflare build",
-    "preview:cloud": "npm run build:cloud && opennextjs-cloudflare preview",
+    "preview:cloud": "node scripts/development.mjs preview",
     "deploy:cloud": "npm run build:cloud && opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types cloudflare-env.d.ts --env-interface CloudflareEnv --include-runtime false --strict-vars false",
     "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "wrangler d1 migrations apply bonds-crm --local",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local --config wrangler.local.jsonc --persist-to .wrangler/everclose-local",
     "db:migrate:remote": "wrangler d1 migrations apply bonds-crm --remote",
     "start": "next start -p 3100",
     "lint": "eslint . --max-warnings=0",
@@ -59,6 +65,15 @@
     "wrangler": "4.147.0"
   },
   "overrides": {
-    "postcss": "$postcss"
+    "postcss": "$postcss",
+    "@esbuild-kit/core-utils": {
+      "esbuild": "0.25.12"
+    },
+    "tailwindcss": {
+      "postcss-selector-parser": "7.1.6"
+    },
+    "postcss-nested": {
+      "postcss-selector-parser": "7.1.6"
+    }
   }
 }

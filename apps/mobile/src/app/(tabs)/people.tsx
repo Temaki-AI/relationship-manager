@@ -1,7 +1,9 @@
-import { Contact as DeviceContact } from 'expo-contacts';
-import { Link, useFocusEffect, useRouter } from 'expo-router';
+import { pickDeviceContact } from '@/native/device-contacts';
+import { DeviceContactAccess } from '@/components/device-contact-access';
+import { ProviderSourceError } from '../../../../../packages/domain/src/provider-sources';
+import { useIsFocused, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,87 +12,89 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, BrandLockup, StatusPill } from '@/components/design-system';
-import { importDeviceContact, listContacts } from '@/data/contacts';
+import { FormInput as TextInput, ActionButton, StatusPill } from '@/components/design-system';
+import { Disclosure } from '@/components/disclosure';
+import { ContactAvatar } from '@/components/contact-avatar';
+import { listContactPage } from '@/data/contacts';
 import { getRelationshipState, type ContactRecord } from '@/domain/contact';
 import { formatRelativeDate } from '@/lib/format';
-import { fonts, palette } from '@/theme';
+import { fonts, palette, radii, typeScale } from '@/theme';
+import { useNativeSync } from '@/native/sync';
+import { useNativeAccount } from '@/native/account';
 
 export default function PeopleScreen() {
+  const { fontScale } = useWindowDimensions();
   const db = useSQLiteContext();
+  const focused = useIsFocused();
+  const { revision, syncing, error: syncError, run } = useNativeSync();
+  const { account } = useNativeAccount();
   const router = useRouter();
   const [contacts, setContacts] = useState<ContactRecord[]>([]);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [more, setMore] = useState(false);
+  const [loadedKey, setLoadedKey] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [retry, setRetry] = useState(0);
+  const list = useRef<FlatList<ContactRecord>>(null);
+  const queryKey = JSON.stringify([search, page, revision, retry]);
+  const loading = loadedKey !== queryKey;
   const [importing, setImporting] = useState(false);
 
-  const loadContacts = useCallback(async () => {
-    const rows = await listContacts(db, search);
-    setContacts(rows);
-    setLoading(false);
-  }, [db, search]);
+  useEffect(() => {
+    if (!focused) return;
+    let active = true;
+    void listContactPage(db, search, page).then((result) => {
+      if (active) { setContacts(result.contacts); setMore(result.hasMore); setLoadError(''); setLoadedKey(queryKey); }
+    }, () => {
+      if (active) { setContacts([]); setMore(false); setLoadError('Unable to read this page. Your saved people are still on this iPhone.'); setLoadedKey(queryKey); }
+    });
+    return () => { active = false; };
+  }, [focused, db, search, page, revision, queryKey]);
 
-  useFocusEffect(useCallback(() => {
-    void loadContacts();
-  }, [loadContacts]));
+  function changePage(next: number) {
+    setPage(next);
+    list.current?.scrollToOffset({ offset: 0, animated: true });
+  }
 
   async function importOneContact() {
     if (Platform.OS === 'web') {
-      Alert.alert('Available on iPhone', 'Open Bonds on iPhone to choose a system contact.');
+      Alert.alert('Available on iPhone', 'Open Everclose on iPhone to choose a system contact.');
       return;
     }
 
     setImporting(true);
     try {
-      const selected = await DeviceContact.presentPicker();
-      if (!selected) return;
-      const [name, emails, phones] = await Promise.all([
-        selected.getFullName(),
-        selected.getEmails(),
-        selected.getPhones(),
-      ]);
-      if (!name.trim()) {
-        Alert.alert('Name needed', 'This system contact does not have a name Bonds can import.');
-        return;
-      }
-      const result = await importDeviceContact(db, {
-        name,
-        email: emails[0]?.address || null,
-        phone: phones[0]?.number || null,
-        deviceContactId: selected.id,
-      });
-      await loadContacts();
-      if (!result.created) {
-        Alert.alert('Already in Bonds', `${result.contact.name} is already in your relationship journal.`);
-      }
-      router.push({ pathname: '/contacts/[id]', params: { id: result.contact.id } });
-    } catch {
-      Alert.alert('Contact unavailable', 'Bonds could not open or import that contact. Try again.');
+      const preview = await pickDeviceContact(db);
+      if (preview) router.push({ pathname: '/contacts/device-review', params: { preview } });
+    } catch (err) {
+      Alert.alert('Contact unavailable', err instanceof ProviderSourceError ? err.message : 'Everclose could not read that contact for review. Try again.');
     } finally {
       setImporting(false);
     }
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
       <FlatList
-        data={contacts}
+        ref={list}
+        data={loading ? [] : contacts}
+        refreshing={syncing}
+        onRefresh={() => { void run(); setRetry((value) => value + 1); }}
         keyExtractor={(contact) => contact.id}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={(
           <View style={styles.header}>
-            <BrandLockup />
             <View style={styles.headingRow}>
               <View style={styles.headingCopy}>
-                <Text style={styles.title}>Your people</Text>
-                <Text style={styles.subtitle}>Context for the relationships that matter.</Text>
+                <Text accessibilityRole="header" maxFontSizeMultiplier={2} style={styles.title}>People</Text>
               </View>
               <Pressable
                 accessibilityRole="button"
@@ -98,22 +102,26 @@ export default function PeopleScreen() {
                 onPress={() => router.push('/contacts/new')}
                 style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
               >
-                <Text style={styles.addButtonText}>+</Text>
+                <Text allowFontScaling={false} style={styles.addButtonText}>+</Text>
               </Pressable>
             </View>
             <TextInput
               accessibilityLabel="Search people"
+              maxFontSizeMultiplier={2}
               autoCapitalize="none"
-              onChangeText={setSearch}
-              onSubmitEditing={() => void loadContacts()}
+              onChangeText={(value) => { setSearch(value); setPage(0); }}
+              onSubmitEditing={() => setRetry((value) => value + 1)}
               placeholder="Search names, details, notes"
               placeholderTextColor={palette.faint}
               returnKeyType="search"
               style={styles.search}
               value={search}
             />
+            <Disclosure title="Import from iPhone Contacts">
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="Choose from iPhone Contacts"
+              accessibilityHint="Choose one person and review the fields to import."
               disabled={importing}
               onPress={() => void importOneContact()}
               style={({ pressed }) => [styles.importButton, pressed && styles.pressed]}
@@ -121,38 +129,65 @@ export default function PeopleScreen() {
               {importing ? <ActivityIndicator color={palette.primary} /> : (
                 <>
                   <Text style={styles.importTitle}>Choose from iPhone Contacts</Text>
-                  <Text style={styles.importDetail}>You choose one person. Bonds never scans everyone.</Text>
+                  <Text style={styles.importDetail}>Choose one person and review the fields to use.</Text>
                 </>
               )}
             </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Browse allowed iPhone contacts"
+              accessibilityHint="Browse allowed contacts and review each import." disabled={importing}
+              onPress={() => router.push('/contacts/device-directory')} style={styles.importButton}>
+              <Text style={styles.importTitle}>Browse allowed iPhone contacts</Text><Text style={styles.importDetail}>Read a page of allowed people, then confirm each import.</Text>
+            </Pressable>
+            <DeviceContactAccess disabled={importing} />
+            </Disclosure>
           </View>
         )}
-        ListEmptyComponent={loading ? (
-          <View style={styles.empty}><ActivityIndicator color={palette.primary} /></View>
+        ListEmptyComponent={loading || account && syncing ? (
+          <View style={styles.empty}><ActivityIndicator color={palette.primary} />
+            {account && <Text style={styles.emptyText}>Downloading your workspace…</Text>}
+          </View>
+        ) : loadError ? (
+          <View style={styles.empty}>
+            <Text accessibilityRole="alert" style={styles.emptyText}>{loadError}</Text>
+            <ActionButton label="Try again" variant="secondary" onPress={() => setRetry((value) => value + 1)} />
+          </View>
+        ) : account && syncError ? (
+          <View style={styles.empty}>
+            <Text accessibilityRole="alert" style={styles.emptyText}>{syncError}</Text>
+            <Pressable accessibilityRole="button" onPress={() => router.push('/account')} style={styles.importButton}>
+              <Text style={styles.importTitle}>Open account & sync</Text>
+            </Pressable>
+          </View>
         ) : (
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>{search ? 'No one matches yet' : 'Start with one person'}</Text>
+            <Text style={styles.emptyTitle}>{page ? 'No more people on this page' : search ? 'No one matches yet' : 'Start with one person'}</Text>
             <Text style={styles.emptyText}>
               {search ? 'Try a different name or detail.' : 'Add someone manually or choose one contact from your iPhone.'}
             </Text>
           </View>
         )}
+        ListFooterComponent={loading ? null : <View style={styles.pages}>
+          {page > 0 && <ActionButton label="Previous people" variant="quiet" onPress={() => changePage(page - 1)} />}
+          {(page > 0 || more) && <Text style={styles.emptyText}>Page {page + 1}</Text>}
+          {more && <ActionButton label="Next people" variant="quiet" onPress={() => changePage(page + 1)} />}
+        </View>}
         renderItem={({ item }) => (
-          <Link href={{ pathname: '/contacts/[id]', params: { id: item.id } }} asChild>
             <Pressable
+              accessibilityRole="button"
               accessibilityLabel={`Open ${item.name}`}
+              onPress={() => router.push({ pathname: '/contacts/[id]', params: { id: item.id } })}
               style={({ pressed }) => [styles.personRow, pressed && styles.personRowPressed]}
             >
-              <Avatar name={item.name} />
+              <ContactAvatar id={item.id} name={item.name} />
               <View style={styles.personCopy}>
-                <Text style={styles.personName}>{item.name}</Text>
-                <Text numberOfLines={1} style={styles.personMeta}>
+                <Text maxFontSizeMultiplier={2} style={styles.personName}>{item.name}</Text>
+                <Text numberOfLines={fontScale > 1.3 ? undefined : 1} style={styles.personMeta}>
                   {item.email || item.phone || formatRelativeDate(item.last_contacted)}
                 </Text>
+                {fontScale > 1.3 && <RelationshipPill contact={item} />}
               </View>
-              <RelationshipPill contact={item} />
+              {fontScale <= 1.3 && <RelationshipPill contact={item} />}
             </Pressable>
-          </Link>
         )}
       />
     </SafeAreaView>
@@ -173,33 +208,34 @@ const styles = StyleSheet.create({
   header: { gap: 18, marginBottom: 18 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   headingCopy: { flex: 1, gap: 4 },
-  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 36, fontWeight: '700', letterSpacing: -0.8 },
+  title: { color: palette.ink, fontFamily: fonts.display, ...typeScale.title },
   subtitle: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 20 },
   addButton: {
     width: 50,
-    height: 50,
-    borderRadius: 18,
+    minHeight: 50,
+    paddingVertical: 12,
+    borderRadius: radii.control,
     backgroundColor: palette.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   addButtonText: { color: palette.white, fontFamily: fonts.body, fontSize: 30, lineHeight: 33 },
   search: {
-    height: 50,
-    borderRadius: 17,
+    borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: palette.line,
+    borderColor: palette.input,
     backgroundColor: palette.surface,
     color: palette.ink,
     fontFamily: fonts.body,
-    fontSize: 15,
+    fontSize: 16,
+    paddingVertical: 12,
     paddingHorizontal: 16,
   },
   importButton: {
     minHeight: 66,
-    borderRadius: 19,
+    borderRadius: radii.card,
     borderWidth: 1,
-    borderColor: '#EFC9D3',
+    borderColor: palette.primarySoft,
     backgroundColor: palette.primarySoft,
     paddingHorizontal: 16,
     paddingVertical: 13,
@@ -207,11 +243,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   importTitle: { color: palette.primary, fontFamily: fonts.bodyDemi, fontSize: 14, fontWeight: '700' },
-  importDetail: { color: '#76545D', fontFamily: fonts.body, fontSize: 11, lineHeight: 16 },
+  importDetail: { color: palette.muted, fontFamily: fonts.body, fontSize: 11, lineHeight: 16 },
   pressed: { opacity: 0.76, transform: [{ scale: 0.99 }] },
   empty: { paddingVertical: 54, alignItems: 'center', gap: 6, paddingHorizontal: 24 },
   emptyTitle: { color: palette.ink, fontFamily: fonts.display, fontSize: 23, fontWeight: '700' },
   emptyText: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  pages: { paddingVertical: 20, gap: 12, alignItems: 'center' },
   personRow: {
     minHeight: 76,
     flexDirection: 'row',

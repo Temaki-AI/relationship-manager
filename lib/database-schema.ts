@@ -1,4 +1,4 @@
-export const DATABASE_SCHEMA_VERSION = '6';
+export const DATABASE_SCHEMA_VERSION = '8';
 export const DATABASE_SCHEMA_VERSION_KEY = 'schema-version';
 
 export const REQUIRED_TABLE_COLUMNS: Record<string, readonly string[]> = {
@@ -18,6 +18,7 @@ export const REQUIRED_TABLE_COLUMNS: Record<string, readonly string[]> = {
     'notes',
     'gift_ideas',
     'custom_fields',
+    'contact_methods',
     'last_contacted',
     'contact_frequency',
     'created_at',
@@ -82,6 +83,7 @@ export const REQUIRED_TABLE_COLUMNS: Record<string, readonly string[]> = {
     'completed_at',
     'created_at',
   ],
+  contact_source_links: ['id', 'public_id', 'workspace_id', 'contact_id', 'provider', 'account_key', 'external_id', 'profile_url', 'origin', 'fields', 'revision', 'observed_at', 'created_at', 'updated_at'],
 };
 
 export const RESTORABLE_TABLES = [
@@ -99,6 +101,7 @@ export const RESTORABLE_TABLES = [
   'integration_connections',
   'sync_jobs',
   'plans',
+  'contact_source_links',
 ] as const;
 
 export const DELETE_TABLE_ORDER = [...RESTORABLE_TABLES].reverse();

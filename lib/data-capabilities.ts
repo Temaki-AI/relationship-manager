@@ -1,5 +1,5 @@
 export type DataCapability = {
-  id: 'vcard' | 'csv' | 'encrypted-backup' | 'linkedin-extension';
+  id: 'vcard' | 'csv' | 'encrypted-backup' | 'linkedin-extension' | 'linkedin-link';
   label: string;
   description: string;
   privacy: string;
@@ -9,6 +9,11 @@ export type DataCapability = {
 };
 
 export const DATA_CAPABILITIES: readonly DataCapability[] = [
+  {
+    id: 'linkedin-link', label: 'LinkedIn profile links', status: 'available', href: '/connections/linkedin', actionLabel: 'Link a profile',
+    description: 'Attach a LinkedIn profile to an existing person or create a person from it, keeping the original details for review.',
+    privacy: 'You supply the URL and details. Everclose does not fetch LinkedIn or automatically change your contact name.',
+  },
   {
     id: 'vcard',
     label: 'vCard address books',
@@ -49,5 +54,5 @@ export const DATA_CAPABILITIES: readonly DataCapability[] = [
 
 export const AUTOMATIC_ACCOUNT_SYNC = {
   enabled: false,
-  message: 'Google, Microsoft, email, and calendar accounts are not connected or read automatically in this release.',
+  message: 'Google, Microsoft, email, and calendar data are not read automatically when you sign in. Source connections, imports and recurring reads each require separate choices.',
 } as const;

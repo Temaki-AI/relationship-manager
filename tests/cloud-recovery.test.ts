@@ -28,7 +28,7 @@ test('cloud deletion creates a verified graph snapshot and restore preserves the
     assert.match(deleted.body.recoveryPoint.sha256, /^[a-f0-9]{64}$/);
     const savedFile = await h.assets.get(`test/backups/${deleted.body.recoveryPoint.filename}`);
     const legacy = JSON.parse(new TextDecoder().decode(await savedFile.arrayBuffer()));
-    legacy.version = 2;
+    legacy.version = 2; delete legacy.tables.contact_device_links;
     delete legacy.tables.daily_snoozes;
     legacy.tables.contact_children.forEach((row: Record<string, unknown>) => { delete row.linked_contact_id; });
     assert.deepEqual(h.validateCloudSnapshot(legacy, 'test').tables.daily_snoozes, [], 'older backups remain restorable');
@@ -60,10 +60,10 @@ test('cloud deletion creates a verified graph snapshot and restore preserves the
 test('cloud recovery refuses oversized workspaces before reading or deleting their data', async () => {
   const h = await createCloudHarness();
   try {
-    for (let index = 0; index < 17; index++) await h.db.prepare("INSERT INTO contacts (workspace_id, name, notes) VALUES ('test', ?, ?)").bind(`Contact ${index}`, 'x'.repeat(1_000_000)).run();
+    for (let index = 0; index < 34; index++) await h.db.prepare("INSERT INTO contacts (workspace_id, name, notes) VALUES ('test', ?, ?)").bind(`Contact ${index}`, 'x'.repeat(500_000)).run();
     const response = await h.call('contacts/1', { method: 'DELETE' });
     assert.equal(response.status, 413, JSON.stringify(response.body));
-    assert.equal((await h.db.prepare('SELECT COUNT(*) AS count FROM contacts').first()).count, 17);
+    assert.equal((await h.db.prepare('SELECT COUNT(*) AS count FROM contacts').first()).count, 34);
     assert.equal((await h.db.prepare('SELECT COUNT(*) AS count FROM cloud_backup_pins').first()).count, 0);
     assert.equal((await h.assets.list({ prefix: 'test/' })).objects.length, 0);
   } finally { await h.close(); }

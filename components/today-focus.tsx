@@ -3,6 +3,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { ArrowRight, CalendarClock, Check, CircleCheck, Mail, MessageCircle, Phone, RotateCcw } from 'lucide-react';
+import { Avatar } from '@/components/ui/avatar';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { getResponseErrorMessage } from '@/lib/utils';
@@ -98,22 +99,22 @@ function TodayCard({ item, onChanged }: { item: DailyFeedItem; onChanged: () => 
     } finally { setPending(false); }
   };
 
-  return <article className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm sm:p-5">
+  return <article className="rounded-2xl border border-border/70 bg-card p-5 shadow-card">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
+        {item.contactName && <div className="mb-3 flex items-center gap-3"><Avatar contact={{ name: item.contactName }} size="sm" /><span className="text-lg font-semibold">{item.contactName}</span></div>}
         <div className="flex flex-wrap items-center gap-2">
-          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${item.priority === 'high' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-900'}`}>{item.type === 'birthday' ? 'Birthday' : item.type === 'reminder' ? 'Reminder' : 'Check-in'}</span>
-          {item.contactName && <span className="text-sm text-muted-foreground">{item.contactName}</span>}
+          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${item.priority === 'high' ? 'bg-secondary text-primary' : 'bg-warning-soft text-warning'}`}>{item.type === 'birthday' ? 'Birthday' : item.type === 'reminder' ? 'Reminder' : 'Check-in'}</span>
         </div>
         <h3 className="mt-3 text-lg font-semibold leading-tight text-foreground">{item.title}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>
       </div>
-      <Link href={item.href} className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">Profile <ArrowRight className="h-4 w-4" /></Link>
+      <Link href={item.href} className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary hover:underline">Profile <ArrowRight className="h-4 w-4" /></Link>
     </div>
     {additionalReasons.length > 0 && <div className="mt-4 flex flex-wrap gap-2" aria-label="Other reasons to connect">
       {additionalReasons.map((reason) => <span key={reason.id} className="rounded-full bg-muted/70 px-3 py-1 text-xs text-foreground">{reason.title}</span>)}
     </div>}
-    {item.lastInteraction && <div className="mt-4 rounded-xl bg-[#f9f6f3] px-3.5 py-3 text-sm">
+    {item.lastInteraction && <div className="mt-4 rounded-xl bg-muted px-3.5 py-3 text-sm">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Last conversation · {displayDate(item.lastInteraction.date)}</p>
       <p className="mt-1 text-foreground">{item.lastInteraction.summary || `${item.lastInteraction.type} logged`}</p>
     </div>}
@@ -123,7 +124,7 @@ function TodayCard({ item, onChanged }: { item: DailyFeedItem; onChanged: () => 
       {item.reminderId && <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => void complete()} aria-label={`Mark ${item.title} as done`}><CircleCheck className="h-3.5 w-3.5" />{pending ? 'Working...' : 'Mark done'}</Button>}
       <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => toggle('snooze')} aria-expanded={panel === 'snooze'}><CalendarClock className="h-3.5 w-3.5" />Snooze</Button>
     </div>}
-    {panel === 'reach' && <div className="mt-3 rounded-xl border border-border/70 bg-[#fcfaf8] p-4">
+    {panel === 'reach' && <div className="mt-3 rounded-xl border border-border/70 bg-muted p-4">
       <p className="text-sm font-medium">How would you like to connect?</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {item.contactPhone && <a href={`tel:${item.contactPhone}`} className={buttonVariants({ size: 'sm', variant: 'outline' })}><Phone className="h-3.5 w-3.5" />Call</a>}
@@ -132,31 +133,31 @@ function TodayCard({ item, onChanged }: { item: DailyFeedItem; onChanged: () => 
       </div>
       <p className="mt-3 text-xs text-muted-foreground">Opening a contact method does not mark this as done. Log the conversation when it happens.</p>
     </div>}
-    {panel === 'log' && <form onSubmit={(event) => void log(event)} className="mt-3 rounded-xl border border-border/70 bg-[#fcfaf8] p-4">
+    {panel === 'log' && <form onSubmit={(event) => void log(event)} className="mt-3 rounded-xl border border-border/70 bg-muted p-4">
       <p className="text-sm font-medium">Capture what happened</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr]">
         <label className="text-xs font-medium text-foreground">Type
-          <select value={type} disabled={pending} onChange={(event) => { setType(event.target.value as ActivityType); logKey.current = null; }} className="mt-1 block h-10 w-full rounded-md border border-input bg-white px-3 text-sm">
+          <select value={type} disabled={pending} onChange={(event) => { setType(event.target.value as ActivityType); logKey.current = null; }} className="mt-1 block min-h-11 w-full rounded-lg border border-input bg-card px-3 text-sm">
             <option value="message">Message</option><option value="call">Call</option><option value="email">Email</option><option value="meetup">Meetup</option>
           </select>
         </label>
         <label className="text-xs font-medium text-foreground">Date
-          <input type="date" value={date} max={localDateAfter(0)} disabled={pending} onChange={(event) => { setDate(event.target.value); logKey.current = null; }} required className="mt-1 block h-10 w-full rounded-md border border-input bg-white px-3 text-sm" />
+          <input type="date" value={date} max={localDateAfter(0)} disabled={pending} onChange={(event) => { setDate(event.target.value); logKey.current = null; }} required className="mt-1 block min-h-11 w-full rounded-lg border border-input bg-card px-3 text-sm" />
         </label>
       </div>
       <label className="mt-3 block text-xs font-medium text-foreground">What would you like to remember?
-        <textarea value={summary} maxLength={500} rows={2} disabled={pending} onChange={(event) => { setSummary(event.target.value); logKey.current = null; }} required placeholder="A quick detail from your conversation" className="mt-1 block w-full rounded-md border border-input bg-white p-3 text-sm" />
+        <textarea value={summary} maxLength={500} rows={2} disabled={pending} onChange={(event) => { setSummary(event.target.value); logKey.current = null; }} required placeholder="A quick detail from your conversation" className="mt-1 block w-full rounded-lg border border-input bg-card p-3 text-sm" />
       </label>
       <div className="mt-3 flex gap-2"><Button type="submit" size="sm" disabled={pending || !summary.trim()}><Check className="h-3.5 w-3.5" />{pending ? 'Saving...' : 'Save moment'}</Button><Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => setPanel(null)}>Cancel</Button></div>
     </form>}
-    {panel === 'snooze' && <div className="mt-3 rounded-xl border border-border/70 bg-[#fcfaf8] p-4">
+    {panel === 'snooze' && <div className="mt-3 rounded-xl border border-border/70 bg-muted p-4">
       <p className="text-sm font-medium">Bring this prompt back</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {[{ days: 1, label: 'Tomorrow' }, { days: 7, label: 'In a week' }, { days: 30, label: 'In 30 days' }].map((option) => <Button key={option.days} type="button" variant="outline" size="sm" disabled={pending} onClick={() => void snooze(option.days)}>{option.label}</Button>)}
       </div>
       <p className="mt-3 text-xs text-muted-foreground">Only this reason is snoozed. A separate birthday or reminder for the same person will still appear.</p>
     </div>}
-    {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
   </article>;
 }
 
@@ -180,20 +181,20 @@ export function TodayFocus({ items, snoozes, onChanged }: { items: DailyFeedItem
 
   return <section aria-labelledby="today-focus-title" className="space-y-4">
     <div className="flex flex-wrap items-end justify-between gap-3">
-      <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Your daily rhythm</p><h2 id="today-focus-title" className="mt-1 text-xl font-semibold text-foreground sm:text-2xl">People and moments for today</h2><p className="mt-1 text-sm text-muted-foreground">Reasons from your own notes, dates, and reminders. You decide when to act.</p></div>
-      <Link href="/reminders" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">All reminders <ArrowRight className="h-4 w-4" /></Link>
+      <h2 id="today-focus-title" className="text-lg font-semibold text-foreground">Next up</h2>
+      <Link href="/reminders" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary hover:underline">All reminders <ArrowRight className="h-4 w-4" /></Link>
     </div>
     {items.length ? <div className="grid gap-3 lg:grid-cols-2">{items.map((item) => <TodayCard key={item.id} item={item} onChanged={onChanged} />)}</div>
-      : <div className="rounded-2xl border border-dashed border-border bg-white/80 px-6 py-12 text-center"><Check className="mx-auto h-8 w-8 text-emerald-600" /><h3 className="mt-3 text-lg font-semibold">You&apos;re caught up</h3><p className="mt-1 text-sm text-muted-foreground">Nothing needs your attention right now. New reasons will appear as dates and reminders come due.</p><Link href="/calendar" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">Explore your calendar <ArrowRight className="h-4 w-4" /></Link></div>}
-    {snoozes.length > 0 && <details className="rounded-xl border border-border/70 bg-white/80 px-4 py-3">
-      <summary className="cursor-pointer text-sm font-medium text-foreground">Snoozed prompts ({snoozes.length})</summary>
+      : <div className="rounded-2xl border border-dashed border-border bg-card/80 px-6 py-12 text-center"><Check className="mx-auto h-8 w-8 text-success" /><h3 className="mt-3 text-lg font-semibold">You&apos;re caught up</h3><p className="mt-1 text-sm text-muted-foreground">Nothing needs your attention right now. New reasons will appear as dates and reminders come due.</p><Link href="/calendar" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">Explore your calendar <ArrowRight className="h-4 w-4" /></Link></div>}
+    {snoozes.length > 0 && <details className="rounded-xl border border-border/70 bg-card/80 px-4 py-3">
+      <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-foreground">Snoozed prompts ({snoozes.length})</summary>
       <div className="mt-3 divide-y divide-border/60">
         {snoozes.map((snooze) => <div key={snooze.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
           <div><p className="font-medium">{snooze.reminder_title || (snooze.id.startsWith('birthday-') ? `${snooze.contact_name || 'Contact'}'s birthday` : `Reconnect with ${snooze.contact_name || 'contact'}`)}</p><p className="text-xs text-muted-foreground">Returns {displayDate(snooze.until_date)}</p></div>
           <Button type="button" variant="ghost" size="sm" disabled={restoringId !== null} onClick={() => void restore(snooze.id)}><RotateCcw className="h-3.5 w-3.5" />{restoringId === snooze.id ? 'Restoring...' : 'Bring back'}</Button>
         </div>)}
       </div>
-      {restoreError && <p role="alert" className="mt-2 text-sm text-red-700">{restoreError}</p>}
+      {restoreError && <p role="alert" className="mt-2 text-sm text-destructive">{restoreError}</p>}
     </details>}
   </section>;
 }

@@ -45,6 +45,8 @@ export type Workspace = {
 };
 
 export type Contact = {
+  public_id?: string;
+  contact_methods?: string;
   id: number;
   name: string;
   nickname: string | null;
@@ -86,6 +88,7 @@ export type Interaction = {
   id: number;
   contact_id: number;
   date: string;
+  occurred_at?: string | null;
   type: string;
   summary: string | null;
   notes: string | null;

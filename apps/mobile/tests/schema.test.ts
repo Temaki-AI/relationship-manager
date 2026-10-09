@@ -9,7 +9,7 @@ import {
 
 test('the mobile database starts with a monotonic sync-ready schema', () => {
   assert.equal(MOBILE_DATABASE_NAME, 'bonds-mobile.db');
-  assert.equal(MOBILE_SCHEMA_VERSION, 1);
+  assert.equal(MOBILE_SCHEMA_VERSION, 18);
   for (const table of ['contacts', 'interactions', 'reminders', 'sync_queue']) {
     assert.match(MOBILE_SCHEMA_SQL, new RegExp(`CREATE TABLE IF NOT EXISTS ${table}`));
   }

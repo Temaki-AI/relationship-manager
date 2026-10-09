@@ -82,6 +82,10 @@ export const workspaceMembers = sqliteTable('workspace_members', {
 
 export const contacts = sqliteTable('contacts', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  publicId: text('public_id').notNull().default(''),
+  mergeAliases: text('merge_aliases').notNull().default('[]'),
+  contactMethods: text('contact_methods').notNull().default('null'),
+  sourceRevision: integer('source_revision').notNull().default(0),
   workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   nickname: text('nickname'),
@@ -100,12 +104,22 @@ export const contacts = sqliteTable('contacts', {
   createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
+  uniqueIndex('contacts_workspace_public_id_idx').on(table.workspaceId, table.publicId),
   index('contacts_workspace_name_idx').on(table.workspaceId, table.name, table.id),
   index('contacts_workspace_last_contacted_idx').on(table.workspaceId, table.lastContacted),
 ]);
 
+// Derived from contacts.merge_aliases; recovery rebuilds this index rather than backing it up.
+export const contactMergeAliases = sqliteTable('contact_merge_aliases', {
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  publicId: text('public_id').notNull(),
+  canonicalPublicId: text('canonical_public_id').notNull(),
+}, (table) => [primaryKey({ columns: [table.workspaceId, table.publicId] }),
+  index('contact_merge_aliases_target_idx').on(table.workspaceId, table.canonicalPublicId)]);
+
 export const contactRelationships = sqliteTable('contact_relationships', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  publicId: text('public_id').notNull().default(''),
   workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   contactId: integer('contact_id').notNull().references(() => contacts.id, { onDelete: 'cascade' }),
   relatedContactId: integer('related_contact_id').notNull().references(() => contacts.id, { onDelete: 'cascade' }),
@@ -113,12 +127,14 @@ export const contactRelationships = sqliteTable('contact_relationships', {
   reciprocalLabel: text('reciprocal_label').notNull(),
   createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
+  uniqueIndex('relationships_workspace_public_id_idx').on(table.workspaceId, table.publicId),
   index('relationships_workspace_contact_idx').on(table.workspaceId, table.contactId, table.id),
   index('relationships_workspace_related_idx').on(table.workspaceId, table.relatedContactId, table.id),
 ]);
 
 export const contactChildren = sqliteTable('contact_children', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  publicId: text('public_id').notNull().default(''),
   workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   contactId: integer('contact_id').notNull().references(() => contacts.id, { onDelete: 'cascade' }),
   linkedContactId: integer('linked_contact_id').references(() => contacts.id, { onDelete: 'set null' }),
@@ -127,6 +143,7 @@ export const contactChildren = sqliteTable('contact_children', {
   createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
+  uniqueIndex('children_workspace_public_id_idx').on(table.workspaceId, table.publicId),
   index('children_workspace_contact_idx').on(table.workspaceId, table.contactId, table.id),
   uniqueIndex('children_workspace_linked_idx').on(table.workspaceId, table.contactId, table.linkedContactId),
   index('children_linked_contact_idx').on(table.linkedContactId),
@@ -134,17 +151,23 @@ export const contactChildren = sqliteTable('contact_children', {
 
 export const interactions = sqliteTable('interactions', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  publicId: text('public_id').notNull().default(''),
   workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   contactId: integer('contact_id').notNull().references(() => contacts.id, { onDelete: 'cascade' }),
   date: text('date').notNull(),
+  occurredAt: text('occurred_at'),
   type: text('type').notNull(),
   summary: text('summary'),
   notes: text('notes'),
   createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-}, (table) => [index('interactions_workspace_contact_date_idx').on(table.workspaceId, table.contactId, table.date, table.id)]);
+}, (table) => [
+  index('interactions_workspace_contact_date_idx').on(table.workspaceId, table.contactId, table.date, table.id),
+  uniqueIndex('interactions_workspace_public_id_idx').on(table.workspaceId, table.publicId),
+]);
 
 export const reminders = sqliteTable('reminders', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  publicId: text('public_id').notNull().default(''),
   workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   contactId: integer('contact_id').notNull().references(() => contacts.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
@@ -152,7 +175,10 @@ export const reminders = sqliteTable('reminders', {
   remindAt: text('remind_at').notNull(),
   completedAt: text('completed_at'),
   createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-}, (table) => [index('reminders_workspace_due_idx').on(table.workspaceId, table.completedAt, table.remindAt, table.id)]);
+}, (table) => [
+  index('reminders_workspace_due_idx').on(table.workspaceId, table.completedAt, table.remindAt, table.id),
+  uniqueIndex('reminders_workspace_public_id_idx').on(table.workspaceId, table.publicId),
+]);
 
 export const reminderEmailPreferences = sqliteTable('reminder_email_preferences', {
   workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
@@ -208,6 +234,342 @@ export const birthdayEmailScanState = sqliteTable('birthday_email_scan_state', {
   contactId: integer('contact_id').references(() => contacts.id, { onDelete: 'set null' }),
   updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+// Provider authorization is operational state, excluded from portable CRM snapshots.
+export const providerConnections = sqliteTable('provider_connections', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull(),
+  purpose: text('purpose').notNull().default('contacts'),
+  accountId: text('account_id').notNull(),
+  email: text('email').notNull(),
+  displayName: text('display_name').notNull(),
+  grantedScopes: text('granted_scopes').notNull(),
+  status: text('status').notNull(),
+  datasetEpoch: text('dataset_epoch').notNull(),
+  revision: integer('revision').notNull().default(1),
+  authorizationRevision: integer('authorization_revision').notNull().default(1),
+  credentials: text('credentials'),
+  accessExpiresAt: integer('access_expires_at'),
+  refreshExpiresAt: integer('refresh_expires_at'),
+  leaseToken: text('lease_token'),
+  leaseUntil: integer('lease_until'),
+  issue: text('issue'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [
+  uniqueIndex('provider_connections_identity_idx').on(table.workspaceId, table.provider, table.accountId, table.purpose),
+  index('provider_connections_owner_idx').on(table.workspaceId, table.userId),
+]);
+
+export const providerAuthorizationAttempts = sqliteTable('provider_authorization_attempts', {
+  purpose: text('purpose').notNull().default('contacts'),
+  stateHash: text('state_hash').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  datasetEpoch: text('dataset_epoch').notNull(),
+  connectionId: text('connection_id').references(() => providerConnections.id, { onDelete: 'cascade' }),
+  connectionRevision: integer('connection_revision'),
+  verifier: text('verifier').notNull(),
+  claimToken: text('claim_token'),
+  expiresAt: integer('expires_at').notNull(),
+}, (table) => [index('provider_authorization_owner_idx').on(table.workspaceId, table.userId, table.expiresAt)]);
+
+// Calendar authorization, discovery and choices are operational, outside CRM recovery.
+export const providerCalendarResources = sqliteTable('provider_calendar_resources', {
+  connectionId: text('connection_id').primaryKey().references(() => providerConnections.id, { onDelete: 'cascade' }),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  datasetEpoch: text('dataset_epoch').notNull(),
+  authorizationRevision: integer('authorization_revision').notNull(),
+  activeGeneration: text('active_generation'),
+  selectionRevision: integer('selection_revision').notNull().default(1),
+  selectedIds: text('selected_ids').notNull().default('[]'),
+  lastDiscoveredAt: text('last_discovered_at'),
+});
+export const providerCalendarRuns = sqliteTable('provider_calendar_runs', {
+  id: text('id').primaryKey(),
+  connectionId: text('connection_id').notNull().references(() => providerConnections.id, { onDelete: 'cascade' }),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  datasetEpoch: text('dataset_epoch').notNull(),
+  authorizationRevision: integer('authorization_revision').notNull(),
+  status: text('status').notNull().default('active'),
+  generation: text('generation').notNull(),
+  baseGeneration: text('base_generation'),
+  nextPage: text('next_page'),
+  pages: integer('pages').notNull().default(0),
+  processed: integer('processed').notNull().default(0),
+  revision: integer('revision').notNull().default(1),
+  leaseToken: text('lease_token'),
+  leaseUntil: integer('lease_until'),
+  failures: integer('failures').notNull().default(0),
+  retryAt: integer('retry_at').notNull().default(0),
+  issue: text('issue'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [index('provider_calendar_runs_connection_idx').on(table.connectionId, table.createdAt)]);
+export const providerCalendarCatalog = sqliteTable('provider_calendar_catalog', {
+  connectionId: text('connection_id').notNull().references(() => providerConnections.id, { onDelete: 'cascade' }),
+  generation: text('generation').notNull(),
+  calendarId: text('calendar_id').notNull(),
+  facts: text('facts').notNull(),
+}, (table) => [uniqueIndex('provider_calendar_catalog_identity_idx').on(table.connectionId, table.generation, table.calendarId)]);
+export const providerCalendars = sqliteTable('provider_calendars', {
+  connectionId: text('connection_id').notNull().references(() => providerConnections.id, { onDelete: 'cascade' }),
+  calendarId: text('calendar_id').notNull(),
+  facts: text('facts').notNull(),
+  availability: text('availability').notNull(),
+  observedAt: text('observed_at').notNull(),
+}, (table) => [uniqueIndex('provider_calendars_identity_idx').on(table.connectionId, table.calendarId)]);
+export const providerCalendarSelectionReceipts = sqliteTable('provider_calendar_selection_receipts', {
+  connectionId: text('connection_id').notNull().references(() => providerConnections.id, { onDelete: 'cascade' }),
+  operationId: text('operation_id').notNull(),
+  fingerprint: text('fingerprint').notNull(),
+  resultRevision: integer('result_revision').notNull(),
+  datasetEpoch: text('dataset_epoch').notNull(),
+  authorizationRevision: integer('authorization_revision').notNull(),
+}, (table) => [uniqueIndex('provider_calendar_selection_identity_idx').on(table.connectionId, table.operationId)]);
+
+// Selected-calendar downloads are an operational source index. Reviewed CRM event
+// associations belong to a separate canonical model, not these provider checkpoints.
+export const providerEventResources = sqliteTable('provider_event_resources', {
+  connectionId: text('connection_id').notNull().references(() => providerConnections.id, { onDelete: 'cascade' }),
+  calendarId: text('calendar_id').notNull(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  activeGeneration: text('active_generation'),
+  windowStart: text('window_start'),
+  windowEnd: text('window_end'),
+  lastDownloadedAt: text('last_downloaded_at'),
+  availability: text('availability').notNull().default('available'),
+  syncEnabled: integer('sync_enabled').notNull().default(0),
+  syncInterval: integer('sync_interval').notNull().default(86400),
+  settingsRevision: integer('settings_revision').notNull().default(0),
+  pastDays: integer('past_days').notNull().default(90),
+  futureDays: integer('future_days').notNull().default(180),
+  nextSyncAt: integer('next_sync_at').notNull().default(0),
+}, (table) => [primaryKey({ columns: [table.connectionId, table.calendarId] }), index('provider_event_resources_due_idx').on(table.syncEnabled, table.nextSyncAt)]);
+export const providerEventRuns = sqliteTable('provider_event_runs', {
+  id: text('id').primaryKey(),
+  connectionId: text('connection_id').notNull().references(() => providerConnections.id, { onDelete: 'cascade' }),
+  calendarId: text('calendar_id').notNull(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  datasetEpoch: text('dataset_epoch').notNull(),
+  authorizationRevision: integer('authorization_revision').notNull(),
+  selectionRevision: integer('selection_revision').notNull(),
+  fingerprint: text('fingerprint').notNull(),
+  scheduleRevision: integer('schedule_revision'),
+  status: text('status').notNull().default('active'),
+  generation: text('generation').notNull(),
+  baseGeneration: text('base_generation'),
+  calendarTimeZone: text('calendar_time_zone').notNull(),
+  windowStart: text('window_start').notNull(),
+  windowEnd: text('window_end').notNull(),
+  nextPage: text('next_page'),
+  pages: integer('pages').notNull().default(0),
+  processed: integer('processed').notNull().default(0),
+  revision: integer('revision').notNull().default(1),
+  leaseToken: text('lease_token'),
+  leaseUntil: integer('lease_until'),
+  failures: integer('failures').notNull().default(0),
+  retryAt: integer('retry_at').notNull().default(0),
+  issue: text('issue'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [index('provider_event_runs_resource_idx').on(table.connectionId, table.calendarId, table.createdAt)]);
+export const providerEventIndex = sqliteTable('provider_event_index', {
+  connectionId: text('connection_id').notNull().references(() => providerConnections.id, { onDelete: 'cascade' }),
+  calendarId: text('calendar_id').notNull(),
+  generation: text('generation').notNull(),
+  eventId: text('event_id').notNull(),
+  sortKey: text('sort_key').notNull(),
+  facts: text('facts').notNull(),
+}, (table) => [primaryKey({ columns: [table.connectionId, table.calendarId, table.generation, table.eventId] }),
+  index('provider_event_index_order_idx').on(table.connectionId, table.calendarId, table.generation, table.sortKey, table.eventId)]);
+export const providerEventPages = sqliteTable('provider_event_pages', {
+  runId: text('run_id').notNull().references(() => providerEventRuns.id, { onDelete: 'cascade' }),
+  tokenHash: text('token_hash').notNull(),
+}, (table) => [primaryKey({ columns: [table.runId, table.tokenHash] })]);
+
+// Gmail checkpoints and projections are a consented operational source cache.
+// Canonical people, notes and confirmed activities are stored separately.
+export const providerGmailResources = sqliteTable('provider_gmail_resources', {
+  connectionId: text('connection_id').primaryKey().references(() => providerConnections.id, { onDelete: 'cascade' }),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  datasetEpoch: text('dataset_epoch').notNull(), authorizationRevision: integer('authorization_revision').notNull(),
+  settingsRevision: integer('settings_revision').notNull().default(1), choices: text('choices').notNull(), activeGeneration: text('active_generation'),
+  checkpoint: text('checkpoint'), coverage: text('coverage').notNull().default('none'), windowStart: integer('window_start'), windowEnd: integer('window_end'), lastDownloadedAt: text('last_downloaded_at'),
+  syncEnabled: integer('sync_enabled').notNull().default(0), syncInterval: integer('sync_interval').notNull().default(86400),
+  syncRevision: integer('sync_revision').notNull().default(0), nextSyncAt: integer('next_sync_at').notNull().default(0), repairRequired: integer('repair_required').notNull().default(0),
+}, (table) => [index('provider_gmail_due').on(table.syncEnabled, table.nextSyncAt, table.connectionId)]);
+export const providerGmailRuns = sqliteTable('provider_gmail_runs', {
+  id: text('id').primaryKey(), connectionId: text('connection_id').notNull().references(() => providerGmailResources.connectionId, { onDelete: 'cascade' }),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  datasetEpoch: text('dataset_epoch').notNull(), authorizationRevision: integer('authorization_revision').notNull(), settingsRevision: integer('settings_revision').notNull(),
+  fingerprint: text('fingerprint').notNull(), generation: text('generation').notNull(), baseGeneration: text('base_generation'), mode: text('mode').notNull(),
+  phase: text('phase').notNull().default('profile'), windowStart: integer('window_start').notNull(), windowEnd: integer('window_end').notNull(),
+  historyStart: text('history_start'), historyCheckpoint: text('history_checkpoint'), labelPosition: integer('label_position').notNull().default(0), nextPage: text('next_page'),
+  pages: integer('pages').notNull().default(0), processed: integer('processed').notNull().default(0), limited: integer('limited').notNull().default(0),
+  status: text('status').notNull().default('active'), revision: integer('revision').notNull().default(1), leaseToken: text('lease_token'), leaseUntil: integer('lease_until'),
+  failures: integer('failures').notNull().default(0), retryAt: integer('retry_at').notNull().default(0), issue: text('issue'), createdAt: text('created_at').notNull(), updatedAt: text('updated_at').notNull(),
+  scheduleRevision: integer('schedule_revision'),
+}, (table) => [uniqueIndex('provider_gmail_one_active_run').on(table.connectionId).where(sql`${table.status} = 'active'`),
+  uniqueIndex('provider_gmail_run_generation').on(table.connectionId, table.generation), index('provider_gmail_runs_owner').on(table.workspaceId, table.userId, table.connectionId, table.createdAt),
+  index('provider_gmail_dispatch').on(table.status, table.scheduleRevision, table.updatedAt, table.id)]);
+export const providerGmailPending = sqliteTable('provider_gmail_pending', {
+  runId: text('run_id').notNull().references(() => providerGmailRuns.id, { onDelete: 'cascade' }), messageId: text('message_id').notNull(), phase: text('phase').notNull(), done: integer('done').notNull().default(0),
+}, (table) => [primaryKey({ columns: [table.runId, table.phase, table.messageId] })]);
+export const providerGmailIndex = sqliteTable('provider_gmail_index', {
+  connectionId: text('connection_id').notNull(), generation: text('generation').notNull(), messageId: text('message_id').notNull(), receivedAt: integer('received_at').notNull(), observedAt: integer('observed_at').notNull(), facts: text('facts').notNull(),
+}, (table) => [primaryKey({ columns: [table.connectionId, table.generation, table.messageId] }),
+  foreignKey({ columns: [table.connectionId, table.generation], foreignColumns: [providerGmailRuns.connectionId, providerGmailRuns.generation] }).onDelete('cascade'),
+  index('provider_gmail_index_date').on(table.connectionId, table.generation, table.receivedAt, table.messageId)]);
+export const providerGmailPages = sqliteTable('provider_gmail_pages', {
+  runId: text('run_id').notNull().references(() => providerGmailRuns.id, { onDelete: 'cascade' }), phase: text('phase').notNull(), tokenHash: text('token_hash').notNull(),
+}, (table) => [primaryKey({ columns: [table.runId, table.phase, table.tokenHash] })]);
+
+export const gmailContactDirectory = sqliteTable('gmail_contact_directory', {
+  workspaceId: text('workspace_id').primaryKey().references(() => workspaces.id, { onDelete: 'cascade' }),
+  revision: integer('revision').notNull().default(0), cursorId: integer('cursor_id').notNull().default(0),
+  bootstrapped: integer('bootstrapped').notNull().default(0), progressRevision: integer('progress_revision').notNull().default(0),
+});
+export const gmailContactDirectoryPending = sqliteTable('gmail_contact_directory_pending', {
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }), contactPublicId: text('contact_public_id').notNull(),
+}, (table) => [primaryKey({ columns: [table.workspaceId, table.contactPublicId] })]);
+export const gmailContactDirectoryEntries = sqliteTable('gmail_contact_directory_entries', {
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }), email: text('email').notNull(), contactPublicId: text('contact_public_id').notNull(),
+}, (table) => [primaryKey({ columns: [table.workspaceId, table.email, table.contactPublicId] }), index('gmail_contact_directory_person').on(table.workspaceId, table.contactPublicId)]);
+export const providerGmailParticipants = sqliteTable('provider_gmail_participants', {
+  connectionId: text('connection_id').notNull(), generation: text('generation').notNull(), messageId: text('message_id').notNull(),
+  email: text('email').notNull(), roles: text('roles').notNull(), receivedAt: integer('received_at').notNull(),
+}, (table) => [primaryKey({ columns: [table.connectionId, table.generation, table.messageId, table.email] }),
+  foreignKey({ columns: [table.connectionId, table.generation, table.messageId], foreignColumns: [providerGmailIndex.connectionId, providerGmailIndex.generation, providerGmailIndex.messageId] }).onDelete('cascade'),
+  index('provider_gmail_participants_email').on(table.connectionId, table.generation, table.email, table.receivedAt, table.messageId)]);
+export const providerGmailMatching = sqliteTable('provider_gmail_matching', {
+  connectionId: text('connection_id').primaryKey().references(() => providerGmailResources.connectionId, { onDelete: 'cascade' }), revision: integer('revision').notNull().default(0),
+});
+export const providerGmailMatchRules = sqliteTable('provider_gmail_match_rules', {
+  connectionId: text('connection_id').notNull().references(() => providerGmailMatching.connectionId, { onDelete: 'cascade' }), email: text('email').notNull(),
+  action: text('action').notNull(), targetPublicId: text('target_public_id'), candidateBasis: text('candidate_basis').notNull(),
+}, (table) => [primaryKey({ columns: [table.connectionId, table.email] }), index('provider_gmail_match_rules_person').on(table.connectionId, table.targetPublicId, table.email)]);
+export const providerGmailMatchReceipts = sqliteTable('provider_gmail_match_receipts', {
+  connectionId: text('connection_id').notNull().references(() => providerGmailMatching.connectionId, { onDelete: 'cascade' }), operationId: text('operation_id').notNull(),
+  fingerprint: text('fingerprint').notNull(), revision: integer('revision').notNull(), action: text('action').notNull(), email: text('email').notNull(), targetPublicId: text('target_public_id'),
+}, (table) => [primaryKey({ columns: [table.connectionId, table.operationId] })]);
+
+// An outbound calendar create has no provider idempotency key. Keep its frozen
+// request and attempted marker across reauthorization/recovery for read-only repair.
+export const providerOwnedCalendars = sqliteTable('provider_owned_calendars', {
+  connectionId: text('connection_id').primaryKey().references(() => providerConnections.id, { onDelete: 'cascade' }),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  operationId: text('operation_id').notNull(),
+  fingerprint: text('fingerprint').notNull(),
+  requestJson: text('request_json').notNull(),
+  datasetEpoch: text('dataset_epoch').notNull(),
+  authorizationRevision: integer('authorization_revision').notNull(),
+  attempted: integer('attempted').notNull().default(0),
+  status: text('status').notNull().default('pending'),
+  calendarId: text('calendar_id'),
+  issue: text('issue'),
+  revision: integer('revision').notNull().default(1),
+  leaseToken: text('lease_token'),
+  leaseUntil: integer('lease_until'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [uniqueIndex('provider_owned_calendars_operation_idx').on(table.operationId)]);
+
+// Download checkpoints and source previews are operational, not canonical CRM records.
+export const providerContactResources = sqliteTable('provider_contact_resources', {
+  connectionId: text('connection_id').primaryKey().references(() => providerConnections.id, { onDelete: 'cascade' }),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  datasetEpoch: text('dataset_epoch').notNull(),
+  authorizationRevision: integer('authorization_revision').notNull(),
+  activeGeneration: text('active_generation'),
+  syncCursor: text('sync_cursor'),
+  cursorIssuedAt: integer('cursor_issued_at'),
+  requestVersion: integer('request_version').notNull(),
+  lastSyncedAt: text('last_synced_at'),
+  syncEnabled: integer('sync_enabled').notNull().default(0),
+  syncInterval: integer('sync_interval').notNull().default(86400),
+  nextSyncAt: integer('next_sync_at').notNull().default(0),
+  settingsRevision: integer('settings_revision').notNull().default(1),
+});
+
+export const providerContactRuns = sqliteTable('provider_contact_runs', {
+  id: text('id').primaryKey(),
+  connectionId: text('connection_id').notNull().references(() => providerConnections.id, { onDelete: 'cascade' }),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  datasetEpoch: text('dataset_epoch').notNull(),
+  authorizationRevision: integer('authorization_revision').notNull(),
+  forceFull: integer('force_full').notNull(),
+  mode: text('mode').notNull(),
+  phase: text('phase').notNull(),
+  status: text('status').notNull(),
+  generation: text('generation').notNull(),
+  baseGeneration: text('base_generation'),
+  inputCursor: text('input_cursor'),
+  nextPage: text('next_page'),
+  copyAfter: text('copy_after'),
+  reconcileAfter: integer('reconcile_after').notNull().default(0),
+  reconciled: integer('reconciled').notNull().default(0),
+  reconcileSkipped: integer('reconcile_skipped').notNull().default(0),
+  scheduleRevision: integer('schedule_revision'),
+  pages: integer('pages').notNull().default(0),
+  failures: integer('failures').notNull().default(0),
+  processed: integer('processed').notNull().default(0),
+  revision: integer('revision').notNull().default(1),
+  leaseToken: text('lease_token'),
+  leaseUntil: integer('lease_until'),
+  nextAttemptAt: integer('next_attempt_at').notNull().default(0),
+  issue: text('issue'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [
+  uniqueIndex('provider_contact_active_run_idx').on(table.connectionId).where(sql`status = 'active'`),
+  index('provider_contact_run_owner_idx').on(table.workspaceId, table.connectionId, table.createdAt),
+  index('provider_contact_run_retry_idx').on(table.status, table.nextAttemptAt, table.updatedAt),
+]);
+
+export const providerContactIndex = sqliteTable('provider_contact_index', {
+  connectionId: text('connection_id').notNull().references(() => providerConnections.id, { onDelete: 'cascade' }),
+  generation: text('generation').notNull(),
+  sourceId: text('source_id').notNull(),
+  resourceName: text('resource_name').notNull(),
+  facts: text('facts').notNull(),
+  observedAt: text('observed_at').notNull(),
+}, (table) => [
+  uniqueIndex('provider_contact_index_identity_idx').on(table.connectionId, table.generation, table.sourceId),
+  index('provider_contact_index_resource_idx').on(table.connectionId, table.generation, table.resourceName),
+]);
+
+export const deviceAuthorizationCodes = sqliteTable('device_authorization_codes', {
+  codeHash: text('code_hash').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  challenge: text('challenge').notNull(),
+  state: text('state').notNull(),
+  deviceName: text('device_name').notNull(),
+  expiresAt: text('expires_at').notNull(),
+  deviceId: text('device_id'),
+  consumedAt: text('consumed_at'),
+  createdAt: text('created_at').notNull(),
+}, (table) => [index('device_codes_user_expiry_idx').on(table.userId, table.expiresAt)]);
+
+export const deviceSessions = sqliteTable('device_sessions', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: text('token_hash').notNull().unique(),
+  deviceName: text('device_name').notNull(),
+  expiresAt: text('expires_at').notNull(),
+  revokedAt: text('revoked_at'),
+  createdAt: text('created_at').notNull(),
+}, (table) => [index('device_sessions_owner_idx').on(table.workspaceId, table.userId, table.expiresAt)]);
 
 export const childBirthdayEmailScanState = sqliteTable('child_birthday_email_scan_state', {
   id: integer('id').primaryKey(),
@@ -274,6 +636,28 @@ export const integrationConnections = sqliteTable('integration_connections', {
   updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [uniqueIndex('connections_workspace_provider_idx').on(table.workspaceId, table.provider)]);
 
+// Source facts and identity are CRM data; credentials never belong in this table.
+export const contactSourceLinks = sqliteTable('contact_source_links', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  publicId: text('public_id').notNull(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  contactId: integer('contact_id').notNull().references(() => contacts.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull(),
+  accountKey: text('account_key').notNull(),
+  externalId: text('external_id').notNull(),
+  profileUrl: text('profile_url').notNull(),
+  origin: text('origin').notNull(),
+  fields: text('fields').notNull().default('{}'),
+  revision: integer('revision').notNull().default(1),
+  observedAt: text('observed_at').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [
+  uniqueIndex('source_links_workspace_public_idx').on(table.workspaceId, table.publicId),
+  uniqueIndex('source_links_external_idx').on(table.workspaceId, table.provider, table.accountKey, table.externalId),
+  index('source_links_contact_idx').on(table.workspaceId, table.contactId, table.id),
+]);
+
 export const syncJobs = sqliteTable('sync_jobs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
@@ -288,6 +672,7 @@ export const syncJobs = sqliteTable('sync_jobs', {
 
 export const plans = sqliteTable('plans', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  publicId: text('public_id').notNull().default(''),
   workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   contactId: integer('contact_id').notNull().references(() => contacts.id, { onDelete: 'cascade' }),
   type: text('type').notNull(),
@@ -296,7 +681,61 @@ export const plans = sqliteTable('plans', {
   notes: text('notes'),
   completedAt: text('completed_at'),
   createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-}, (table) => [index('plans_workspace_contact_date_idx').on(table.workspaceId, table.contactId, table.plannedDate, table.id)]);
+}, (table) => [
+  uniqueIndex('plans_workspace_public_id_idx').on(table.workspaceId, table.publicId),
+  index('plans_workspace_contact_date_idx').on(table.workspaceId, table.contactId, table.plannedDate, table.id),
+]);
+
+export const contactProviderLinks = sqliteTable('contact_provider_links', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  publicId: text('public_id').notNull(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  contactId: integer('contact_id').notNull().references(() => contacts.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull(),
+  accountKey: text('account_key').notNull(),
+  accountEmail: text('account_email').notNull(),
+  externalId: text('external_id').notNull(),
+  resourceName: text('resource_name').notNull(),
+  originalFacts: text('original_facts').notNull(),
+  observedFacts: text('observed_facts').notNull(),
+  appliedFields: text('applied_fields').notNull(),
+  status: text('status').notNull(),
+  revision: integer('revision').notNull().default(1),
+  observedAt: text('observed_at').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [
+  uniqueIndex('provider_links_workspace_public_idx').on(table.workspaceId, table.publicId),
+  uniqueIndex('provider_links_identity_idx').on(table.workspaceId, table.provider, table.accountKey, table.externalId),
+  index('provider_links_contact_idx').on(table.workspaceId, table.contactId, table.id),
+]);
+
+export const providerFieldRules = sqliteTable('provider_field_rules', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  sourceLinkId: integer('source_link_id').notNull().references(() => contactProviderLinks.id, { onDelete: 'cascade' }),
+  fields: text('fields').notNull(),
+  revision: integer('revision').notNull().default(1),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [uniqueIndex('provider_field_rules_source_idx').on(table.workspaceId, table.sourceLinkId)]);
+
+export const contactDeviceLinks = sqliteTable('contact_device_links', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  publicId: text('public_id').notNull(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  contactId: integer('contact_id').notNull().references(() => contacts.id, { onDelete: 'cascade' }),
+  installationId: text('installation_id').notNull(),
+  externalId: text('external_id').notNull(),
+  originalFacts: text('original_facts').notNull(),
+  observedFacts: text('observed_facts').notNull(),
+  appliedFields: text('applied_fields').notNull(),
+  revision: integer('revision').notNull().default(1),
+  observedAt: text('observed_at').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [uniqueIndex('device_links_workspace_public_idx').on(table.workspaceId, table.publicId),
+  uniqueIndex('device_links_identity_idx').on(table.workspaceId, table.installationId, table.externalId),
+  index('device_links_contact_idx').on(table.workspaceId, table.contactId, table.id)]);
 
 export const mutationReceipts = sqliteTable('mutation_receipts', {
   workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
@@ -394,6 +833,116 @@ export const cloudMaintenanceGuards = sqliteTable('cloud_maintenance_guards', {
   token: text('token').primaryKey(),
   allowed: integer('allowed').notNull(),
 });
+
+export const calendarPlanPublications = sqliteTable('calendar_plan_publications', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  connectionId: text('connection_id').notNull().references(() => providerConnections.id, { onDelete: 'cascade' }),
+  planPublicId: text('plan_public_id').notNull(),
+  calendarId: text('calendar_id').notNull(),
+  eventId: text('event_id').notNull(),
+  creatorClientId: text('creator_client_id').notNull(),
+  followDate: integer('follow_date').notNull().default(0),
+  lastPlanDate: text('last_plan_date'),
+  lastEtag: text('last_etag'),
+  status: text('status').notNull().default('pending'),
+  issue: text('issue'),
+  revision: integer('revision').notNull().default(1),
+  confirmedAt: text('confirmed_at'),
+  leaseToken: text('lease_token'),
+  leaseUntil: integer('lease_until'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [uniqueIndex('calendar_plan_publications_plan_idx').on(table.workspaceId, table.planPublicId),
+  uniqueIndex('calendar_plan_publications_event_idx').on(table.workspaceId, table.connectionId, table.calendarId, table.eventId)]);
+export const calendarPlanWrites = sqliteTable('calendar_plan_writes', {
+  id: text('id').primaryKey(),
+  publicationId: text('publication_id').notNull().references(() => calendarPlanPublications.id, { onDelete: 'cascade' }),
+  fingerprint: text('fingerprint').notNull(),
+  requestJson: text('request_json').notNull(),
+  planFingerprint: text('plan_fingerprint').notNull(),
+  datasetEpoch: text('dataset_epoch').notNull(),
+  authorizationRevision: integer('authorization_revision').notNull(),
+  publicationRevision: integer('publication_revision').notNull(),
+  kind: text('kind').notNull(),
+  baseEtag: text('base_etag'),
+  attempts: integer('attempts').notNull().default(0),
+  status: text('status').notNull().default('pending'),
+  issue: text('issue'),
+  revision: integer('revision').notNull().default(1),
+  retryAt: integer('retry_at').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [index('calendar_plan_writes_current_idx').on(table.publicationId, table.createdAt)]);
+
+export const calendarPublicationReviews = sqliteTable('calendar_publication_reviews', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  receiptId: text('receipt_id').notNull(),
+  planPublicId: text('plan_public_id').notNull(),
+  reviewingDeviceId: text('reviewing_device_id').notNull(),
+  epoch: text('epoch').notNull(),
+  expectedRevision: integer('expected_revision'),
+  planFingerprint: text('plan_fingerprint').notNull(),
+  observedMarker: text('observed_marker').notNull(),
+  requestFingerprint: text('request_fingerprint').notNull(),
+  createdAt: text('created_at').notNull(),
+}, (table) => [index('calendar_publication_reviews_receipt_idx').on(table.workspaceId, table.receiptId, table.createdAt)]);
+
+export const calendarPublicationReservations = sqliteTable('calendar_publication_reservations', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  planPublicId: text('plan_public_id').notNull(),
+  provider: text('provider').notNull(),
+  publisherId: text('publisher_id').notNull(),
+  epoch: text('epoch').notNull(),
+  planFingerprint: text('plan_fingerprint'),
+  requestFingerprint: text('request_fingerprint'),
+  status: text('status').notNull().default('reserved'),
+  attempted: integer('attempted').notNull().default(0),
+  resultAction: text('result_action'),
+  revision: integer('revision').notNull().default(1),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [uniqueIndex('calendar_reservations_live_plan_idx').on(table.workspaceId, table.planPublicId).where(sql`${table.status} != 'cancelled'`),
+  index('calendar_reservations_workspace_idx').on(table.workspaceId, table.createdAt)]);
+
+export const calendarEvents = sqliteTable('calendar_events', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  publicId: text('public_id').notNull(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull(),
+  accountKey: text('account_key').notNull(),
+  accountEmail: text('account_email').notNull(),
+  calendarKey: text('calendar_key').notNull(),
+  calendarLabel: text('calendar_label').notNull(),
+  calendarTimeZone: text('calendar_time_zone').notNull(),
+  externalId: text('external_id').notNull(),
+  facts: text('facts').notNull(),
+  availability: text('availability').notNull(),
+  revision: integer('revision').notNull().default(1),
+  observedAt: text('observed_at').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [uniqueIndex('calendar_events_public_idx').on(table.workspaceId, table.publicId),
+  uniqueIndex('calendar_events_source_idx').on(table.workspaceId, table.provider, table.accountKey, table.calendarKey, table.externalId)]);
+export const calendarEventPeople = sqliteTable('calendar_event_people', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  eventId: integer('event_id').notNull().references(() => calendarEvents.id, { onDelete: 'cascade' }),
+  contactId: integer('contact_id').notNull().references(() => contacts.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+}, (table) => [uniqueIndex('calendar_event_people_identity_idx').on(table.workspaceId, table.eventId, table.contactId), index('calendar_event_people_contact_idx').on(table.workspaceId, table.contactId, table.eventId)]);
+export const calendarEventPlans = sqliteTable('calendar_event_plans', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  eventId: integer('event_id').notNull().references(() => calendarEvents.id, { onDelete: 'cascade' }),
+  planId: integer('plan_id').notNull().references(() => plans.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+}, (table) => [uniqueIndex('calendar_event_plans_plan_idx').on(table.workspaceId, table.planId), index('calendar_event_plans_event_idx').on(table.workspaceId, table.eventId)]);
 
 export const cloudSnapshotRestoreJobs = sqliteTable('cloud_snapshot_restore_jobs', {
   id: text('id').primaryKey(),
@@ -500,6 +1049,61 @@ export const contactExportJobs = sqliteTable('contact_export_jobs', {
   index('export_jobs_retention_idx').on(table.updatedAt),
 ]);
 
+export const workspaceSyncState = sqliteTable('workspace_sync_state', {
+  workspaceId: text('workspace_id').primaryKey().references(() => workspaces.id, { onDelete: 'cascade' }),
+  epoch: text('epoch').notNull(),
+  paused: integer('paused').notNull().default(0),
+  updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// The latest replica projection retains deletion markers to reject resurrected IDs.
+export const syncContactRecords = sqliteTable('sync_contact_records', {
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  publicId: text('public_id').notNull(),
+  legacyId: integer('legacy_id').notNull(),
+  revision: integer('revision').notNull(),
+  payload: text('payload'),
+  deletedAt: text('deleted_at'),
+}, (table) => [
+  primaryKey({ columns: [table.workspaceId, table.publicId] }),
+  index('sync_contacts_bootstrap_idx').on(table.workspaceId, table.deletedAt, table.publicId),
+]);
+
+export const syncChanges = sqliteTable('sync_changes', {
+  sequence: integer('sequence').primaryKey({ autoIncrement: true }),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  epoch: text('epoch').notNull(),
+  entityType: text('entity_type').notNull(),
+  entityId: text('entity_id').notNull(),
+  operation: text('operation').notNull(),
+  revision: integer('revision').notNull(),
+  payload: text('payload'),
+  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [index('sync_changes_pull_idx').on(table.workspaceId, table.epoch, table.sequence)]);
+
+export const syncEntityRecords = sqliteTable('sync_entity_records', {
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  entityType: text('entity_type').notNull(),
+  publicId: text('public_id').notNull(),
+  legacyId: integer('legacy_id').notNull(),
+  revision: integer('revision').notNull(),
+  payload: text('payload'),
+  deletedAt: text('deleted_at'),
+}, (table) => [
+  primaryKey({ columns: [table.workspaceId, table.entityType, table.publicId] }),
+  index('sync_entities_bootstrap_idx').on(table.workspaceId, table.deletedAt, table.entityType, table.publicId),
+]);
+
+export const syncMutationReceipts = sqliteTable('sync_mutation_receipts', {
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  epoch: text('epoch').notNull(),
+  operationId: text('operation_id').notNull(),
+  fingerprint: text('fingerprint').notNull(),
+  ownerToken: text('owner_token').notNull(),
+  result: text('result'),
+  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [primaryKey({ columns: [table.workspaceId, table.epoch, table.operationId] })]);
+
 export const userRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   accounts: many(accounts),
@@ -523,6 +1127,8 @@ export const schema = {
   verification: verifications,
   workspaces,
   workspaceMembers,
+  deviceAuthorizationCodes,
+  deviceSessions,
   contacts,
   contactRelationships,
   contactChildren,
@@ -533,8 +1139,45 @@ export const schema = {
   contactGroupMembers,
   relationshipFacts,
   integrationConnections,
+  providerConnections,
+  providerAuthorizationAttempts,
+  providerCalendarResources,
+  providerCalendarRuns,
+  providerCalendarCatalog,
+  providerCalendars,
+  providerCalendarSelectionReceipts,
+  providerEventResources,
+  providerEventRuns,
+  providerEventIndex,
+  providerEventPages,
+  providerGmailResources,
+  providerGmailRuns,
+  providerGmailPending,
+  providerGmailIndex,
+  providerGmailPages,
+  gmailContactDirectory,
+  gmailContactDirectoryPending,
+  gmailContactDirectoryEntries,
+  providerGmailParticipants,
+  providerGmailMatching,
+  providerGmailMatchRules,
+  providerGmailMatchReceipts,
+  providerOwnedCalendars,
+  providerContactResources,
+  providerContactRuns,
+  providerContactIndex,
+  contactProviderLinks,
+  providerFieldRules,
+  contactDeviceLinks,
   syncJobs,
   plans,
+  calendarEvents,
+  calendarPlanPublications,
+  calendarPlanWrites,
+  calendarPublicationReservations,
+  calendarPublicationReviews,
+  calendarEventPeople,
+  calendarEventPlans,
   mutationReceipts,
   cloudBackupFiles,
   cloudBackupPins,
@@ -548,4 +1191,9 @@ export const schema = {
   contactImportRows,
   contactImportSources,
   contactExportJobs,
+  workspaceSyncState,
+  syncContactRecords,
+  syncChanges,
+  syncEntityRecords,
+  syncMutationReceipts,
 };

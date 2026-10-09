@@ -54,10 +54,14 @@ export async function createCloudHarness() {
     runtime = mf;
     db = await mf.getD1Database('DB');
     bucket = await mf.getR2Bucket('PRIVATE_ASSETS');
-    for (const filename of readdirSync(path.join(root, 'drizzle')).filter((name) => name.endsWith('.sql')).sort()) {
-      for (const sql of readFileSync(path.join(root, 'drizzle', filename), 'utf8').split('--> statement-breakpoint')) {
-        if (sql.trim()) await db.prepare(sql).run();
+    try {
+      for (const filename of readdirSync(path.join(root, 'drizzle')).filter((name) => name.endsWith('.sql')).sort()) {
+        for (const sql of readFileSync(path.join(root, 'drizzle', filename), 'utf8').split('--> statement-breakpoint')) {
+          if (sql.trim()) await db.prepare(sql).run();
+        }
       }
+    } catch (error) {
+      await mf.dispose(); sqlite.close(); throw error;
     }
   } else {
     for (const filename of readdirSync(path.join(root, 'drizzle')).filter((name) => name.endsWith('.sql')).sort()) {
@@ -126,11 +130,16 @@ export async function createCloudHarness() {
   }
   type Handler = (request: Request, workspaceId: string, path: string[]) => Promise<Response>;
   const contactApi = load(path.join(root, 'lib/cloud/contact-api.ts'));
+  const sourceApi = load(path.join(root, 'lib/cloud/contact-source-api.ts'));
+  const syncApi = load(path.join(root, 'lib/cloud/sync-api.ts'));
+  const syncV2Api = load(path.join(root, 'lib/cloud/sync-v2-api.ts'));
+  const deviceApi = load(path.join(root, 'lib/cloud/device-api.ts'));
+  const deviceSourceApi = load(path.join(root, 'lib/cloud/device-source-api.ts'));
   const duplicateMergeApi = load(path.join(root, 'lib/cloud/duplicate-merge-api.ts'));
   const duplicateReviewApi = load(path.join(root, 'lib/cloud/duplicate-review-api.ts'));
   const enrichmentApi = load(path.join(root, 'lib/cloud/enrich-api.ts'));
   const contactHandler = contactApi.handleCloudContacts as Handler;
-  const coreHandler = load(path.join(root, 'lib/cloud/core-api.ts')).handleCloudCore as Handler;
+  const coreHandler = load(path.join(root, 'lib/cloud/core-api.ts')).handleCloudCore as (request: Request, workspaceId: string, path: string[], userId?: string) => Promise<Response>;
   const backupApi = load(path.join(root, 'lib/cloud/backup-api.ts'));
   const recoveryContract = load(path.join(root, 'lib/cloud/recovery-contract.ts'));
   const importApi = load(path.join(root, 'lib/cloud/import-api.ts'));
@@ -150,6 +159,10 @@ export async function createCloudHarness() {
   const automaticBackup = load(path.join(root, 'lib/cloud/automatic-backup.ts'));
   const snapshotCleanup = load(path.join(root, 'lib/cloud/snapshot-cleanup.ts'));
   async function call(endpoint: string, options: { method?: string; body?: unknown; form?: FormData; key?: string | null; workspace?: string; role?: string; lifecycle?: string; headers?: Record<string, string> } = {}) {
+    if (endpoint === 'sources/linkedin' && options.method === 'POST' && options.body && typeof options.body === 'object' && !('expected_epoch' in options.body)) {
+      const state = await db.prepare('SELECT epoch FROM workspace_sync_state WHERE workspace_id = ?').bind(options.workspace || 'test').first();
+      options = { ...options, body: { ...options.body, expected_epoch: state.epoch } };
+    }
     const parts = endpoint.split('?')[0].split('/');
     const headers = new Headers({ 'Content-Type': 'application/json', ...options.headers });
     if (options.form) headers.delete('Content-Type');
@@ -159,7 +172,30 @@ export async function createCloudHarness() {
       body: options.form || (options.body === undefined ? undefined : JSON.stringify(options.body)),
     });
     let response;
-    if (parts[0] === 'today' && parts[1] === 'snooze') {
+    if (parts.join('/') === 'v1/calendar-reservations' || parts.join('/') === 'v1/today-snoozes' || parts.join('/') === 'v1/gmail-context' || parts[0] === 'v1' && parts[1] === 'contact-photos' || parts.join('/') === 'v1/calendar-event-links/push' || parts.join('/') === 'v1/device-sources/push' || parts[0] === 'contacts' && parts[2] === 'device-sources') {
+      const authorization = headers.get('authorization');
+      let actor: unknown = { userId: 'owner', workspaceId: options.workspace || 'test', authMethod: 'web', lifecycle: 'active' };
+      if (authorization) {
+        try { actor = { ...await (deviceApi.requireDeviceWorkspace as (db: typeof db, h: Headers) => Promise<unknown>)(db, headers), authMethod: 'device' }; }
+        catch { return { status: 401, headers: new Headers(), body: { error: 'Device session revoked.' } }; }
+      }
+      const handler = parts.join('/') === 'v1/calendar-reservations' ? load(path.join(root, 'lib/cloud/calendar-reservation-api.ts')).handleCalendarReservations : parts.join('/') === 'v1/today-snoozes' ? load(path.join(root, 'lib/cloud/today-snooze-sync-api.ts')).handleTodaySnoozeSync : parts.join('/') === 'v1/gmail-context' ? load(path.join(root, 'lib/cloud/gmail-context-api.ts')).handleGmailContext : parts[0] === 'v1' && parts[1] === 'contact-photos'
+        ? load(path.join(root, 'lib/cloud/contact-photo-api.ts')).handleContactPhotos : parts.join('/') === 'v1/calendar-event-links/push'
+          ? load(path.join(root, 'lib/cloud/calendar-event-link-api.ts')).handleCalendarEventLinks : deviceSourceApi.handleDeviceSources;
+      response = await (handler as (r: Request, a: unknown, p: string[]) => Promise<Response>)(request, actor, parts);
+    } else if (parts[0] === 'calendar' && parts[1] === 'events') {
+      response = await (load(path.join(root, 'lib/cloud/calendar-event-links.ts')).handleSavedCalendarEvents as (r: Request, a: unknown, p: string[]) => Promise<Response>)(request, { userId: 'owner', workspaceId: options.workspace || 'test', lifecycle: 'active', authMethod: 'web' }, parts);
+    } else if (parts[0] === 'sources' || parts[0] === 'contacts' && parts[2] === 'sources') {
+      response = await (sourceApi.handleCloudContactSources as Handler)(request, options.workspace || 'test', parts);
+    } else if (parts[0] === 'v1' && parts[1] === 'sync') {
+      response = await (syncApi.handleCloudSync as Handler)(request, options.workspace || 'test', parts);
+    } else if (parts[0] === 'v2' && parts[1] === 'sync') {
+      response = await (syncV2Api.handleCloudSyncV2 as Handler)(request, options.workspace || 'test', parts);
+    } else if (parts[0] === 'v4' && parts[1] === 'sync') {
+      response = await (syncV2Api.handleCloudSyncV4 as Handler)(request, options.workspace || 'test', parts);
+    } else if (parts[0] === 'v3' && parts[1] === 'sync') {
+      response = await (syncV2Api.handleCloudSyncV3 as Handler)(request, options.workspace || 'test', parts);
+    } else if (parts[0] === 'today' && parts[1] === 'snooze') {
       response = await (todayApi.handleCloudTodaySnooze as (r: Request, w: string) => Promise<Response>)(request, options.workspace || 'test');
     } else if (parts[0] === 'enrich') {
       response = await (enrichmentApi.handleCloudEnrich as (r: Request) => Promise<Response>)(request);
@@ -188,13 +224,75 @@ export async function createCloudHarness() {
     } else if (parts[0] === 'contacts' && parts[1] === 'duplicates') {
       response = await (duplicateReviewApi.handleCloudDuplicateReview as
         (r: Request, w: string) => Promise<Response>)(request, options.workspace || 'test');
-    } else response = await (parts[0] === 'contacts' ? contactHandler : coreHandler)(request, options.workspace || 'test', parts);
+    } else response = parts[0] === 'contacts' ? await contactHandler(request, options.workspace || 'test', parts) : await coreHandler(request, options.workspace || 'test', parts, 'owner');
     return { status: response.status, headers: response.headers, body: response.headers.get('Content-Type')?.includes('application/json') ? await response.json() : Array.from(new Uint8Array(await response.arrayBuffer())) };
   }
   const cleanupExpiredExports = exportJobsApi.cleanupExpiredExportJobs as (
     db: typeof db, bucket: typeof assets, now?: Date
   ) => Promise<{ attempted: number; removed: number; pending: number; failed: number }>;
   return { db, assets, faults, call, emailEnv, queueMessages, deadLetterMessages,
+    async routedRequest(request: Request) {
+      // Exercise the real Next middleware, dispatcher and device authentication;
+      // only Cloudflare bindings are replaced by this disposable test runtime.
+      const { NextRequest } = require('next/server');
+      const middleware = load(path.join(root, 'middleware.ts')).middleware as (r: Request) => Promise<Response>;
+      const response = await middleware(new NextRequest(request.clone()));
+      const rewrite = response.headers.get('x-middleware-rewrite'); if (!rewrite) return response;
+      const url = new URL(rewrite); if (!url.pathname.startsWith('/api/cloud/')) return response;
+      const handler = load(path.join(root, 'app/api/cloud/[...path]/route.ts'))[request.method] as
+        (r: Request, c: { params: Promise<{ path: string[] }> }) => Promise<Response>;
+      const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.text();
+      return handler(new Request(rewrite, { method: request.method, headers: request.headers, body }),
+        { params: Promise.resolve({ path: url.pathname.slice('/api/cloud/'.length).split('/') }) });
+    },
+    todaySnoozeSync: load(path.join(root, 'lib/cloud/today-snooze-sync-api.ts')) as typeof import('../../lib/cloud/today-snooze-sync-api'),
+    providers: load(path.join(root, 'lib/cloud/provider-connections.ts')) as typeof import('../../lib/cloud/provider-connections'),
+    googleCalendarResources: load(path.join(root, 'lib/cloud/google-calendar-resources.ts')) as typeof import('../../lib/cloud/google-calendar-resources'),
+    googleCalendars: load(path.join(root, 'lib/cloud/google-calendars.ts')) as typeof import('../../lib/cloud/google-calendars'),
+    googleGmail: load(path.join(root, 'lib/cloud/google-gmail.ts')) as typeof import('../../lib/cloud/google-gmail'),
+    gmailConnection: load(path.join(root, 'lib/cloud/google-gmail-connection.ts')) as typeof import('../../lib/cloud/google-gmail-connection'),
+    gmailDownloads: load(path.join(root, 'lib/cloud/google-gmail-downloads.ts')) as typeof import('../../lib/cloud/google-gmail-downloads'),
+    gmailJobs: load(path.join(root, 'lib/cloud/google-gmail-jobs.ts')) as typeof import('../../lib/cloud/google-gmail-jobs'),
+    gmailDirectory: load(path.join(root, 'lib/cloud/gmail-contact-directory.ts')) as typeof import('../../lib/cloud/gmail-contact-directory'),
+    gmailMatching: load(path.join(root, 'lib/cloud/google-gmail-matching.ts')) as typeof import('../../lib/cloud/google-gmail-matching'),
+    gmailContext: load(path.join(root, 'lib/cloud/gmail-context-api.ts')) as typeof import('../../lib/cloud/gmail-context-api'),
+    googleEvents: load(path.join(root, 'lib/cloud/google-calendar-events.ts')) as typeof import('../../lib/cloud/google-calendar-events'),
+    eventDownloads: load(path.join(root, 'lib/cloud/google-event-downloads.ts')) as typeof import('../../lib/cloud/google-event-downloads'),
+    eventJobs: load(path.join(root, 'lib/cloud/google-event-jobs.ts')) as typeof import('../../lib/cloud/google-event-jobs'),
+    planObservations: load(path.join(root, 'lib/cloud/calendar-plan-observations.ts')) as typeof import('../../lib/cloud/calendar-plan-observations'),
+    planPublications: load(path.join(root, 'lib/cloud/calendar-plan-publications.ts')) as typeof import('../../lib/cloud/calendar-plan-publications'),
+    calendarReservations: load(path.join(root, 'lib/cloud/calendar-reservation-api.ts')) as typeof import('../../lib/cloud/calendar-reservation-api'),
+    publicationDraft: load(path.join(root, 'packages/domain/src/calendar-publication.ts')) as typeof import('../../packages/domain/src/calendar-publication'),
+    ownedCalendar: load(path.join(root, 'lib/cloud/google-owned-calendar.ts')) as typeof import('../../lib/cloud/google-owned-calendar'),
+    calendarFacts: load(path.join(root, 'packages/domain/src/calendar-events.ts')) as typeof import('../../packages/domain/src/calendar-events'),
+    eventLinks: load(path.join(root, 'lib/cloud/calendar-event-links.ts')) as typeof import('../../lib/cloud/calendar-event-links'),
+    deviceSources: deviceSourceApi as typeof import('../../lib/cloud/device-source-api'),
+    contactPhotos: load(path.join(root, 'lib/cloud/contact-photo-api.ts')) as typeof import('../../lib/cloud/contact-photo-api'),
+    providerVault: load(path.join(root, 'lib/cloud/provider-vault.ts')) as typeof import('../../lib/cloud/provider-vault'),
+    providerApi: load(path.join(root, 'lib/cloud/provider-connection-api.ts')) as typeof import('../../lib/cloud/provider-connection-api'),
+    googleContacts: load(path.join(root, 'lib/cloud/google-contacts.ts')) as typeof import('../../lib/cloud/google-contacts'),
+    contactDownloads: load(path.join(root, 'lib/cloud/google-contact-downloads.ts')) as typeof import('../../lib/cloud/google-contact-downloads'),
+    contactImports: load(path.join(root, 'lib/cloud/google-contact-imports.ts')) as typeof import('../../lib/cloud/google-contact-imports'),
+    fieldControls: load(path.join(root, 'lib/cloud/provider-field-controls.ts')) as typeof import('../../lib/cloud/provider-field-controls'),
+    providerSourceApi: load(path.join(root, 'lib/cloud/provider-source-api.ts')) as typeof import('../../lib/cloud/provider-source-api'),
+    async authorizeDevice(body: unknown, options: { userId?: string; workspaceId?: string; authMethod?: 'web' | 'device'; origin?: string } = {}) {
+      const request = new Request('https://test.invalid/api/v1/devices/authorize', { method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: options.origin || String(emailEnv.BETTER_AUTH_URL) }, body: JSON.stringify(body) });
+      try { return await (deviceApi.authorizeDevice as (r: Request, a: unknown, d: typeof db) => Promise<Response>)(request,
+        { userId: options.userId || 'owner', workspaceId: options.workspaceId || 'test', lifecycle: 'active', authMethod: options.authMethod || 'web' }, db); }
+      catch (error) { return (deviceApi.deviceErrorResponse as (e: unknown) => Response)(error); }
+    },
+    async exchangeDevice(body: unknown) {
+      const request = new Request('https://test.invalid/api/auth/device/exchange', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      try { return await (deviceApi.exchangeDeviceCode as (r: Request, d: typeof db) => Promise<Response>)(request, db); }
+      catch (error) { return (deviceApi.deviceErrorResponse as (e: unknown) => Response)(error); }
+    },
+    deviceWorkspace: (token: string) => (deviceApi.requireDeviceWorkspace as (d: typeof db, h: Headers) => Promise<{
+      deviceId: string; userId: string; workspaceId: string; lifecycle: string; role: string;
+    }>)(db, new Headers({ Authorization: `Bearer ${token}` })),
+    deviceRoute: (request: Request, actor: unknown, path: string[]) => (deviceApi.handleCloudDevices as
+      (r: Request, a: unknown, p: string[]) => Promise<Response>)(request, actor, path),
     async processNextRestoreMessage() {
       const queued = queueMessages.shift();
       if (!queued) return null;

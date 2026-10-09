@@ -70,12 +70,12 @@ export async function POST(request: Request) {
     const errors: string[] = [];
 
     const insertMany = db.transaction((rows: Record<string, string>[]) => {
-      const existing = db.prepare('SELECT name, email, phone, birthday, custom_fields FROM contacts')
+      const existing = db.prepare('SELECT name, email, phone, birthday, custom_fields, contact_methods FROM contacts')
         .all() as ContactIdentity[];
       const identities = new Set(existing.flatMap(getContactIdentityKeys));
       const insert = db.prepare(`
-        INSERT INTO contacts (name, nickname, email, phone, photo_url, birthday, birthday_reminder_days, how_we_met, tags, notes, gift_ideas, custom_fields, last_contacted, contact_frequency)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO contacts (name, nickname, email, phone, photo_url, birthday, birthday_reminder_days, how_we_met, tags, notes, gift_ideas, custom_fields, last_contacted, contact_frequency, contact_methods)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       for (const row of rows) {
@@ -92,8 +92,8 @@ export async function POST(request: Request) {
           const normalized = normalizeContactCreateInput({
             name,
             nickname: row.nickname || null,
-            email: row.email || null,
-            phone: row.phone || null,
+            ...(!row.contact_methods || 'email' in row ? { email: row.email || null } : {}),
+            ...(!row.contact_methods || 'phone' in row ? { phone: row.phone || null } : {}),
             photo_url: row.photo_url || null,
             birthday: row.birthday || null,
             birthday_reminder_days: row.birthday_reminder_days || undefined,
@@ -103,6 +103,7 @@ export async function POST(request: Request) {
             gift_ideas: giftIdeas ? JSON.parse(giftIdeas) : [],
             custom_fields: customFields,
             contact_frequency: normalizeImportedFrequency(row.contact_frequency),
+            ...(row.contact_methods ? { contact_methods: row.contact_methods } : {}),
           });
           const lastContacted = row.last_contacted
             ? normalizeContactPatchInput({ last_contacted: row.last_contacted }).last_contacted
@@ -129,6 +130,7 @@ export async function POST(request: Request) {
             normalized.custom_fields,
             lastContacted,
             normalized.contact_frequency,
+            normalized.contact_methods ?? 'null',
           );
           identityKeys.forEach((key) => identities.add(key));
           imported++;
@@ -174,6 +176,8 @@ export async function POST(request: Request) {
 }
 
 const HEADER_MAP: Record<string, string> = {
+  'contact methods': 'contact_methods',
+  'contact_methods': 'contact_methods',
   'name': 'name',
   'nickname': 'nickname',
   'email': 'email',

@@ -273,20 +273,20 @@ export default function EditContact() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <Card className="animate-fade-in-up border-0 shadow-sm">
+        <Card className="animate-fade-in-up border-border/70 shadow-card">
           <CardContent className="pt-6 space-y-6">
             {hasConflict && (
               <section
                 role="alert"
                 aria-labelledby="edit-conflict-heading"
-                className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950"
+                className="rounded-xl border border-amber-300 bg-warning-soft p-4 text-amber-950"
               >
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
                   <div className="space-y-3">
                     <div>
                       <h2 id="edit-conflict-heading" className="font-semibold">This contact changed somewhere else</h2>
-                      <p className="mt-1 text-sm text-amber-900">
+                      <p className="mt-1 text-sm text-warning">
                         Your draft is still here and was not overwritten. Open the latest version in a new tab to compare, or discard this draft and reload.
                       </p>
                     </div>

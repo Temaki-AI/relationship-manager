@@ -17,6 +17,7 @@ export const CONTACT_CSV_HEADERS = [
   'Contact Frequency (days)',
   'Custom Fields',
   'Created At',
+  'Contact Methods',
 ] as const;
 
 export function serializeContactToCSVRow(contact: Contact): string {
@@ -36,6 +37,7 @@ export function serializeContactToCSVRow(contact: Contact): string {
     contact.contact_frequency.toString(),
     contact.custom_fields || '',
     contact.created_at,
+    contact.contact_methods ?? '',
   ].map(escapeCSVField).join(',');
 }
 

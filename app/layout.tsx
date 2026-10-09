@@ -4,6 +4,7 @@ import "./globals.css";
 import { NavHeader } from "@/components/nav-header";
 import { Providers } from "@/components/providers";
 import { SectionNav } from "@/components/section-nav";
+import { colors } from '@/packages/design/src/tokens';
 
 export const metadata: Metadata = {
   title: {
@@ -32,7 +33,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: "light",
-  themeColor: "#cb1a41",
+  themeColor: colors.canvas,
 };
 
 export default async function RootLayout({
@@ -47,8 +48,9 @@ export default async function RootLayout({
       <body>
         <Providers>
           <div className="min-h-screen bg-background">
+            <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-card focus:px-4 focus:py-3">Skip to content</a>
             <NavHeader />
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 sm:pb-8">
+            <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8">
               <SectionNav />
               {children}
             </main>

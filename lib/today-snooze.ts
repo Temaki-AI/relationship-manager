@@ -1,7 +1,7 @@
 import { civilDaysBetween, dateInTimeZone, normalizeTimeZone } from './civil-date.ts';
 import { parseDateOnly } from './relationship-validation.ts';
 
-export const MAX_ACTIVE_TODAY_SNOOZES = 500;
+export { MAX_ACTIVE_TODAY_SNOOZES } from '../packages/domain/src/today-snoozes.ts';
 
 export type TodaySnooze = {
   id: string;

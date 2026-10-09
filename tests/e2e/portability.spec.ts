@@ -1,6 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { parseVCards } from '../../lib/vcard';
+import { parseCSV } from '../../lib/csv';
 
 const accountPassword = 'bonds-e2e-account-password';
 const browserErrors = new WeakMap<Page, string[]>();
@@ -55,7 +57,7 @@ test('CSV and vCard transfers round-trip through the consumer UI', async ({ page
     'END:VCARD',
     'BEGIN:VCARD',
     'VERSION:3.0',
-    'EMAIL:missing-name@example.test',
+    'NOTE:No usable contact identity.',
     'END:VCARD',
   ].join('\r\n');
   const importFile = {
@@ -74,8 +76,10 @@ test('CSV and vCard transfers round-trip through the consumer UI', async ({ page
     ].join('\n')),
   };
 
+  await page.getByText('Manage', { exact: true }).click();
   await page.getByRole('button', { name: 'Transfer contacts' }).click();
   await expect(page.getByText(/only to this Everclose CRM installation/i)).toBeVisible();
+  await page.waitForLoadState('networkidle');
   const accessibility = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
   expect(accessibility.violations).toEqual([]);
 
@@ -90,6 +94,7 @@ test('CSV and vCard transfers round-trip through the consumer UI', async ({ page
   await expect(page.getByText('1 matching contact', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: new RegExp(importedName) })).toBeVisible();
 
+  await page.getByText('Manage', { exact: true }).click();
   await page.getByRole('button', { name: 'Transfer contacts' }).click();
   await page.locator('#vcard-import').setInputFiles(importFile);
   await expect(page.getByRole('status').getByText(
@@ -106,16 +111,17 @@ test('CSV and vCard transfers round-trip through the consumer UI', async ({ page
   await expect(page.getByText('1 matching contact', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: new RegExp(csvImportedName) })).toBeVisible();
 
+  await page.getByText('Manage', { exact: true }).click();
   await page.getByRole('button', { name: 'Transfer contacts' }).click();
 
   const csvDownloadPromise = page.waitForEvent('download');
   await page.getByRole('link', { name: 'CSV', exact: true }).click();
   const csvDownload = await csvDownloadPromise;
-  expect(csvDownload.suggestedFilename()).toMatch(/^bonds-contacts-\d{4}-\d{2}-\d{2}\.csv$/);
+  expect(csvDownload.suggestedFilename()).toMatch(/^everclose-contacts-\d{4}-\d{2}-\d{2}\.csv$/);
   const csvPath = await csvDownload.path();
   if (!csvPath) throw new Error('Playwright did not retain the CSV export.');
   const csv = await readFile(csvPath, 'utf8');
-  expect(csv).toContain('Name,Email,Phone');
+  expect(parseCSV(csv)[0]).toEqual(expect.arrayContaining(['Name', 'Nickname', 'Email', 'Phone', 'Contact Methods']));
   expect(csv).toContain(importedName);
   expect(csv).toContain(importedEmail);
   expect(csv).toContain(csvImportedName);
@@ -124,13 +130,14 @@ test('CSV and vCard transfers round-trip through the consumer UI', async ({ page
   const vcardDownloadPromise = page.waitForEvent('download');
   await page.getByRole('link', { name: 'vCard', exact: true }).click();
   const vcardDownload = await vcardDownloadPromise;
-  expect(vcardDownload.suggestedFilename()).toMatch(/^bonds-contacts-\d{4}-\d{2}-\d{2}\.vcf$/);
+  expect(vcardDownload.suggestedFilename()).toMatch(/^everclose-contacts-\d{4}-\d{2}-\d{2}\.vcf$/);
   const vcardPath = await vcardDownload.path();
   if (!vcardPath) throw new Error('Playwright did not retain the vCard export.');
   const exportedVcard = await readFile(vcardPath, 'utf8');
   expect(exportedVcard).toContain('BEGIN:VCARD');
   expect(exportedVcard).toContain(`FN:${importedName}`);
-  expect(exportedVcard).toContain(`EMAIL;TYPE=INTERNET:${importedEmail}`);
   expect(exportedVcard).toContain(`FN:${csvImportedName}`);
-  expect(exportedVcard).toContain(`EMAIL;TYPE=INTERNET:${csvImportedEmail}`);
+  const exportedPeople = parseVCards(exportedVcard);
+  expect(exportedPeople.find((person) => person.name === importedName)?.emails).toContain(importedEmail);
+  expect(exportedPeople.find((person) => person.name === csvImportedName)?.emails).toContain(csvImportedEmail);
 });

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { createCloudHarness } from './helpers/cloud-harness.ts';
 
@@ -153,6 +154,7 @@ test('private restore completes a mixed graph only after exact row and reference
   const h = await createCloudHarness();
   try {
     const contact = (await h.call('contacts', { method: 'POST', body: { name: 'Ana' } })).body.contact;
+    const originalEpoch = (await h.call('v1/sync/bootstrap')).body.cursor.epoch;
     await h.db.prepare("INSERT INTO interactions (workspace_id, contact_id, type, date, notes) VALUES ('test', ?, 'call', '2025-01-01', 'Hello')")
       .bind(contact.id).run();
     await h.db.prepare("UPDATE contacts SET last_contacted = '2025-06-01', updated_at = '2025-06-02T10:00:00.000Z' WHERE id = ?")
@@ -170,6 +172,9 @@ test('private restore completes a mixed graph only after exact row and reference
     assert.equal(job.state, 'ready');
     await deleted(h, job.id);
     await written(h, job.id);
+    assert.equal((await h.db.prepare("SELECT paused FROM workspace_sync_state WHERE workspace_id = 'test'").first())?.paused, 1);
+    assert.equal((await h.db.prepare("SELECT count(*) AS count FROM sync_changes WHERE workspace_id = 'test'").first())?.count, 0);
+    assert.equal((await h.call('v1/sync/bootstrap')).status, 423);
     const finished = await completed(h, job.id);
     assert.equal((await h.advanceRestoreVerification(job.id)).state, 'completed');
     assert.equal((await h.db.prepare("SELECT lifecycle FROM workspaces WHERE id = 'test'")
@@ -186,8 +191,159 @@ test('private restore completes a mixed graph only after exact row and reference
     assert.equal((await h.db.prepare("SELECT COUNT(*) AS count FROM mutation_receipts WHERE workspace_id = 'test' AND resource_id IS NOT NULL")
       .first<{ count: number }>())?.count, 0);
     assert.equal(finished.apply_chunk_index, target.chunk_count);
+    const replica = (await h.call('v1/sync/bootstrap')).body;
+    assert.notEqual(replica.cursor.epoch, originalEpoch);
+    assert.equal(replica.records[0].id, contact.public_id);
+    assert.equal(replica.records[0].data.last_contacted, '2025-06-01');
+    assert.equal(replica.cursor.sequence, 0);
     assert.equal((await h.db.prepare('SELECT state FROM cloud_snapshot_capture_jobs WHERE id = ?')
       .bind(job.rollback_capture_job_id).first<{ state: string }>())?.state, 'manifest_ready');
+  } finally { await h.close(); }
+});
+
+test('a private version 4 snapshot without public IDs remains readable and restores a stable replica', async () => {
+  const h = await createCloudHarness();
+  try {
+    const contact = (await h.call('contacts', { method: 'POST', body: { name: 'Legacy person' } })).body.contact;
+    const target = await publish(h);
+    assert.equal(target.chunk_count, 1);
+    const prefix = `test/recovery-jobs/${target.id}`;
+    const partKey = `${prefix}/manifest-parts/0.json`;
+    const part = JSON.parse(await (await h.assets.get(partKey))!.text());
+    const descriptor = part.chunks[0];
+    const chunk = JSON.parse(await (await h.assets.get(`${prefix}/chunks/0-${descriptor.sha256}.json`))!.text());
+    delete chunk.rows[0].public_id; delete chunk.rows[0].merge_aliases; delete chunk.rows[0].contact_methods; delete chunk.rows[0].source_revision;
+    const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
+    const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
+    const identity = { workspaceId: 'test', jobId: target.id };
+    const chunkBytes = encode(chunk);
+    descriptor.sha256 = hash(chunkBytes);
+    descriptor.byte_length = chunkBytes.byteLength;
+    await h.assets.put(`${prefix}/chunks/0-${descriptor.sha256}.json`, chunkBytes,
+      { customMetadata: { ...identity, sha256: descriptor.sha256, table: 'contacts' } });
+    const partBytes = encode(part);
+    const partHash = hash(partBytes);
+    await h.assets.put(partKey, partBytes, { customMetadata: { ...identity, sha256: partHash } });
+    const root = JSON.parse(await (await h.assets.get(`${prefix}/manifest-${target.manifest_sha256}.json`))!.text());
+    root.tableOrder = root.tableOrder.filter((table: string) => !['contact_source_links', 'contact_provider_links', 'provider_field_rules', 'contact_device_links', 'calendar_events', 'calendar_event_people', 'calendar_event_plans'].includes(table)); delete root.rowCounts.contact_source_links; delete root.rowCounts.contact_provider_links; delete root.rowCounts.provider_field_rules; delete root.rowCounts.contact_device_links; delete root.rowCounts.calendar_events; delete root.rowCounts.calendar_event_people; delete root.rowCounts.calendar_event_plans;
+    root.snapshotSchemaVersion = 4;
+    root.partsChainSha256 = hash(new TextEncoder().encode(`:${partHash}`));
+    const rootBytes = encode(root);
+    const rootHash = hash(rootBytes);
+    await h.assets.put(`${prefix}/manifest-${rootHash}.json`, rootBytes, { customMetadata: { ...identity, sha256: rootHash } });
+    await h.db.prepare(`UPDATE cloud_snapshot_capture_jobs SET manifest_sha256 = ?, manifest_chain = ?, manifest_bytes = ? WHERE id = ?`)
+      .bind(rootHash, root.partsChainSha256, rootBytes.byteLength, target.id).run();
+    let job = await h.beginRestorePreparation(target.id);
+    for (let index = 0; job.state === 'preparing' && index < 100; index++) job = await h.advanceRestorePreparation(job.id);
+    assert.equal(job.state, 'ready');
+    await deleted(h, job.id);
+    await written(h, job.id);
+    await completed(h, job.id);
+    const first = (await h.call('v1/sync/bootstrap')).body.records[0];
+    assert.equal(first.legacyId, contact.id);
+    assert.equal(first.data.name, 'Legacy person');
+    assert.match(first.id, /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
+    assert.equal((await h.call('v1/sync/bootstrap')).body.records[0].id, first.id);
+  } finally { await h.close(); }
+});
+
+test('legacy private version-5 history/reminders acquire deterministic UUIDs during resumable recovery', async () => {
+  const h = await createCloudHarness();
+  try {
+    const contact = (await h.call('contacts', { method: 'POST', body: { name: 'Legacy history' } })).body.contact;
+    await h.call('interactions', { method: 'POST', body: { contact_id: contact.id, date: '2026-10-03', type: 'call', summary: 'Context' } });
+    await h.call('reminders', { method: 'POST', body: { contact_id: contact.id, title: 'Call back', remind_at: '2026-10-05T10:00:00Z' } });
+    const target = await publish(h);
+    assert.equal(target.chunk_count, 3);
+    const prefix = `test/recovery-jobs/${target.id}`;
+    const identity = { workspaceId: 'test', jobId: target.id };
+    const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
+    const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
+    const partKey = `${prefix}/manifest-parts/0.json`;
+    const part = JSON.parse(await (await h.assets.get(partKey))!.text());
+    for (const descriptor of part.chunks) {
+      if (!['contacts', 'interactions', 'reminders'].includes(descriptor.table_name)) continue;
+      const chunk = JSON.parse(await (await h.assets.get(`${prefix}/chunks/${descriptor.sequence}-${descriptor.sha256}.json`))!.text());
+      for (const row of chunk.rows) {
+        if (descriptor.table_name === 'contacts') { delete row.merge_aliases; delete row.contact_methods; delete row.source_revision; }
+        else delete row.public_id;
+        if (descriptor.table_name === 'interactions') delete row.occurred_at;
+      }
+      const bytes = encode(chunk);
+      descriptor.sha256 = hash(bytes); descriptor.byte_length = bytes.byteLength;
+      await h.assets.put(`${prefix}/chunks/${descriptor.sequence}-${descriptor.sha256}.json`, bytes,
+        { customMetadata: { ...identity, sha256: descriptor.sha256, table: descriptor.table_name } });
+    }
+    const partBytes = encode(part), partHash = hash(partBytes);
+    await h.assets.put(partKey, partBytes, { customMetadata: { ...identity, sha256: partHash } });
+    const root = JSON.parse(await (await h.assets.get(`${prefix}/manifest-${target.manifest_sha256}.json`))!.text());
+    root.tableOrder = root.tableOrder.filter((table: string) => !['contact_source_links', 'contact_provider_links', 'provider_field_rules', 'contact_device_links', 'calendar_events', 'calendar_event_people', 'calendar_event_plans'].includes(table)); delete root.rowCounts.contact_source_links; delete root.rowCounts.contact_provider_links; delete root.rowCounts.provider_field_rules; delete root.rowCounts.contact_device_links; delete root.rowCounts.calendar_events; delete root.rowCounts.calendar_event_people; delete root.rowCounts.calendar_event_plans;
+    root.snapshotSchemaVersion = 5; root.partsChainSha256 = hash(new TextEncoder().encode(`:${partHash}`));
+    const rootBytes = encode(root), rootHash = hash(rootBytes);
+    await h.assets.put(`${prefix}/manifest-${rootHash}.json`, rootBytes, { customMetadata: { ...identity, sha256: rootHash } });
+    await h.db.prepare('UPDATE cloud_snapshot_capture_jobs SET manifest_sha256 = ?, manifest_chain = ?, manifest_bytes = ? WHERE id = ?')
+      .bind(rootHash, root.partsChainSha256, rootBytes.byteLength, target.id).run();
+    let job = await h.beginRestorePreparation(target.id);
+    for (let i = 0; job.state === 'preparing' && i < 100; i++) job = await h.advanceRestorePreparation(job.id);
+    assert.equal(job.state, 'ready');
+    await deleted(h, job.id);
+    assert.equal((await h.call('v2/sync/bootstrap')).status, 423);
+    await written(h, job.id); await completed(h, job.id);
+    const records = (await h.call('v2/sync/bootstrap')).body.records;
+    assert.equal(records.length, 3);
+    assert.equal(records[0].id, contact.public_id);
+    assert.notEqual(records[1].id, records[2].id);
+    for (const record of records.slice(1)) {
+      assert.match(record.id, /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
+      assert.equal(record.data.contact_id, contact.public_id);
+    }
+    assert.equal(records[1].data.occurred_at, null);
+  } finally { await h.close(); }
+});
+
+test('legacy private version-6 plans/family/relationships restore with stable UUIDs and public linked references', async () => {
+  const h = await createCloudHarness();
+  try {
+    const parent = (await h.call('contacts', { method: 'POST', body: { name: 'Parent' } })).body.contact;
+    const linked = (await h.call('contacts', { method: 'POST', body: { name: 'Leo', birthday: '2020-02-29' } })).body.contact;
+    assert.equal((await h.call('plans', { method: 'POST', body: { contact_id: parent.id, type: 'meetup', planned_date: '2026-10-05' } })).status, 201);
+    assert.equal((await h.call(`contacts/${parent.id}/children`, { method: 'POST', body: { name: 'Leo', birthday: linked.birthday, linked_contact_id: linked.id } })).status, 201);
+    assert.equal((await h.call(`contacts/${parent.id}/relationships`, { method: 'POST', body: { related_contact_id: linked.id, relationship_label: 'Child', reciprocal_label: 'Parent' } })).status, 201);
+    const target = await publish(h), prefix = `test/recovery-jobs/${target.id}`, partKey = `${prefix}/manifest-parts/0.json`;
+    const part = JSON.parse(await (await h.assets.get(partKey))!.text());
+    const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
+    const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
+    const identity = { workspaceId: 'test', jobId: target.id };
+    for (const descriptor of part.chunks) {
+      if (!['contacts', 'plans', 'contact_children', 'contact_relationships'].includes(descriptor.table_name)) continue;
+      const chunk = JSON.parse(await (await h.assets.get(`${prefix}/chunks/${descriptor.sequence}-${descriptor.sha256}.json`))!.text());
+      for (const row of chunk.rows) { if (descriptor.table_name === 'contacts') { delete row.merge_aliases; delete row.contact_methods; delete row.source_revision; } else delete row.public_id; }
+      const bytes = encode(chunk); descriptor.sha256 = hash(bytes); descriptor.byte_length = bytes.byteLength;
+      await h.assets.put(`${prefix}/chunks/${descriptor.sequence}-${descriptor.sha256}.json`, bytes,
+        { customMetadata: { ...identity, sha256: descriptor.sha256, table: descriptor.table_name } });
+    }
+    const partBytes = encode(part), partHash = hash(partBytes);
+    await h.assets.put(partKey, partBytes, { customMetadata: { ...identity, sha256: partHash } });
+    const root = JSON.parse(await (await h.assets.get(`${prefix}/manifest-${target.manifest_sha256}.json`))!.text());
+    root.tableOrder = root.tableOrder.filter((table: string) => !['contact_source_links', 'contact_provider_links', 'provider_field_rules', 'contact_device_links', 'calendar_events', 'calendar_event_people', 'calendar_event_plans'].includes(table)); delete root.rowCounts.contact_source_links; delete root.rowCounts.contact_provider_links; delete root.rowCounts.provider_field_rules; delete root.rowCounts.contact_device_links; delete root.rowCounts.calendar_events; delete root.rowCounts.calendar_event_people; delete root.rowCounts.calendar_event_plans;
+    root.snapshotSchemaVersion = 6; root.partsChainSha256 = hash(new TextEncoder().encode(`:${partHash}`));
+    const rootBytes = encode(root), rootHash = hash(rootBytes);
+    await h.assets.put(`${prefix}/manifest-${rootHash}.json`, rootBytes, { customMetadata: { ...identity, sha256: rootHash } });
+    await h.db.prepare('UPDATE cloud_snapshot_capture_jobs SET manifest_sha256 = ?, manifest_chain = ?, manifest_bytes = ? WHERE id = ?')
+      .bind(rootHash, root.partsChainSha256, rootBytes.byteLength, target.id).run();
+    let job = await h.beginRestorePreparation(target.id);
+    for (let i = 0; job.state === 'preparing' && i < 100; i++) job = await h.advanceRestorePreparation(job.id);
+    assert.equal(job.state, 'ready'); await deleted(h, job.id);
+    assert.equal((await h.call('v3/sync/bootstrap')).status, 423);
+    await written(h, job.id); await completed(h, job.id);
+    const records = (await h.call('v3/sync/bootstrap')).body.records;
+    assert.equal(records.length, 5); assert.equal(records.find((r: { entity: string }) => r.entity === 'family').data.linked_contact_id, linked.public_id);
+    assert.equal(records.find((r: { entity: string }) => r.entity === 'relationship').data.related_contact_id, linked.public_id);
+    for (const record of records.filter((r: { entity: string }) => r.entity !== 'contact')) {
+      assert.match(record.id, /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
+      assert.equal(record.data.contact_id, parent.public_id); assert.equal(record.revision, 1);
+    }
+    assert.equal(new Set(records.map((r: { id: string }) => r.id)).size, 5);
   } finally { await h.close(); }
 });
 
@@ -240,6 +396,9 @@ test('rollback replaces a partial target write with the verified pre-restore gra
     const names = await h.db.prepare("SELECT name FROM contacts WHERE workspace_id = 'test' ORDER BY name")
       .all<{ name: string }>();
     assert.deepEqual(names.results.map((row) => row.name), ['Current', 'New friend']);
+    const replica = (await h.call('v1/sync/bootstrap')).body;
+    assert.deepEqual(replica.records.map((record: { data: { name: string } }) => record.data.name).sort(), ['Current', 'New friend']);
+    assert.equal(replica.cursor.sequence, 0);
     assert.equal(rollback.apply_source, 'rollback');
     const next = await h.beginRestorePreparation(target.id);
     assert.equal(next.state, 'preparing');
@@ -404,18 +563,60 @@ test('deletion removes at most 64 contacts in one step', {
     }
     assert.equal(job.state, 'ready');
     await h.beginRestoreApply(job.id);
-    for (let index = 0; index < 20; index++) {
-      const current = await h.advanceRestoreDeletion(job.id);
-      if (current.apply_table_index === 15) break;
-    }
     const before = (await h.db.prepare("SELECT COUNT(*) AS count FROM contacts WHERE workspace_id = 'test'")
       .first<{ count: number }>())!.count;
     assert.equal(before, 130);
-    await h.advanceRestoreDeletion(job.id);
-    const after = (await h.db.prepare("SELECT COUNT(*) AS count FROM contacts WHERE workspace_id = 'test'")
-      .first<{ count: number }>())!.count;
+    let after = before;
+    for (let index = 0; index < 30 && after === before; index++) {
+      await h.advanceRestoreDeletion(job.id);
+      after = (await h.db.prepare("SELECT COUNT(*) AS count FROM contacts WHERE workspace_id = 'test'").first<{ count: number }>())!.count;
+    }
     assert.equal(before - after, 64);
     assert.equal((await h.db.prepare("SELECT lifecycle FROM workspaces WHERE id = 'test'")
       .first<{ lifecycle: string }>())?.lifecycle, 'restoring');
+  } finally { await h.close(); }
+});
+
+test('private v8 recovery rebuilds merged identities and a genuine v7 contact chunk defaults absent aliases', async () => {
+  const h = await createCloudHarness();
+  try {
+    const a = (await h.call('contacts', { method: 'POST', body: { name: 'Ana', email: 'ana@example.test' } })).body.contact;
+    const b = (await h.call('contacts', { method: 'POST', body: { name: 'Ana mobile', email: 'ana@example.test' } })).body.contact;
+    const review = await h.call('contacts/duplicates');
+    assert.equal((await h.call('contacts/duplicates', { method: 'POST', body: { primaryId: a.id, duplicateIds: [b.id], expectedRevision: review.body.revision } })).status, 200);
+    const { target, job } = await prepared(h);
+    await deleted(h, job.id); await written(h, job.id); await completed(h, job.id);
+    assert.equal((await h.db.prepare('SELECT canonical_public_id FROM contact_merge_aliases WHERE public_id = ?').bind(b.public_id).first())?.canonical_public_id, a.public_id);
+    assert.equal((await h.call('v3/sync/bootstrap')).body.records[0].data.merge_aliases, JSON.stringify([b.public_id]));
+    // Re-sign the fixture exactly as an earlier private artifact, without the new column.
+    const prefix = `test/recovery-jobs/${target.id}`, partKey = `${prefix}/manifest-parts/0.json`;
+    const part = JSON.parse(await (await h.assets.get(partKey))!.text());
+    const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
+    const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
+    const identity = { workspaceId: 'test', jobId: target.id };
+    for (const descriptor of part.chunks) {
+      if (descriptor.table_name !== 'contacts') continue;
+      const chunk = JSON.parse(await (await h.assets.get(`${prefix}/chunks/${descriptor.sequence}-${descriptor.sha256}.json`))!.text());
+      for (const row of chunk.rows) { delete row.merge_aliases; delete row.contact_methods; delete row.source_revision; }
+      const bytes = encode(chunk); descriptor.sha256 = hash(bytes); descriptor.byte_length = bytes.byteLength;
+      await h.assets.put(`${prefix}/chunks/${descriptor.sequence}-${descriptor.sha256}.json`, bytes,
+        { customMetadata: { ...identity, sha256: descriptor.sha256, table: descriptor.table_name } });
+    }
+    const partBytes = encode(part), partHash = hash(partBytes);
+    await h.assets.put(partKey, partBytes, { customMetadata: { ...identity, sha256: partHash } });
+    const root = JSON.parse(await (await h.assets.get(`${prefix}/manifest-${target.manifest_sha256}.json`))!.text());
+    assert.equal(root.snapshotSchemaVersion, 14);
+    root.tableOrder = root.tableOrder.filter((table: string) => !['contact_source_links', 'contact_provider_links', 'provider_field_rules', 'contact_device_links', 'calendar_events', 'calendar_event_people', 'calendar_event_plans'].includes(table)); delete root.rowCounts.contact_source_links; delete root.rowCounts.contact_provider_links; delete root.rowCounts.provider_field_rules; delete root.rowCounts.contact_device_links; delete root.rowCounts.calendar_events; delete root.rowCounts.calendar_event_people; delete root.rowCounts.calendar_event_plans;
+    root.snapshotSchemaVersion = 7; root.partsChainSha256 = hash(new TextEncoder().encode(`:${partHash}`));
+    const rootBytes = encode(root), rootHash = hash(rootBytes);
+    await h.assets.put(`${prefix}/manifest-${rootHash}.json`, rootBytes, { customMetadata: { ...identity, sha256: rootHash } });
+    await h.db.prepare('UPDATE cloud_snapshot_capture_jobs SET manifest_sha256 = ?, manifest_chain = ?, manifest_bytes = ? WHERE id = ?')
+      .bind(rootHash, root.partsChainSha256, rootBytes.byteLength, target.id).run();
+    let legacy = await h.beginRestorePreparation(target.id);
+    for (let i = 0; legacy.state === 'preparing' && i < 100; i++) legacy = await h.advanceRestorePreparation(legacy.id);
+    assert.equal(legacy.state, 'ready'); await deleted(h, legacy.id); await written(h, legacy.id); await completed(h, legacy.id);
+    assert.equal((await h.db.prepare('SELECT merge_aliases FROM contacts').first())?.merge_aliases, '[]');
+    assert.equal((await h.db.prepare('SELECT count(*) n FROM contact_merge_aliases').first())?.n, 0);
+    assert.equal((await h.call('v3/sync/bootstrap')).body.records[0].id, a.public_id);
   } finally { await h.close(); }
 });

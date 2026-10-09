@@ -107,7 +107,7 @@ function SettingsHeading({ cloud = false }: { cloud?: boolean }) {
     <div className="animate-fade-in">
       <div className="flex items-center gap-2">
         <HardDrive className="h-5 w-5 text-primary" />
-        <h1 className="text-2xl font-bold sm:text-3xl">Data & recovery</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Settings</h1>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
         {cloud ? 'Protect your private workspace with verified cloud recovery points and encrypted downloads.' : 'Protect your relationship history with verified backups and encrypted downloads.'}
@@ -469,13 +469,18 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <SettingsHeading cloud={cloud} />
 
+      {cloud && <Card><CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
+        <div><p className="font-semibold">Connected phones</p><p className="mt-1 text-sm text-muted-foreground">Review your native app sessions and revoke a lost phone.</p></div>
+        <Link href="/settings/devices" className={buttonVariants({ variant: 'outline' })}>Manage phones</Link>
+      </CardContent></Card>}
+
       {erasing && (
-        <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <div role="status" className="rounded-xl border border-amber-200 bg-warning-soft p-4 text-sm text-amber-950">
           Erasure is unfinished. New data and recovery operations are paused. Use the erasure confirmation below to resume safely.
         </div>
       )}
       {restoring && (
-        <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <div role="status" className="rounded-xl border border-amber-200 bg-warning-soft p-4 text-sm text-amber-950">
           {data.largeRecoveryEnabled
             ? 'Workspace recovery is in progress. Your data is temporarily unavailable. Continue or roll back from Advanced recovery below.'
             : 'Workspace recovery is in progress. Your data is temporarily unavailable. Contact support before attempting another recovery operation.'}
@@ -483,15 +488,15 @@ export default function SettingsPage() {
       )}
 
       {cloud && data.largeRecoveryEnabled && (
-        <Card className="border border-sky-200 bg-sky-50/50 shadow-sm">
+        <Card className="border border-sky-200 bg-info-soft/50 shadow-sm">
           <CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="font-semibold text-sky-950">Advanced recovery</p>
-              <p className="mt-1 text-sm text-sky-900/80">
+              <p className="mt-1 text-sm text-info/80">
                 Capture and verify larger cloud snapshots, or safely resume an interrupted restore.
               </p>
             </div>
-            <Link href="/settings/advanced-recovery" className={buttonVariants({ variant: 'outline', className: 'border-sky-300 bg-white text-sky-950 hover:bg-sky-100' })}>
+            <Link href="/settings/advanced-recovery" className={buttonVariants({ variant: 'outline', className: 'border-sky-300 bg-card text-sky-950 hover:bg-sky-100' })}>
               {restoring ? 'Continue recovery' : 'Open advanced recovery'}
             </Link>
           </CardContent>
@@ -522,10 +527,10 @@ export default function SettingsPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-3 animate-fade-in-up">
-        <Card className="min-w-0 border-0 shadow-sm md:col-span-2">
+        <Card className="min-w-0 border-border/70 shadow-card md:col-span-2">
           <CardContent className="flex flex-col gap-5 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
-              <div className={`rounded-xl p-2.5 ${automaticCurrent ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+              <div className={`rounded-xl p-2.5 ${automaticCurrent ? 'bg-success-soft text-success' : 'bg-warning-soft text-warning'}`}>
                 <ShieldCheck className="h-5 w-5" />
               </div>
               <div className="min-w-0">
@@ -542,10 +547,10 @@ export default function SettingsPage() {
                   {automaticBackup && (
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                       automaticCurrent
-                        ? 'bg-emerald-50 text-emerald-700'
+                        ? 'bg-success-soft text-success'
                         : automaticDisabled
                           ? 'bg-muted text-muted-foreground'
-                          : 'bg-amber-100 text-amber-800'
+                          : 'bg-amber-100 text-warning'
                     }`}>
                       {automaticBackup.state}
                     </span>
@@ -579,7 +584,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="min-w-0 border-0 shadow-sm">
+        <Card className="min-w-0 border-border/70 shadow-card">
           <CardContent className="pt-6">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Latest protection</p>
             <p className="mt-2 text-lg font-semibold">
@@ -594,10 +599,12 @@ export default function SettingsPage() {
         </Card>
       </div>
 
-      <Card className="border border-emerald-200/70 bg-emerald-50/30 shadow-sm animate-fade-in-up">
+      <details className="rounded-xl border border-border bg-card px-4">
+        <summary className="min-h-12 cursor-pointer py-3 font-medium">Download an encrypted backup</summary>
+      <Card className="border border-emerald-200/70 bg-success-soft/30 shadow-sm animate-fade-in-up">
         <CardHeader className="pb-3">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-emerald-100 p-2.5 text-emerald-700">
+            <div className="rounded-xl bg-emerald-100 p-2.5 text-success">
               <LockKeyhole className="h-5 w-5" />
             </div>
             <div>
@@ -633,15 +640,15 @@ export default function SettingsPage() {
               disabled={busyAction !== null}
             />
           </div>
-          <div className="flex flex-col gap-3 rounded-xl border border-emerald-200/60 bg-white/70 p-4 lg:col-span-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="max-w-2xl text-xs leading-relaxed text-emerald-900">
+          <div className="flex flex-col gap-3 rounded-xl border border-emerald-200/60 bg-card/70 p-4 lg:col-span-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-2xl text-xs leading-relaxed text-success">
               The passphrase never leaves this browser and cannot be recovered by Everclose CRM. Use at least {PORTABLE_BACKUP_MINIMUM_PASSPHRASE_LENGTH} characters and store it separately from the encrypted file.
             </p>
             <Button
               variant="outline"
               disabled={!latestBackup || !portablePassphraseReady || recoveryUnavailable}
               onClick={() => latestBackup && downloadEncryptedBackup(latestBackup)}
-              className="flex-shrink-0 border-emerald-300 bg-white hover:bg-emerald-50"
+              className="flex-shrink-0 border-emerald-300 bg-card hover:bg-success-soft"
             >
               {latestBackup && busyAction === `download:${latestBackup.filename}`
                 ? <RefreshCw className="h-4 w-4 animate-spin" />
@@ -652,7 +659,8 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-0 shadow-sm animate-fade-in-up">
+      </details>
+      <Card className="border-border/70 shadow-card animate-fade-in-up">
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -736,10 +744,12 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card className="border border-amber-200/70 bg-amber-50/30 shadow-sm animate-fade-in-up">
+      <details open={restoring || undefined} className="rounded-xl border border-border bg-card px-4">
+        <summary className="min-h-12 cursor-pointer py-3 font-medium">Restore a backup</summary>
+      <Card className="border border-amber-200/70 bg-warning-soft/30 shadow-sm animate-fade-in-up">
         <CardHeader className="pb-3">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-amber-100 p-2.5 text-amber-700">
+            <div className="rounded-xl bg-amber-100 p-2.5 text-warning">
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
@@ -751,9 +761,9 @@ export default function SettingsPage() {
           </div>
         </CardHeader>
         <CardContent className="grid gap-5 lg:grid-cols-2">
-          <div className="space-y-3 rounded-xl border border-amber-200/60 bg-white/70 p-4">
+          <div className="space-y-3 rounded-xl border border-amber-200/60 bg-card/70 p-4">
             <div className="flex items-center gap-2">
-              <Upload className="h-4 w-4 text-amber-700" />
+              <Upload className="h-4 w-4 text-warning" />
               <p className="text-sm font-semibold">Restore from a file</p>
             </div>
             <label htmlFor="restore-file" className="sr-only">Backup file to restore</label>
@@ -804,7 +814,7 @@ export default function SettingsPage() {
             </Button>
           </div>
 
-          <div className="space-y-3 rounded-xl border border-amber-200/60 bg-white/70 p-4">
+          <div className="space-y-3 rounded-xl border border-amber-200/60 bg-card/70 p-4">
             <p className="text-sm font-semibold">Safety confirmation</p>
             <p className="text-xs text-muted-foreground">
               Type <span className="font-mono font-semibold text-foreground">RESTORE</span> to enable restore actions.
@@ -819,17 +829,20 @@ export default function SettingsPage() {
               spellCheck={false}
               disabled={busyAction !== null}
             />
-            <div className="rounded-lg bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-800">
+            <div className="rounded-lg bg-success-soft p-3 text-xs leading-relaxed text-success">
               Your current database is always backed up first. If the restored version is not what you expected, that recovery point remains available above.
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="border border-red-200/80 bg-red-50/30 shadow-sm animate-fade-in-up">
+      </details>
+      <details open={erasing || undefined} className="rounded-xl border border-red-200 bg-card px-4">
+        <summary className="min-h-12 cursor-pointer py-3 font-medium text-destructive">Erase workspace data</summary>
+      <Card className="border border-red-200/80 bg-danger-soft/30 shadow-sm animate-fade-in-up">
         <CardHeader className="pb-3">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-red-100 p-2.5 text-red-700">
+            <div className="rounded-xl bg-red-100 p-2.5 text-destructive">
               <Trash2 className="h-5 w-5" />
             </div>
             <div>
@@ -841,8 +854,8 @@ export default function SettingsPage() {
           </div>
         </CardHeader>
         <CardContent className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.65fr)]">
-          <div className="space-y-3 rounded-xl border border-red-200/70 bg-white/75 p-4 text-sm">
-            <p className="font-semibold text-red-900">This action has no in-app recovery point.</p>
+          <div className="space-y-3 rounded-xl border border-red-200/70 bg-card/75 p-4 text-sm">
+            <p className="font-semibold text-destructive">This action has no in-app recovery point.</p>
             <p className="leading-relaxed text-muted-foreground">
               {cloud ? 'This removes CRM records, workspace preferences, retry receipts, and files managed by this workspace. Your Google account, sign-in identity, and billing plan are not deleted. If interrupted, erasure can be resumed.' : 'Everclose CRM deletes its database records, compacts deleted SQLite pages, truncates its recovery log, and removes every recognized managed backup artifact. Your sign-in password and deployment configuration remain unchanged.'}
             </p>
@@ -851,8 +864,8 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          <div className="space-y-3 rounded-xl border border-red-200/70 bg-white/75 p-4">
-            <label htmlFor="erasure-confirmation" className="text-sm font-semibold text-red-900">
+          <div className="space-y-3 rounded-xl border border-red-200/70 bg-card/75 p-4">
+            <label htmlFor="erasure-confirmation" className="text-sm font-semibold text-destructive">
               Type <span className="font-mono">{WORKSPACE_ERASURE_CONFIRMATION}</span> to continue
             </label>
             <Input
@@ -865,7 +878,7 @@ export default function SettingsPage() {
               disabled={busyAction !== null || restoring}
               aria-describedby="erasure-warning"
             />
-            <p id="erasure-warning" className="text-xs leading-relaxed text-red-800">
+            <p id="erasure-warning" className="text-xs leading-relaxed text-destructive">
               Do not continue until you have exported anything you want to keep.
             </p>
             <Button
@@ -885,7 +898,7 @@ export default function SettingsPage() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>      </details>
     </div>
   );
 }

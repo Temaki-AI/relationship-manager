@@ -1,55 +1,40 @@
 import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useState } from 'react';
+import { useCallback } from 'react';
 import {
   Alert,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
-import { ActionButton, Eyebrow } from '@/components/design-system';
+import { FormInput as TextInput, ActionButton } from '@/components/design-system';
 import { createContact } from '@/data/contacts';
-import {
-  CONTACT_FREQUENCY_OPTIONS,
-  ContactValidationError,
-} from '@/domain/contact';
-import { fonts, palette } from '@/theme';
+import { contactDraftKey, contactForm } from '@/data/contact-drafts';
+import { CONTACT_FREQUENCY_OPTIONS } from '@/domain/contact';
+import { useContactForm } from '@/native/contact-form';
+import { radii, fonts, palette } from '@/theme';
 
 export default function NewContactScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [notes, setNotes] = useState('');
-  const [frequency, setFrequency] = useState(14);
-  const [saving, setSaving] = useState(false);
+  const key = contactDraftKey();
+  const initial = useCallback(async () => contactForm(), []);
+  const form = useContactForm(db, key, initial);
+  const { name, email, phone, notes, frequency } = form.draft?.fields ?? contactForm().fields;
+  const saving = form.saving;
 
   async function saveContact() {
-    setSaving(true);
-    try {
-      const contact = await createContact(db, {
-        name,
-        email,
-        phone,
-        notes,
-        contactFrequency: frequency,
-      });
-      router.replace({ pathname: '/contacts/[id]', params: { id: contact.id } });
-    } catch (error) {
-      Alert.alert(
-        'Could not add contact',
-        error instanceof ContactValidationError ? error.message : 'Your changes were not saved. Try again.'
-      );
-    } finally {
-      setSaving(false);
-    }
+    const contact = await form.save(({ fields }) => createContact(db, {
+      name: fields.name, email: fields.email, phone: fields.phone, notes: fields.notes,
+      contactFrequency: Number(fields.frequency),
+    }, key));
+    if (contact) router.replace({ pathname: '/contacts/[id]', params: { id: contact.id } });
   }
 
   return (
@@ -64,10 +49,19 @@ export default function NewContactScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.intro}>
-          <Eyebrow>Relationship journal</Eyebrow>
-          <Text style={styles.title}>Who do you want to remember well?</Text>
-          <Text style={styles.subtitle}>Start light. You can add richer context as the relationship unfolds.</Text>
+          <Text accessibilityRole="header" style={styles.title}>Add a person</Text>
+          <Text style={styles.subtitle}>Start with a name. Everything else is optional.</Text>
         </View>
+
+        {!!form.error && <Text accessibilityRole="alert" style={styles.subtitle}>{form.error}</Text>}
+        {!form.draft ? <>
+          {!form.error ? <ActivityIndicator color={palette.primary} accessibilityLabel="Opening your form" /> : <ActionButton label="Try again" onPress={form.retry} />}
+          {!!form.error && <ActionButton label="Discard saved form" variant="quiet" disabled={saving} onPress={() => Alert.alert('Discard the saved form?', 'Remove this unfinished form from this phone.', [
+            { text: 'Keep form', style: 'cancel' }, { text: 'Discard', style: 'destructive', onPress: () => { void form.discard().then((done) => { if (done) router.back(); }); } },
+          ])} />}
+          <ActionButton label="Close" variant="secondary" disabled={saving} onPress={() => { void form.close().then((done) => { if (done) router.back(); }); }} />
+        </> : <>
+        {form.resumed && <Text style={styles.helper}>Resumed your saved draft.</Text>}
 
         <Field label="Name" required>
           <TextInput
@@ -76,7 +70,8 @@ export default function NewContactScreen() {
             autoComplete="name"
             autoFocus
             maxLength={200}
-            onChangeText={setName}
+            editable={!saving}
+            onChangeText={(name) => form.change({ name })}
             placeholder="Maya Chen"
             placeholderTextColor={palette.faint}
             returnKeyType="next"
@@ -92,7 +87,8 @@ export default function NewContactScreen() {
             autoComplete="email"
             keyboardType="email-address"
             maxLength={320}
-            onChangeText={setEmail}
+            editable={!saving}
+            onChangeText={(email) => form.change({ email })}
             placeholder="maya@example.com"
             placeholderTextColor={palette.faint}
             style={styles.input}
@@ -106,7 +102,8 @@ export default function NewContactScreen() {
             autoComplete="tel"
             keyboardType="phone-pad"
             maxLength={100}
-            onChangeText={setPhone}
+            editable={!saving}
+            onChangeText={(phone) => form.change({ phone })}
             placeholder="+49 30 1234 5678"
             placeholderTextColor={palette.faint}
             style={styles.input}
@@ -119,7 +116,8 @@ export default function NewContactScreen() {
             accessibilityLabel="Notes"
             maxLength={50_000}
             multiline
-            onChangeText={setNotes}
+            editable={!saving}
+            onChangeText={(notes) => form.change({ notes })}
             placeholder="What matters to them, how you met, what is happening lately..."
             placeholderTextColor={palette.faint}
             style={[styles.input, styles.textarea]}
@@ -133,13 +131,14 @@ export default function NewContactScreen() {
           <Text style={styles.helper}>How often would staying in touch feel natural?</Text>
           <View style={styles.frequencyRow}>
             {CONTACT_FREQUENCY_OPTIONS.map((option) => {
-              const selected = frequency === option.days;
+              const selected = Number(frequency) === option.days;
               return (
                 <Pressable
                   accessibilityRole="radio"
-                  accessibilityState={{ checked: selected }}
+                  accessibilityState={{ checked: selected, disabled: saving }}
                   key={option.days}
-                  onPress={() => setFrequency(option.days)}
+                  disabled={saving}
+                  onPress={() => form.change({ frequency: String(option.days) })}
                   style={({ pressed }) => [
                     styles.frequency,
                     selected && styles.frequencySelected,
@@ -156,9 +155,15 @@ export default function NewContactScreen() {
         </View>
 
         <View style={styles.actions}>
-          <ActionButton label={saving ? 'Adding...' : 'Add to Bonds'} disabled={saving} onPress={() => void saveContact()} />
-          <ActionButton label="Cancel" variant="secondary" disabled={saving} onPress={() => router.back()} />
+          <ActionButton label={saving ? 'Adding...' : 'Add to Everclose'} disabled={saving} onPress={() => void saveContact()} />
+          <Text style={styles.helper}>Closing keeps your draft on this phone. It is uploaded only after you add the person.</Text>
+          {!!form.error && <ActionButton label="Retry keeping draft" variant="secondary" disabled={saving} onPress={() => form.change({})} />}
+          <ActionButton label="Close and keep draft" variant="secondary" disabled={saving} onPress={() => { void form.close().then((done) => { if (done) router.back(); }); }} />
+          <ActionButton label="Discard draft" variant="quiet" disabled={saving} onPress={() => Alert.alert('Discard this draft?', 'Remove this unfinished form from this phone.', [
+            { text: 'Keep draft', style: 'cancel' }, { text: 'Discard', style: 'destructive', onPress: () => { void form.discard().then((done) => { if (done) router.back(); }); } },
+          ])} />
         </View>
+        </>}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -185,20 +190,20 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.canvas },
   content: { padding: 22, paddingBottom: 44, gap: 20 },
   intro: { gap: 7, marginBottom: 4 },
-  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 32, lineHeight: 37, fontWeight: '700', letterSpacing: -0.6 },
+  title: { color: palette.ink, fontFamily: fonts.display, fontSize: 28, lineHeight: 35, fontWeight: '700', letterSpacing: -0.6 },
   subtitle: { color: palette.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 },
   fieldGroup: { gap: 8 },
   label: { color: palette.ink, fontFamily: fonts.bodyDemi, fontSize: 13, fontWeight: '700' },
   helper: { color: palette.muted, fontFamily: fonts.body, fontSize: 12, marginTop: -3 },
   input: {
     minHeight: 51,
-    borderRadius: 16,
+    borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: palette.line,
+    borderColor: palette.input,
     backgroundColor: palette.surface,
     color: palette.ink,
     fontFamily: fonts.body,
-    fontSize: 15,
+    fontSize: 16,
     paddingHorizontal: 15,
     paddingVertical: 13,
   },
@@ -209,7 +214,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 14,
+    borderRadius: radii.control,
     borderWidth: 1,
     borderColor: palette.line,
     backgroundColor: palette.surface,

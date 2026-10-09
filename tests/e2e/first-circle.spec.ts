@@ -24,7 +24,7 @@ test('first-run journey grows from one chosen person to a real logged moment', a
     }
 
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Start with a few people. Make the next moment count.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Start with one person', exact: true })).toBeVisible();
     await page.getByRole('link', { name: 'Add your first person' }).click();
     await page.getByLabel('Name', { exact: true }).fill('Ana Silva');
     await page.getByRole('button', { name: 'Add contact', exact: true }).click();
@@ -32,6 +32,7 @@ test('first-run journey grows from one chosen person to a real logged moment', a
     expect((await h.call('contacts', { method: 'POST', body: { name: 'Bea Costa' } })).status).toBe(201);
 
     await page.goto('/');
+    await page.getByText('Set up your first connections', { exact: true }).click();
     const journey = page.getByRole('region', { name: 'Start close, not wide.' });
     await expect(journey).toBeVisible();
     await expect(journey.getByText('0 in your circle')).toBeVisible();
@@ -58,6 +59,7 @@ test('first-run journey grows from one chosen person to a real logged moment', a
     await expect(page.getByRole('heading', { name: 'Ana Silva', level: 1 })).toBeVisible();
 
     await page.goto('/');
+    await page.getByText('Set up your first connections', { exact: true }).click();
     await expect(journey.getByRole('link', { name: 'Review birthday' })).toBeVisible();
     await journey.getByRole('link', { name: 'Log a moment' }).click();
     await expect(page.locator('#interaction-form')).toBeVisible();

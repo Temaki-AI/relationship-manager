@@ -15,7 +15,7 @@ export function putLocalTodaySnooze(db: Database.Database, itemId: string, targe
       ? db.prepare('SELECT contact_id, id AS reminder_id FROM reminders WHERE id = ? AND completed_at IS NULL').get(target.id) as { contact_id: number; reminder_id: number } | undefined
       : db.prepare(`SELECT id AS contact_id, NULL AS reminder_id FROM contacts WHERE id = ? ${target.kind === 'birthday' ? 'AND birthday IS NOT NULL' : ''}`).get(target.id) as { contact_id: number; reminder_id: null } | undefined;
     if (!source) throw new TodaySnoozeError('This prompt is no longer available.', 404);
-    const existing = db.prepare('SELECT 1 FROM daily_snoozes WHERE id = ?').get(itemId);
+    const existing = db.prepare('SELECT 1 FROM daily_snoozes WHERE id = ? AND until_date > ?').get(itemId, today);
     if (!existing) {
       const count = db.prepare('SELECT COUNT(*) AS total FROM daily_snoozes WHERE until_date > ?').get(today) as { total: number };
       if (count.total >= MAX_ACTIVE_TODAY_SNOOZES) throw new TodaySnoozeError('Too many snoozed prompts. Bring one back before snoozing another.', 409);

@@ -70,14 +70,13 @@ test('authenticated navigation remains usable at consumer breakpoints', async ({
     const style = getComputedStyle(header);
     return { background: style.backgroundColor, backdrop: style.backdropFilter };
   });
-  if ((page.viewportSize()?.width || 0) < 640) {
-    expect(headerStyle.background).toBe('rgb(255, 255, 255)');
+  if ((page.viewportSize()?.width || 0) < 768) {
+    expect(headerStyle.background).toBe('rgb(255, 253, 250)');
     expect(headerStyle.backdrop).toBe('none');
-    await page.getByRole('button', { name: 'More navigation' }).click();
-    await expect(page.locator('#mobile-more-menu').getByRole('link', { name: 'Groups', exact: true })).toBeVisible();
     await expect(page.getByRole('navigation').getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
   } else {
-    expect(headerStyle.backdrop).toContain('blur');
+    expect(headerStyle.background).toBe('rgb(255, 253, 250)');
+    expect(headerStyle.backdrop).toBe('none');
     await expect(page.getByRole('navigation').getByRole('link', { name: 'Groups' })).toBeVisible();
   }
 
@@ -89,7 +88,7 @@ test('authenticated navigation remains usable at consumer breakpoints', async ({
     { path: '/groups', heading: 'Groups' },
     { path: '/smart-lists', heading: 'Smart Lists' },
     { path: '/reminders', heading: 'Reminders' },
-    { path: '/settings', heading: 'Data & recovery' },
+    { path: '/settings', heading: 'Settings' },
   ]) {
     await page.goto(route.path);
     await expect(page.getByRole('heading', { name: route.heading, level: 1 })).toBeVisible();
@@ -167,7 +166,7 @@ test('long contact forms protect unsaved drafts from accidental navigation', asy
   await expectHistoryPoint(page, directoryHistoryPoint + 1);
   await openSettingsFromHeader(page);
   await expect(page).toHaveURL((url) => url.pathname === '/settings');
-  await expect(page.getByRole('heading', { name: 'Data & recovery', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   await expectHistoryPoint(page, directoryHistoryPoint + 2);
   await traverseBrowserHistory(page, 'back');
   await expect(page).toHaveURL((url) => url.pathname === '/contacts/new');
@@ -187,7 +186,7 @@ test('long contact forms protect unsaved drafts from accidental navigation', asy
   await expect(createDialog).toBeVisible();
   await createDialog.getByRole('button', { name: 'Discard changes', exact: true }).click();
   await expect(page).toHaveURL((url) => url.pathname === '/settings');
-  await expect(page.getByRole('heading', { name: 'Data & recovery', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
 
   await page.goto('/contacts/1/edit');
   await expect(page.getByRole('heading', { name: 'Edit contact', level: 1 })).toBeVisible();

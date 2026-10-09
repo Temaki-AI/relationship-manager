@@ -139,7 +139,7 @@ export function MentionInput({ value, onChange, placeholder, rows = 3, className
       {showDropdown && filtered.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute left-0 right-0 z-50 mt-1 bg-white rounded-xl border border-border shadow-lg overflow-hidden max-h-48 overflow-y-auto"
+          className="absolute left-0 right-0 z-50 mt-1 bg-card rounded-xl border border-border shadow-lg overflow-hidden max-h-48 overflow-y-auto"
         >
           {filtered.map((contact, index) => (
               <button

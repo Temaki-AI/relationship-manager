@@ -103,7 +103,7 @@ test('route recovery experiences and reduced motion are part of the app shell', 
 
   const navigation = readFileSync(join(projectRoot, 'components', 'nav-header.tsx'), 'utf8');
   assert.match(navigation, /aria-current=/);
-  assert.match(navigation, /aria-label="More navigation"/);
+  assert.match(navigation, /aria-label="Main navigation"/);
   const addMenu = readFileSync(join(projectRoot, 'components', 'add-action-menu.tsx'), 'utf8');
   assert.match(addMenu, /aria-label="Add"/);
   assert.match(addMenu, /aria-expanded=\{open\}/);
@@ -112,7 +112,7 @@ test('route recovery experiences and reduced motion are part of the app shell', 
 });
 
 test('brand and muted text tokens retain WCAG AA contrast', () => {
-  const globalStyles = readFileSync(join(projectRoot, 'app', 'globals.css'), 'utf8');
+  const globalStyles = readFileSync(join(projectRoot, 'app', 'design-tokens.css'), 'utf8');
   const primary = parseHslVariable(globalStyles, 'primary');
   const primaryForeground = parseHslVariable(globalStyles, 'primary-foreground');
   const muted = parseHslVariable(globalStyles, 'muted');

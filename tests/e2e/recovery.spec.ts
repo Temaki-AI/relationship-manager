@@ -28,7 +28,7 @@ async function signIn(page: Page) {
   await page.getByLabel('Account password').fill(accountPassword);
   await page.getByRole('button', { name: 'Open my CRM' }).click();
   await expect(page).toHaveURL((url) => url.pathname === '/settings');
-  await expect(page.getByRole('heading', { name: 'Data & recovery', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
 }
 
 test('an encrypted workspace backup restores the earlier consumer state', async ({ page }, testInfo) => {
@@ -37,6 +37,7 @@ test('an encrypted workspace backup restores the earlier consumer state', async 
 
   await page.getByRole('button', { name: 'Back up now' }).click();
   await expect(page.getByRole('status').getByText('Database backup created')).toBeVisible();
+  await page.getByText('Download an encrypted backup', { exact: true }).click();
   await page.getByLabel('Backup passphrase').fill(backupPassphrase);
   await page.getByLabel('Confirm passphrase').fill(backupPassphrase);
 
@@ -63,8 +64,9 @@ test('an encrypted workspace backup restores the earlier consumer state', async 
   await expect(page.getByRole('heading', { name: probeName, level: 1 })).toBeVisible();
 
   await page.goto('/settings');
-  await expect(page.getByRole('heading', { name: 'Data & recovery', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   await expect(page).toHaveTitle('Data & recovery | Everclose CRM');
+  await page.getByText('Restore a backup', { exact: true }).click();
   await page.getByLabel('Backup file to restore').setInputFiles(encryptedBackup);
   await page.getByLabel('Encrypted backup passphrase').fill('incorrect but long backup phrase');
   await page.getByLabel('Restore safety confirmation').fill('RESTORE');

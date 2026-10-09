@@ -1,4 +1,5 @@
 import { parseDateOnly } from './relationship-validation.ts';
+import { normalizeUserContactMethods, readContactMethods, ContactMethodError } from '../packages/domain/src/contact-methods.ts';
 import { isEmbeddedContactPhoto } from './contact-photo.ts';
 import {
   normalizeTagList,
@@ -29,6 +30,7 @@ export type NormalizedContactInput = {
   gift_ideas: string | null;
   custom_fields: string | null;
   contact_frequency: number;
+  contact_methods?: string;
 };
 
 const FIELD_LIMITS = {
@@ -201,11 +203,16 @@ function assertContactBody(value: unknown): Record<string, unknown> {
 
 export function normalizeContactCreateInput(value: unknown): NormalizedContactInput {
   const body = assertContactBody(value);
+  const methods = hasOwn(body, 'contact_methods') ? contactMethods(body.contact_methods, '[]') : undefined;
+  const preferred = methods === undefined ? null : readContactMethods(methods);
+  const email = preferred?.find((item) => item.kind === 'email' && item.preferred)?.value ?? null;
+  const phone = preferred?.find((item) => item.kind === 'phone' && item.preferred)?.value ?? null;
+  if (preferred && (hasOwn(body, 'email') && normalizeEmail(body.email) !== email || hasOwn(body, 'phone') && normalizeOptionalString(body.phone, 'Phone', FIELD_LIMITS.phone) !== phone)) throw new ContactInputError('Primary values must match the preferred contact methods.');
   return {
     name: normalizeRequiredName(body.name),
     nickname: normalizeOptionalString(body.nickname, 'Nickname', FIELD_LIMITS.nickname),
-    email: normalizeEmail(body.email),
-    phone: normalizeOptionalString(body.phone, 'Phone', FIELD_LIMITS.phone),
+    email: preferred ? email : normalizeEmail(body.email),
+    phone: preferred ? phone : normalizeOptionalString(body.phone, 'Phone', FIELD_LIMITS.phone),
     photo_url: normalizePhotoField(body.photo_url),
     birthday: normalizeDateField(body.birthday, 'Birthday'),
     birthday_reminder_days: normalizeBirthdayReminderDays(body.birthday_reminder_days, true),
@@ -215,12 +222,22 @@ export function normalizeContactCreateInput(value: unknown): NormalizedContactIn
     gift_ideas: normalizeStringList(body.gift_ideas, 'Gift ideas', 500),
     custom_fields: normalizeCustomFields(body.custom_fields),
     contact_frequency: normalizeContactFrequency(body.contact_frequency, true),
+    ...(methods !== undefined ? { contact_methods: methods } : {}),
   };
 }
 
-export function normalizeContactPatchInput(value: unknown): Record<string, ContactFieldValue> {
+function contactMethods(value: unknown, previous: unknown) {
+  try { return normalizeUserContactMethods(value, previous); }
+  catch (error) { if (error instanceof ContactMethodError) throw new ContactInputError(error.message); throw error; }
+}
+export function normalizeContactPatchInput(value: unknown, previousMethods?: unknown): Record<string, ContactFieldValue> {
   const body = assertContactBody(value);
   const updates: Record<string, ContactFieldValue> = {};
+  if (hasOwn(body, 'contact_methods')) {
+    if (hasOwn(body, 'email') || hasOwn(body, 'phone')) throw new ContactInputError('Edit contact methods separately from the primary email and phone.');
+    if (previousMethods === undefined) throw new ContactInputError('The original contact methods are required.');
+    updates.contact_methods = contactMethods(body.contact_methods, previousMethods);
+  }
 
   if (hasOwn(body, 'name')) updates.name = normalizeRequiredName(body.name);
   if (hasOwn(body, 'nickname')) {

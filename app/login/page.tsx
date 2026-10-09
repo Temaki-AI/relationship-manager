@@ -116,22 +116,20 @@ export default function LoginPage() {
   return (
     <div className="min-h-[calc(100vh-3rem)] flex items-center justify-center py-8">
       <div className="w-full max-w-md animate-fade-in-up">
-        <div className="relative mb-6 overflow-hidden rounded-3xl bg-gradient-to-br from-rose-500 via-red-400 to-amber-400 px-6 py-8 text-white shadow-xl shadow-rose-200/60">
-          <div className="absolute -right-12 -top-14 h-36 w-36 rounded-full border border-white/20 bg-white/10" />
-          <div className="absolute -bottom-16 -left-10 h-32 w-32 rounded-full bg-amber-200/20 blur-sm" />
+        <div className="mb-6 rounded-xl border border-border/70 bg-card px-6 py-8 text-foreground shadow-card">
           <div className="relative">
-            <div className="mb-6 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
-              <Heart className="h-5 w-5 fill-white" />
+            <div className="mb-6 flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary text-primary">
+              <Heart className="h-5 w-5 fill-primary" />
             </div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/75">Private by design</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">Private by design</p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight">Welcome back to Everclose CRM</h1>
-            <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/85">
-              Your relationship intelligence stays behind one secure door.
+            <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+              A little care for the people who matter to you.
             </p>
           </div>
         </div>
 
-        <Card className="border-0 shadow-lg shadow-stone-200/50">
+        <Card className="border-border/70 shadow-card">
           <CardContent className="pt-6">
             {checkingSession ? (
               <div className="flex items-center justify-center gap-3 py-10 text-sm text-muted-foreground">
@@ -141,14 +139,14 @@ export default function LoginPage() {
             ) : (
               googleAuthEnabled ? (
                 <div className="space-y-5">
-                  <div className="flex items-start gap-3 rounded-2xl bg-emerald-50 px-4 py-3 text-emerald-800">
+                  <div className="flex items-start gap-3 rounded-2xl bg-success-soft px-4 py-3 text-success">
                     <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0" />
                     <p className="text-xs leading-relaxed">
                       Each Google account gets a private workspace with isolated contacts and reminders.
                     </p>
                   </div>
                   {error && (
-                    <p role="alert" aria-live="polite" className="rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                    <p role="alert" aria-live="polite" className="rounded-xl bg-danger-soft px-3 py-2.5 text-sm text-destructive">
                       {error}
                     </p>
                   )}
@@ -163,7 +161,7 @@ export default function LoginPage() {
                 </div>
               ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="flex items-start gap-3 rounded-2xl bg-emerald-50 px-4 py-3 text-emerald-800">
+                <div className="flex items-start gap-3 rounded-2xl bg-success-soft px-4 py-3 text-success">
                   <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0" />
                   <p className="text-xs leading-relaxed">
           Sessions are signed, HTTP-only, and automatically expire under your deployment policy.
@@ -188,7 +186,7 @@ export default function LoginPage() {
                 </div>
 
                 {error && (
-                  <p role="alert" aria-live="polite" className="rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                  <p role="alert" aria-live="polite" className="rounded-xl bg-danger-soft px-3 py-2.5 text-sm text-destructive">
                     {retryAfterSeconds > 0
                       ? `Too many attempts. Try again in ${retryAfterSeconds >= 60 ? `${Math.ceil(retryAfterSeconds / 60)} min` : `${retryAfterSeconds} sec`}.`
                       : error}

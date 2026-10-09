@@ -8,30 +8,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { importVCardContacts } from '../lib/contact-import.ts';
 import { parseVCards } from '../lib/vcard.ts';
+import { initializeDatabase } from '../lib/database-initialization.ts';
 
 function createDatabase() {
   const db = new Database(':memory:');
-  db.exec(`
-    CREATE TABLE contacts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      nickname TEXT,
-      email TEXT,
-      phone TEXT,
-      photo_url TEXT,
-      birthday DATE,
-      birthday_reminder_days INTEGER NOT NULL DEFAULT 7,
-      how_we_met TEXT,
-      tags TEXT,
-      notes TEXT,
-      gift_ideas TEXT,
-      custom_fields TEXT,
-      last_contacted DATE,
-      contact_frequency INTEGER DEFAULT 14,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+  initializeDatabase(db);
   return db;
 }
 
@@ -108,27 +89,7 @@ test('concurrent import processes serialize duplicate checks and create one cont
   const root = mkdtempSync(join(tmpdir(), 'bonds-concurrent-import-'));
   const databasePath = join(root, 'contacts.db');
   const setup = new Database(databasePath);
-  setup.exec(`
-    CREATE TABLE contacts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      nickname TEXT,
-      email TEXT,
-      phone TEXT,
-      photo_url TEXT,
-      birthday DATE,
-      birthday_reminder_days INTEGER NOT NULL DEFAULT 7,
-      how_we_met TEXT,
-      tags TEXT,
-      notes TEXT,
-      gift_ideas TEXT,
-      custom_fields TEXT,
-      last_contacted DATE,
-      contact_frequency INTEGER DEFAULT 14,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+  initializeDatabase(setup);
   setup.close();
 
   const childScript = `

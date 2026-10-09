@@ -1,0 +1,155 @@
+name: iOS binary
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Native binary to build
+        type: choice
+        default: both
+        options: [both, simulator, device]
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/domain/**'
+      - 'packages/design/**'
+      - '.github/workflows/ios-build.yml'
+      - 'tests/native-ui/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: iOS ${{ matrix.target }}
+    runs-on: macos-26
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(inputs.target == 'simulator' && '["simulator"]' || inputs.target == 'device' && '["device"]' || '["simulator","device"]') }}
+    env:
+      CI: '1'
+      EXPO_PUBLIC_EVERCLOSE_API_URL: https://everclosecrm.com
+      DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
+      EXPO_USE_PRECOMPILED_MODULES: '0'
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - name: Check native toolchain
+        run: |
+          xcodebuild -version
+          test "$(uname -m)" = arm64
+          pod --version
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run lint
+      - name: Generate native project
+        run: npx expo prebuild --platform ios --no-install
+      - name: Install native dependencies
+        run: pod install --project-directory=ios
+      - name: Prepare isolated smoke simulator
+        if: matrix.target == 'simulator'
+        timeout-minutes: 5
+        run: python3 scripts/verify-ios-startup.py prepare >> "$GITHUB_ENV"
+      - name: Compile release binary
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+        run: |
+          set -o pipefail
+          mkdir -p build
+          if [ "$BUILD_TARGET" = simulator ]; then
+            xcodebuild -workspace ios/Everclose.xcworkspace -scheme Everclose \
+              -configuration Release -sdk iphonesimulator \
+              -destination 'generic/platform=iOS Simulator' \
+              -derivedDataPath build/DerivedData \
+              ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=YES \
+              CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=628QH4492F \
+              build 2>&1 | tee build/xcodebuild.log | xcbeautify
+            native_app=build/DerivedData/Build/Products/Release-iphonesimulator/Everclose.app
+          else
+            xcodebuild -workspace ios/Everclose.xcworkspace -scheme Everclose \
+              -configuration Release -sdk iphoneos \
+              -destination 'generic/platform=iOS' \
+              -archivePath build/Everclose.xcarchive \
+              CODE_SIGNING_ALLOWED=NO archive 2>&1 | tee build/xcodebuild.log | xcbeautify
+            native_app=build/Everclose.xcarchive/Products/Applications/Everclose.app
+          fi
+          test -f "$native_app/main.jsbundle"
+          python3 scripts/verify-ios-linkage.py "$native_app"
+          mkdir -p build/artifact
+          ditto -c -k --sequesterRsrc --keepParent "$native_app" "build/artifact/Everclose-$BUILD_TARGET.zip"
+          (cd build/artifact && shasum -a 256 "Everclose-$BUILD_TARGET.zip" > SHA256.txt)
+          git rev-parse HEAD > build/artifact/COMMIT.txt
+          xcodebuild -version > build/artifact/XCODE.txt
+      - name: Upload compiled app
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: Everclose-${{ matrix.target }}
+          path: apps/mobile/build/artifact/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Verify simulator startup and real SQLite migration
+        if: matrix.target == 'simulator'
+        timeout-minutes: 16
+        run: python3 scripts/verify-ios-startup.py verify
+      - name: Verify native offline journal journey
+        if: matrix.target == 'simulator'
+        timeout-minutes: 12
+        working-directory: .
+        run: |
+          command -v xcodegen >/dev/null || brew install xcodegen
+          xcodegen generate --spec tests/native-ui/project.yml
+          xcodebuild build-for-testing \
+            -project tests/native-ui/EvercloseNativeQA.xcodeproj -scheme EvercloseNativeQA \
+            -destination "platform=iOS Simulator,id=$EVERCLOSE_SMOKE_SIMULATOR" \
+            -derivedDataPath apps/mobile/build/native-ui/DerivedData \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=-
+          xcodebuild test-without-building \
+            -project tests/native-ui/EvercloseNativeQA.xcodeproj -scheme EvercloseNativeQA \
+            -destination "platform=iOS Simulator,id=$EVERCLOSE_SMOKE_SIMULATOR" \
+            -derivedDataPath apps/mobile/build/native-ui/DerivedData \
+            -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 600 \
+            -maximum-test-execution-time-allowance 600 \
+            -only-testing:NativeJourneys/OfflineJournalTests \
+            -resultBundlePath apps/mobile/build/native-ui/offline.xcresult
+      - name: Upload native UI results
+        if: always() && matrix.target == 'simulator'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: Everclose-native-ui-results
+          path: apps/mobile/build/native-ui/offline.xcresult
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload verified first-launch screenshot
+        if: matrix.target == 'simulator'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: Everclose-simulator-startup
+          path: apps/mobile/build/artifact/first-launch.png
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload native build diagnostics
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: ios-${{ matrix.target }}-diagnostics
+          path: |
+            apps/mobile/build/xcodebuild.log
+            apps/mobile/build/artifact/startup-diagnostics/
+          retention-days: 7

@@ -62,7 +62,7 @@ function tryOpenLock(lockPath: string, now: Date, owner: string): number | null 
         lockError
         && typeof lockError === 'object'
         && 'code' in lockError
-        && lockError.code === 'EEXIST'
+        && (lockError.code === 'EEXIST' || lockError.code === 'ENOENT')
       ) {
         return null;
       }
@@ -74,6 +74,7 @@ function tryOpenLock(lockPath: string, now: Date, owner: string): number | null 
 function getExistingLockKind(lockPath: string): DatabaseLockKind | null {
   try {
     const owner = readFileSync(lockPath, 'utf8');
+    if (!owner) return null; // An exclusive file may precede its owner's write.
     if (owner.startsWith('mutation:')) return 'mutation';
     return 'maintenance';
   } catch {
@@ -97,7 +98,7 @@ function withDatabaseLock<T>(
   do {
     descriptor = tryOpenLock(lockPath, options.now ?? new Date(), owner);
     if (descriptor !== null) break;
-    if (kind === 'mutation' && getExistingLockKind(lockPath) !== 'mutation') {
+    if (kind === 'mutation' && getExistingLockKind(lockPath) === 'maintenance') {
       throw new DatabaseMaintenanceBusyError();
     }
     if (Date.now() >= deadline) throw new DatabaseMaintenanceBusyError();

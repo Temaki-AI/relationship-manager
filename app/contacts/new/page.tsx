@@ -294,14 +294,14 @@ export default function NewContact() {
       </div>
 
       {draftRestored && (
-        <div role="status" className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+        <div role="status" className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-warning-soft p-4 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between">
           <p>Draft restored from this browser tab.{restoredPhotoExcluded ? ' Add the photo again if you still want it.' : ''}</p>
           <Button type="button" variant="outline" size="sm" onClick={discardDraft}>Discard draft</Button>
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <Card className="animate-fade-in-up border-0 shadow-sm">
+        <Card className="animate-fade-in-up border-border/70 shadow-card">
           <CardContent className="space-y-6 p-4 sm:p-6">
             <div className="space-y-4">
               <div>
@@ -328,7 +328,7 @@ export default function NewContact() {
               </div>
             </div>
 
-            <div className="sticky bottom-20 z-20 -mx-4 flex items-center gap-3 border-y border-rose-100 bg-white/95 px-4 py-3 shadow-[0_-10px_30px_-20px_rgba(72,35,35,0.45)] backdrop-blur sm:static sm:mx-0 sm:flex-wrap sm:border-x-0 sm:border-b-0 sm:border-t sm:bg-transparent sm:px-0 sm:pt-5 sm:shadow-none">
+            <div className="sticky bottom-20 z-20 -mx-4 flex items-center gap-3 border-y border-rose-100 bg-card/95 px-4 py-3 shadow-[0_-10px_30px_-20px_rgba(72,35,35,0.45)] backdrop-blur sm:static sm:mx-0 sm:flex-wrap sm:border-x-0 sm:border-b-0 sm:border-t sm:bg-transparent sm:px-0 sm:pt-5 sm:shadow-none">
               <Button type="submit" disabled={submitting} className="h-11 shadow-sm">
                 <UserPlus className="h-4 w-4" aria-hidden="true" />
                 {submitting ? 'Adding...' : 'Add contact'}
@@ -362,7 +362,7 @@ export default function NewContact() {
                     type="button"
                     disabled={openSections.includes(id)}
                     onClick={() => revealSection(id)}
-                    className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition ${openSections.includes(id) ? 'border-primary/30 bg-primary/10 text-primary' : 'bg-white text-muted-foreground hover:border-primary/30 hover:text-foreground'}`}
+                    className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition ${openSections.includes(id) ? 'border-primary/30 bg-primary/10 text-primary' : 'bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground'}`}
                   >
                     {openSections.includes(id) ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Icon className="h-3.5 w-3.5" aria-hidden="true" />}
                     {label}

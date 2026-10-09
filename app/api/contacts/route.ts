@@ -65,9 +65,9 @@ export async function POST(request: Request) {
     const stmt = db.prepare(`
       INSERT INTO contacts (
         name, nickname, email, phone, photo_url, birthday, birthday_reminder_days, how_we_met,
-        tags, notes, gift_ideas, custom_fields, contact_frequency
+        tags, notes, gift_ideas, custom_fields, contact_frequency, contact_methods
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = withDatabaseMutationLock(backupDirectory, () => {
@@ -89,7 +89,8 @@ export async function POST(request: Request) {
             contactInput.notes,
             contactInput.gift_ideas,
             contactInput.custom_fields,
-            contactInput.contact_frequency
+            contactInput.contact_frequency,
+            contactInput.contact_methods ?? '[]'
           );
           return db.prepare('SELECT * FROM contacts WHERE id = ?')
             .get(insert.lastInsertRowid) as ContactRow;

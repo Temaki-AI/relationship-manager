@@ -16,7 +16,6 @@ import {
   startOfWeek,
 } from 'date-fns';
 import {
-  ArrowRight,
   Bell,
   CakeSlice,
   CalendarDays,
@@ -31,19 +30,24 @@ import {
   Search,
   SlidersHorizontal,
   Sparkles,
-  Users,
 } from 'lucide-react';
-import type { CalendarEvent, CalendarEventKind } from '@/lib/calendar-directory';
+import type { CalendarEvent, CalendarEventKind, CoreCalendarEvent } from '@/lib/calendar-directory';
+import { calendarEventDates, calendarEventPeople } from '@/lib/calendar-directory';
 import { createIdempotencyKey, getResponseErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { LoadError } from '@/components/ui/load-error';
 import { useToast } from '@/components/ui/toast';
+import { SavedCalendarEventCard } from '@/components/saved-calendar-event-card';
+import { CalendarReschedule } from '@/components/calendar-reschedule';
 
 type CalendarResponse = {
   events: CalendarEvent[];
   range: { start: string; end: string };
   truncated: boolean;
+  source_events_available?: boolean;
+  source_truncated?: boolean;
+  source_date_uncertain?: boolean;
 };
 
 type CalendarView = 'month' | 'agenda';
@@ -61,16 +65,16 @@ const EVENT_STYLES: Record<CalendarEventKind, {
   birthday: {
     label: 'Birthdays',
     icon: CakeSlice,
-    dot: 'bg-rose-500',
-    chip: 'border-rose-200 bg-rose-50 text-rose-800',
-    panel: 'bg-rose-100 text-rose-700',
+    dot: 'bg-secondary0',
+    chip: 'border-rose-200 bg-secondary text-primary',
+    panel: 'bg-rose-100 text-primary',
   },
   reminder: {
     label: 'Reminders',
     icon: Bell,
-    dot: 'bg-amber-500',
-    chip: 'border-amber-200 bg-amber-50 text-amber-900',
-    panel: 'bg-amber-100 text-amber-800',
+    dot: 'bg-warning-soft0',
+    chip: 'border-amber-200 bg-warning-soft text-warning',
+    panel: 'bg-amber-100 text-warning',
   },
   plan: {
     label: 'Plans',
@@ -82,9 +86,13 @@ const EVENT_STYLES: Record<CalendarEventKind, {
   interaction: {
     label: 'History',
     icon: History,
-    dot: 'bg-emerald-500',
-    chip: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-    panel: 'bg-emerald-100 text-emerald-700',
+    dot: 'bg-success-soft0',
+    chip: 'border-emerald-200 bg-success-soft text-success',
+    panel: 'bg-emerald-100 text-success',
+  },
+  source_event: {
+    label: 'Google meetings', icon: CalendarDays, dot: 'bg-violet-500',
+    chip: 'border-violet-200 bg-violet-50 text-violet-800', panel: 'bg-violet-100 text-violet-800',
   },
 };
 
@@ -112,11 +120,13 @@ function CalendarSkeleton() {
   );
 }
 
-function EventDetail({ event, completing, onComplete }: {
+function EventDetail({ event, completing, onComplete, onReschedule }: {
   event: CalendarEvent;
   completing: boolean;
   onComplete: (event: CalendarEvent) => void;
+  onReschedule: (event: CoreCalendarEvent) => void;
 }) {
+  if (event.kind === 'source_event') return <SavedCalendarEventCard event={event.source} />;
   const style = EVENT_STYLES[event.kind];
   const Icon = style.icon;
   const time = formatEventTime(event);
@@ -149,16 +159,19 @@ function EventDetail({ event, completing, onComplete }: {
           </div>
           {event.detail && <p className="mt-2 line-clamp-2 text-xs leading-relaxed">{event.detail}</p>}
           {!event.completed && (event.kind === 'reminder' || event.kind === 'plan') && (
-            <button
+            <div className="mt-3 flex flex-wrap gap-2"><button
               type="button"
               disabled={completing}
               onClick={() => onComplete(event)}
-              className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-current/20 bg-white/70 px-3 text-xs font-semibold hover:bg-white disabled:opacity-50"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-current/20 bg-card/70 px-3 text-xs font-semibold hover:bg-card disabled:opacity-50"
               aria-label={`Mark ${event.kind} ${event.title} done`}
             >
               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
               {completing ? 'Saving...' : 'Mark done'}
-            </button>
+            </button><button type="button" disabled={completing} onClick={() => onReschedule(event)} aria-label={`Reschedule ${event.kind} ${event.title}`}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-current/20 bg-card/70 px-3 text-xs font-semibold hover:bg-card disabled:opacity-50">
+              <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />Reschedule
+            </button></div>
           )}
         </div>
       </div>
@@ -175,6 +188,9 @@ export default function CalendarPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [truncated, setTruncated] = useState(false);
+  const [sourceEventsAvailable, setSourceEventsAvailable] = useState(false);
+  const [sourceTruncated, setSourceTruncated] = useState(false);
+  const [sourceDateUncertain, setSourceDateUncertain] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -186,6 +202,7 @@ export default function CalendarPage() {
     reminder: true,
     plan: true,
     interaction: true,
+    source_event: true,
   });
   const [createOpen, setCreateOpen] = useState(false);
   const [contactSearch, setContactSearch] = useState('');
@@ -197,6 +214,7 @@ export default function CalendarPage() {
   const [reminderAt, setReminderAt] = useState('');
   const [creating, setCreating] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [rescheduling, setRescheduling] = useState<CoreCalendarEvent | null>(null);
   const createAttempt = useRef<{ payload: string; key: string } | null>(null);
   const focusReminderOnOpen = useRef(false);
   const { toast } = useToast();
@@ -242,6 +260,7 @@ export default function CalendarPage() {
             reminder: kinds.reminder !== false,
             plan: kinds.plan !== false,
             interaction: kinds.interaction !== false,
+            source_event: kinds.source_event !== false,
           });
         }
       }
@@ -307,8 +326,12 @@ export default function CalendarPage() {
         }
         const data = await response.json() as CalendarResponse;
         if (!cancelled) {
-          setEvents(Array.isArray(data.events) ? data.events : []);
+          const nextEvents = Array.isArray(data.events) ? data.events : [];
+          setEvents(nextEvents);
           setTruncated(Boolean(data.truncated));
+          setSourceEventsAvailable(Boolean(data.source_events_available || nextEvents.some((event) => event.kind === 'source_event')));
+          setSourceTruncated(Boolean(data.source_truncated));
+          setSourceDateUncertain(Boolean(data.source_date_uncertain));
         }
       } catch (error) {
         if (!cancelled) {
@@ -326,22 +349,32 @@ export default function CalendarPage() {
   const filteredEvents = events.filter((event) => {
     if (!activeKinds[event.kind]) return false;
     if (!showCompleted && event.completed) return false;
-    if (contactId !== 'all' && event.contact_id !== Number(contactId)) return false;
+    const people = calendarEventPeople(event);
+    if (contactId !== 'all' && !people.some((person) => person.id === Number(contactId))) return false;
     if (!normalizedQuery) return true;
-    return [event.title, event.detail, event.contact_name, event.subtype]
+    return [event.title, event.detail, ...people.map((person) => person.name), event.subtype,
+      ...(event.kind === 'source_event' ? [event.source.calendar_label, event.source.account_email, event.source.facts.location] : [])]
       .some((value) => value?.toLocaleLowerCase().includes(normalizedQuery));
   });
   const contacts = Array.from(new Map(
-    events.map((event) => [event.contact_id, event.contact_name] as const)
+    events.flatMap((event) => calendarEventPeople(event).map((person) => [person.id, person.name] as const))
   ).entries()).sort((left, right) => left[1].localeCompare(right[1]));
   const eventsByDate = new Map<string, CalendarEvent[]>();
+  const agendaByDate = new Map<string, CalendarEvent[]>();
   for (const event of filteredEvents) {
-    const dayEvents = eventsByDate.get(event.date) || [];
-    dayEvents.push(event);
-    eventsByDate.set(event.date, dayEvents);
+    const dates = calendarEventDates(event, { start: visibleStartKey, end: visibleEndKey });
+    for (const date of dates) {
+      const dayEvents = eventsByDate.get(date) || [];
+      dayEvents.push(event); eventsByDate.set(date, dayEvents);
+    }
+    if (dates.length) {
+      const dayEvents = agendaByDate.get(dates[0]) || [];
+      dayEvents.push(event); agendaByDate.set(dates[0], dayEvents);
+    }
   }
   const selectedEvents = eventsByDate.get(selectedDate) || [];
-  const activeFilterCount = Object.values(activeKinds).filter(Boolean).length;
+  const availableKinds = (Object.keys(EVENT_STYLES) as CalendarEventKind[]).filter((kind) => kind !== 'source_event' || sourceEventsAvailable);
+  const activeFilterCount = availableKinds.filter((kind) => activeKinds[kind]).length;
 
   function moveMonth(offset: number) {
     const nextMonth = addMonths(currentMonth, offset);
@@ -359,7 +392,7 @@ export default function CalendarPage() {
     setQuery('');
     setContactId('all');
     setShowCompleted(true);
-    setActiveKinds({ birthday: true, reminder: true, plan: true, interaction: true });
+    setActiveKinds({ birthday: true, reminder: true, plan: true, interaction: true, source_event: true });
   }
 
   function openReminder(date = selectedDate) {
@@ -431,7 +464,7 @@ export default function CalendarPage() {
         body: JSON.stringify({ completed: true }),
       });
       if (!response.ok) throw new Error(await getResponseErrorMessage(response, 'Could not complete event'));
-      setEvents((current) => current.map((item) => item.id === event.id ? { ...item, completed: true } : item));
+      setEvents((current) => current.map((item) => item.id === event.id && (item.kind === 'plan' || item.kind === 'reminder') ? { ...item, completed: true } : item));
       setReloadToken((value) => value + 1);
       toast({ message: event.kind === 'plan' ? 'Plan completed and added to history' : 'Reminder completed' });
     } catch (error) {
@@ -445,29 +478,25 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-5">
-      <section className="relative overflow-hidden rounded-2xl border border-rose-100 bg-gradient-to-br from-white via-rose-50/60 to-amber-50 px-5 py-5 shadow-sm sm:px-6">
-        <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-rose-200/30 blur-3xl" aria-hidden="true" />
+      <section className="space-y-4">
         <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-              <CalendarDays className="h-4 w-4" aria-hidden="true" />
-              Relationship rhythm
-            </div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Calendar</h1>
             <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-              Birthdays, plans, reminders, and the moments you have already shared.
+              Plans, reminders, and important dates.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" onClick={() => openReminder()} className="min-h-10">
+            <Link className="inline-flex min-h-11 items-center underline" href="/calendar/events">Saved calendar context</Link>
+            <Button type="button" onClick={() => openReminder()} className="min-h-11">
               <Plus className="h-4 w-4" aria-hidden="true" /> Add reminder
             </Button>
-            <div className="flex items-center rounded-xl border border-white/80 bg-white/80 p-1 shadow-sm backdrop-blur">
+            <div className="flex items-center rounded-xl border border-border bg-card p-1">
               <button
                 type="button"
                 onClick={() => setView('month')}
                 aria-pressed={view === 'month'}
-                className={`flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium ${
+                className={`flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium ${
                   view === 'month' ? 'bg-foreground text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -477,7 +506,7 @@ export default function CalendarPage() {
                 type="button"
                 onClick={() => setView('agenda')}
                 aria-pressed={view === 'agenda'}
-                className={`flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium ${
+                className={`flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium ${
                   view === 'agenda' ? 'bg-foreground text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -498,7 +527,7 @@ export default function CalendarPage() {
       )}
 
       {createOpen && (
-        <Card id="calendar-reminder-form" className="scroll-mt-24 border-rose-200 bg-rose-50/40 shadow-sm">
+        <Card id="calendar-reminder-form" className="scroll-mt-24 border-rose-200 bg-secondary/40 shadow-sm">
           <CardContent className="p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -517,7 +546,7 @@ export default function CalendarPage() {
                   value={reminderTitle}
                   onChange={(event) => setReminderTitle(event.target.value)}
                   placeholder="Ask how the new role is going"
-                  className="h-10 w-full rounded-lg border bg-white px-3 text-sm"
+                  className="h-10 w-full rounded-lg border bg-card px-3 text-sm"
                 />
               </div>
               <div>
@@ -528,7 +557,7 @@ export default function CalendarPage() {
                   required
                   value={reminderAt}
                   onChange={(event) => setReminderAt(event.target.value)}
-                  className="h-10 w-full rounded-lg border bg-white px-3 text-sm"
+                  className="h-10 w-full rounded-lg border bg-card px-3 text-sm"
                 />
               </div>
               <div>
@@ -538,7 +567,7 @@ export default function CalendarPage() {
                   <label htmlFor="calendar-contact-search" className="mb-1.5 block text-sm font-semibold">Person</label>
                 )}
                 {selectedContact ? (
-                  <div className="flex min-h-10 items-center justify-between gap-3 rounded-lg border bg-white px-3 text-sm">
+                  <div className="flex min-h-11 items-center justify-between gap-3 rounded-lg border bg-card px-3 text-sm">
                     <span>{selectedContact.name}</span>
                     <button type="button" onClick={() => setSelectedContact(null)} className="font-semibold text-primary hover:underline">Change</button>
                   </div>
@@ -553,7 +582,7 @@ export default function CalendarPage() {
                         setContactOptionsLoading(true);
                       }}
                       placeholder="Find a contact"
-                      className="h-10 w-full rounded-lg border bg-white px-3 text-sm"
+                      className="h-10 w-full rounded-lg border bg-card px-3 text-sm"
                       aria-describedby="calendar-contact-help"
                     />
                     <div id="calendar-contact-help" className="sr-only">Choose a person from the results below.</div>
@@ -562,13 +591,13 @@ export default function CalendarPage() {
                     ) : contactOptionsLoading ? (
                       <p role="status" className="mt-2 text-xs text-muted-foreground">Finding people...</p>
                     ) : contactOptions.length > 0 ? (
-                      <div className="mt-2 max-h-36 overflow-y-auto rounded-lg border bg-white p-1">
+                      <div className="mt-2 max-h-36 overflow-y-auto rounded-lg border bg-card p-1">
                         {contactOptions.map((contact) => (
                           <button
                             key={contact.id}
                             type="button"
                             onClick={() => setSelectedContact(contact)}
-                            className="block min-h-9 w-full rounded-md px-2 text-left text-sm hover:bg-rose-50 focus-visible:bg-rose-50"
+                            className="block min-h-11 w-full rounded-md px-2 text-left text-sm hover:bg-secondary focus-visible:bg-secondary"
                           >
                             {contact.name}
                           </button>
@@ -589,11 +618,11 @@ export default function CalendarPage() {
         </Card>
       )}
 
-      <Card className="border-0 shadow-sm">
+      <Card className="border-border/70 shadow-card">
         <CardContent className="p-4 sm:p-5">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button type="button" variant="outline" size="icon" onClick={() => moveMonth(-1)} aria-label="Previous month">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -612,10 +641,10 @@ export default function CalendarPage() {
                     setCurrentMonth(nextMonth);
                     setSelectedDate(format(nextMonth, 'yyyy-MM-dd'));
                   }}
-                  className="h-9 rounded-md border bg-white px-2 text-sm"
+                  className="min-h-11 min-w-0 max-w-full rounded-md border bg-card px-2 text-sm"
                 />
               </div>
-              <h2 className="order-first text-xl font-bold xl:order-none" aria-live="polite">
+              <h2 className="sr-only" aria-live="polite">
                 {format(currentMonth, 'MMMM yyyy')}
               </h2>
               <div className="text-sm text-muted-foreground">
@@ -628,10 +657,10 @@ export default function CalendarPage() {
               aria-expanded={filtersOpen}
               aria-controls="calendar-filters"
               onClick={() => setFiltersOpen((open) => !open)}
-              className="inline-flex min-h-10 items-center justify-between rounded-lg border bg-white px-3 text-sm font-semibold md:hidden"
+              className="inline-flex min-h-11 items-center justify-between rounded-lg border bg-card px-3 text-sm font-semibold md:hidden"
             >
               <span className="inline-flex items-center gap-2"><Filter className="h-4 w-4" aria-hidden="true" /> Filters</span>
-              <span className="text-xs font-normal text-muted-foreground">{activeFilterCount < 4 || query || contactId !== 'all' || !showCompleted ? 'Active' : 'All events'}</span>
+              <span className="text-xs font-normal text-muted-foreground">{activeFilterCount < availableKinds.length || query || contactId !== 'all' || !showCompleted ? 'Active' : 'All events'}</span>
             </button>
 
             <div id="calendar-filters" className={`${filtersOpen ? 'space-y-3' : 'hidden'} md:block md:space-y-3`}>
@@ -646,7 +675,7 @@ export default function CalendarPage() {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search events or people"
-                  className="h-9 w-full rounded-lg border bg-white pl-9 pr-3 text-sm"
+                  className="h-9 w-full rounded-lg border bg-card pl-9 pr-3 text-sm"
                 />
               </div>
               <label className="sr-only" htmlFor="calendar-contact">Filter by contact</label>
@@ -654,7 +683,7 @@ export default function CalendarPage() {
                 id="calendar-contact"
                 value={contactId}
                 onChange={(event) => setContactId(event.target.value)}
-                className="h-9 rounded-lg border bg-white px-3 text-sm"
+                className="h-9 rounded-lg border bg-card px-3 text-sm"
               >
                 <option value="all">All contacts</option>
                 {contactId !== 'all' && !contacts.some(([id]) => String(id) === contactId) && (
@@ -662,7 +691,7 @@ export default function CalendarPage() {
                 )}
                 {contacts.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
               </select>
-              <label className="flex min-h-9 items-center gap-2 rounded-lg border bg-white px-3 text-sm">
+              <label className="flex min-h-11 items-center gap-2 rounded-lg border bg-card px-3 text-sm">
                 <input
                   type="checkbox"
                   checked={showCompleted}
@@ -677,7 +706,7 @@ export default function CalendarPage() {
               <span className="mr-1 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <Filter className="h-3.5 w-3.5" aria-hidden="true" /> Types
               </span>
-              {(Object.keys(EVENT_STYLES) as CalendarEventKind[]).map((kind) => {
+              {availableKinds.map((kind) => {
                 const style = EVENT_STYLES[kind];
                 const Icon = style.icon;
                 return (
@@ -687,7 +716,7 @@ export default function CalendarPage() {
                     aria-pressed={activeKinds[kind]}
                     onClick={() => setActiveKinds((current) => ({ ...current, [kind]: !current[kind] }))}
                     className={`inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition ${
-                      activeKinds[kind] ? style.chip : 'border-border bg-white text-muted-foreground opacity-60'
+                      activeKinds[kind] ? style.chip : 'border-border bg-card text-muted-foreground opacity-60'
                     }`}
                   >
                     <span className={`h-2 w-2 rounded-full ${style.dot}`} aria-hidden="true" />
@@ -696,7 +725,7 @@ export default function CalendarPage() {
                   </button>
                 );
               })}
-              {(activeFilterCount < 4 || query || contactId !== 'all' || !showCompleted) && (
+              {(activeFilterCount < availableKinds.length || query || contactId !== 'all' || !showCompleted) && (
                 <button type="button" onClick={resetFilters} className="min-h-8 px-2 text-xs font-semibold text-primary hover:underline">
                   Reset filters
                 </button>
@@ -708,14 +737,19 @@ export default function CalendarPage() {
       </Card>
 
       {truncated && (
-        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          This date range contains more than 5,000 events. Refine the month or filters to keep the view responsive.
+        <p role="status" className="rounded-lg border border-amber-200 bg-warning-soft px-4 py-3 text-sm text-warning">
+          This date range contains more than 5,000 events. Choose another month to see more; filters apply to the events already downloaded.
         </p>
       )}
+      {(sourceTruncated || sourceDateUncertain) && <p role="status" className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
+        {sourceTruncated && 'More saved meetings are available than fit in this calendar view. '}
+        {sourceDateUncertain && 'Some saved meetings have no reliable date and cannot be placed on this calendar. '}
+        <Link className="inline-flex min-h-11 items-center underline" href="/calendar/events">Review all saved context</Link>
+      </p>}
 
       {view === 'month' ? (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
-          <Card className="overflow-hidden border-0 shadow-sm">
+        <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+          <Card className="overflow-hidden border-border/70 shadow-card">
             <div className="grid grid-cols-7 border-b bg-muted/40">
               {WEEKDAYS.map((weekday) => (
                 <div key={weekday} className="px-1 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:text-xs">
@@ -735,7 +769,7 @@ export default function CalendarPage() {
                     onClick={() => setSelectedDate(dateKey)}
                     aria-label={`${format(day, 'EEEE, MMMM d')}, ${dayEvents.length} events`}
                     aria-pressed={selected}
-                    className={`min-h-24 bg-white p-1.5 text-left transition hover:bg-rose-50/40 sm:min-h-28 sm:p-2 lg:min-h-32 ${
+                    className={`min-h-24 bg-card p-1.5 text-left transition hover:bg-secondary/40 sm:min-h-28 sm:p-2 lg:min-h-32 ${
                       !isSameMonth(day, currentMonth) ? 'bg-muted/30 text-muted-foreground' : ''
                     } ${selected ? 'relative z-10 ring-2 ring-inset ring-primary' : ''}`}
                   >
@@ -752,7 +786,7 @@ export default function CalendarPage() {
                     <span className="hidden space-y-1 sm:block" aria-hidden="true">
                       {dayEvents.slice(0, 3).map((event) => (
                         <span key={event.id} className={`block truncate rounded border px-1.5 py-0.5 text-[10px] font-medium lg:text-xs ${EVENT_STYLES[event.kind].chip} ${event.completed ? 'line-through' : ''}`}>
-                          {formatEventTime(event) && `${formatEventTime(event)} · `}{event.title}
+                          {formatEventTime(event) && `${formatEventTime(event)} · `}{event.kind === 'source_event' && event.source.facts.status === 'cancelled' && 'Cancelled · '}{event.title}
                         </span>
                       ))}
                       {dayEvents.length > 3 && (
@@ -765,8 +799,8 @@ export default function CalendarPage() {
             </div>
           </Card>
 
-          <aside className="xl:sticky xl:top-24 xl:self-start">
-            <Card className="overflow-hidden border-0 shadow-sm">
+          <aside className="min-w-0 xl:sticky xl:top-24 xl:self-start">
+            <Card className="overflow-hidden border-border/70 shadow-card">
               <div className="bg-foreground px-5 py-4 text-white">
                 <p className="text-xs font-semibold uppercase tracking-wider text-white/60">Selected day</p>
                 <h2 className="mt-1 text-lg font-bold">{format(parseISO(selectedDate), 'EEEE, MMMM d')}</h2>
@@ -775,7 +809,7 @@ export default function CalendarPage() {
               <CardContent className="p-4">
                 {selectedEvents.length > 0 ? (
                   <div className="space-y-3">
-                    {selectedEvents.map((event) => <EventDetail key={event.id} event={event} completing={completingId === event.id} onComplete={(item) => void completeEvent(item)} />)}
+                    {selectedEvents.map((event) => <EventDetail key={event.id} event={event} completing={completingId === event.id} onComplete={(item) => void completeEvent(item)} onReschedule={setRescheduling} />)}
                   </div>
                 ) : (
                   <div className="py-8 text-center">
@@ -794,13 +828,13 @@ export default function CalendarPage() {
           </aside>
         </div>
       ) : (
-        <Card className="overflow-hidden border-0 shadow-sm">
+        <Card className="overflow-hidden border-border/70 shadow-card">
           <CardContent className="p-0">
-            {calendarDays.some((day) => (eventsByDate.get(format(day, 'yyyy-MM-dd')) || []).length > 0) ? (
+            {calendarDays.some((day) => (agendaByDate.get(format(day, 'yyyy-MM-dd')) || []).length > 0) ? (
               <div className="divide-y">
                 {calendarDays.map((day) => {
                   const dateKey = format(day, 'yyyy-MM-dd');
-                  const dayEvents = eventsByDate.get(dateKey) || [];
+                  const dayEvents = agendaByDate.get(dateKey) || [];
                   if (dayEvents.length === 0) return null;
                   return (
                     <section key={dateKey} className="grid gap-4 p-4 sm:grid-cols-[7rem_minmax(0,1fr)] sm:p-5">
@@ -811,14 +845,14 @@ export default function CalendarPage() {
                         <p className="mt-1 text-lg font-bold">{format(day, 'MMM d')}</p>
                       </div>
                       <div className="grid gap-3 lg:grid-cols-2">
-                        {dayEvents.map((event) => <EventDetail key={event.id} event={event} completing={completingId === event.id} onComplete={(item) => void completeEvent(item)} />)}
+                        {dayEvents.map((event) => <EventDetail key={event.id} event={event} completing={completingId === event.id} onComplete={(item) => void completeEvent(item)} onReschedule={setRescheduling} />)}
                       </div>
                     </section>
                   );
                 })}
               </div>
             ) : (
-              <div className="px-5 py-20 text-center">
+              <div className="px-5 py-10 text-center">
                 <SlidersHorizontal className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
                 <h2 className="mt-4 font-semibold">No matching events this month</h2>
                 <p className="mt-1 text-sm text-muted-foreground">Try another month or reset your filters.</p>
@@ -828,21 +862,12 @@ export default function CalendarPage() {
           </CardContent>
         </Card>
       )}
-
-      <div className="flex flex-col gap-3 rounded-xl border border-dashed bg-white/60 p-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4" aria-hidden="true" />
-          Events stay connected to the contact who gives them context.
-        </div>
-        <div className="flex gap-3">
-          <Link href="/reminders" className="inline-flex items-center gap-1 font-semibold text-foreground hover:text-primary">
-            Reminders <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-          <Link href="/contacts" className="inline-flex items-center gap-1 font-semibold text-foreground hover:text-primary">
-            Contacts <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-      </div>
+      {rescheduling && <CalendarReschedule key={rescheduling.id} event={rescheduling} onCancel={() => setRescheduling(null)} onSaved={(at) => {
+        const date = rescheduling.kind === 'plan' ? parseISO(at) : new Date(at);
+        setCurrentMonth(startOfMonth(date)); setSelectedDate(format(date, 'yyyy-MM-dd'));
+        setRescheduling(null); setReloadToken((value) => value + 1);
+        toast({ message: rescheduling.kind === 'plan' ? 'Plan date saved' : 'Reminder date saved' });
+      }} />}
     </div>
   );
 }

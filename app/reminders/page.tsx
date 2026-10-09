@@ -169,8 +169,8 @@ export default function RemindersPage() {
   const upcoming = reminders.filter(r => classifyReminder(r.remind_at) === 'upcoming');
 
   const sections = [
-    { label: 'Overdue', items: overdue, dotColor: 'bg-red-400', bgColor: 'bg-red-50 hover:bg-red-100/70', dotPulse: true },
-    { label: 'Today', items: today, dotColor: 'bg-amber-400', bgColor: 'bg-amber-50 hover:bg-amber-100/70', dotPulse: false },
+    { label: 'Overdue', items: overdue, dotColor: 'bg-red-400', bgColor: 'bg-danger-soft hover:bg-red-100/70', dotPulse: true },
+    { label: 'Today', items: today, dotColor: 'bg-amber-400', bgColor: 'bg-warning-soft hover:bg-amber-100/70', dotPulse: false },
     { label: 'Upcoming', items: upcoming, dotColor: 'bg-blue-400', bgColor: 'hover:bg-muted/50', dotPulse: false },
   ];
   const rangeStart = pagination.total === 0
@@ -206,13 +206,13 @@ export default function RemindersPage() {
         }}
       />
 
-      <Card className="overflow-hidden border-0 shadow-sm animate-fade-in-up">
+      <Card className="overflow-hidden border-border/70 shadow-card animate-fade-in-up">
         <div className="h-1 bg-gradient-to-r from-blue-400 via-rose-400 to-amber-400" />
         <CardContent className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <div className={`rounded-xl p-2.5 ${
               notifications.status === 'enabled'
-                ? 'bg-emerald-50 text-emerald-600'
+                ? 'bg-success-soft text-success'
                 : 'bg-muted text-muted-foreground'
             }`}>
               {notifications.status === 'enabled'
@@ -231,7 +231,7 @@ export default function RemindersPage() {
                     : 'Everclose CRM checks for due relationship reminders and birthday alerts while it is open in this browser. Delivery after the app is closed is not guaranteed.'}
               </p>
               <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
+                <ShieldCheck className="h-3.5 w-3.5 text-success" aria-hidden="true" />
                 Notification previews never include contact names, titles, or notes.
               </p>
             </div>
@@ -259,7 +259,7 @@ export default function RemindersPage() {
       {process.env.NEXT_PUBLIC_AUTH_MODE === 'google' && <ReminderEmailSettings />}
 
       {loadError && (
-        <Card className="border border-amber-200/70 bg-amber-50/40 shadow-sm">
+        <Card className="border border-amber-200/70 bg-warning-soft/40 shadow-sm">
           <CardContent className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold">Reminders could not be loaded</p>
@@ -285,7 +285,7 @@ export default function RemindersPage() {
                 </div>
                 <div className="space-y-2">
                   {section.items.map((reminder) => (
-                    <Card key={reminder.id} className="border-0 shadow-sm">
+                    <Card key={reminder.id} className="border-border/70 shadow-card">
                       <CardContent className={`py-3 px-4 rounded-xl ${section.bgColor} transition-colors`}>
                         <div className="flex items-start gap-3">
                           <Button
@@ -371,7 +371,7 @@ export default function RemindersPage() {
           )}
         </div>
       ) : !loadError ? (
-        <Card className="animate-scale-in border-0 shadow-sm">
+        <Card className="animate-scale-in border-border/70 shadow-card">
           <CardContent className="py-16 text-center">
             <div className="text-5xl mb-4">🔔</div>
             <h3 className="text-lg font-semibold">No pending reminders</h3>

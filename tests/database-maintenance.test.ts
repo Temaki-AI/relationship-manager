@@ -14,41 +14,14 @@ import {
   verifyDatabaseBackupChecksum,
 } from '../lib/database-maintenance.ts';
 import { DATABASE_SCHEMA_VERSION, DATABASE_SCHEMA_VERSION_KEY } from '../lib/database-schema.ts';
+import { initializeDatabase } from '../lib/database-initialization.ts';
+import { contactSourceWriteEpoch } from '../lib/contact-source-storage.ts';
 
 function createDatabase(filename: string) {
   const db = new Database(filename);
   db.pragma('foreign_keys = ON');
-  db.exec(`
-    CREATE TABLE app_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT);
-    CREATE TABLE workspaces (id INTEGER PRIMARY KEY, name TEXT NOT NULL);
-    CREATE TABLE contacts (id INTEGER PRIMARY KEY, name TEXT NOT NULL);
-    CREATE TABLE contact_relationships (
-      id INTEGER PRIMARY KEY,
-      contact_id INTEGER NOT NULL,
-      related_contact_id INTEGER NOT NULL,
-      relationship_label TEXT NOT NULL,
-      reciprocal_label TEXT NOT NULL,
-      created_at TEXT
-    );
-    CREATE TABLE contact_children (
-      id INTEGER PRIMARY KEY,
-      contact_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      birthday TEXT,
-      created_at TEXT,
-      updated_at TEXT
-    );
-    CREATE TABLE contact_groups (id INTEGER PRIMARY KEY, name TEXT NOT NULL);
-    CREATE TABLE interactions (id INTEGER PRIMARY KEY, contact_id INTEGER NOT NULL, summary TEXT);
-    CREATE TABLE reminders (id INTEGER PRIMARY KEY, contact_id INTEGER NOT NULL, title TEXT);
-    CREATE TABLE daily_snoozes (id TEXT PRIMARY KEY, contact_id INTEGER NOT NULL, reminder_id INTEGER, until_date TEXT NOT NULL);
-    CREATE TABLE contact_group_members (contact_id INTEGER NOT NULL, group_id INTEGER NOT NULL, PRIMARY KEY (contact_id, group_id));
-    CREATE TABLE relationship_facts (id INTEGER PRIMARY KEY, contact_id INTEGER NOT NULL, value TEXT);
-    CREATE TABLE integration_connections (id INTEGER PRIMARY KEY, workspace_id INTEGER NOT NULL, provider TEXT);
-    CREATE TABLE sync_jobs (id INTEGER PRIMARY KEY, workspace_id INTEGER NOT NULL, status TEXT);
-    CREATE TABLE plans (id INTEGER PRIMARY KEY, contact_id INTEGER NOT NULL, summary TEXT);
-  `);
-  db.prepare('INSERT INTO app_metadata (key, value) VALUES (?, ?)')
+  initializeDatabase(db);
+  db.prepare('INSERT OR REPLACE INTO app_metadata (key, value) VALUES (?, ?)')
     .run(DATABASE_SCHEMA_VERSION_KEY, DATABASE_SCHEMA_VERSION);
   db.prepare('INSERT INTO workspaces (id, name) VALUES (?, ?)').run(1, 'Test workspace');
   return db;
@@ -62,6 +35,7 @@ test('backup and restore round-trip data with a pre-restore safety snapshot', ()
 
   try {
     db.prepare('INSERT INTO contacts (id, name) VALUES (?, ?)').run(1, 'Original contact');
+    const sourceEpoch = contactSourceWriteEpoch(db);
     const backup = createDatabaseBackup(db, {
       backupDirectory,
       now: new Date('2026-07-10T12:00:00.000Z'),
@@ -91,6 +65,7 @@ test('backup and restore round-trip data with a pre-restore safety snapshot', ()
       'Original contact'
     );
     assert.equal(restored.restoredRowCounts.contacts, 1);
+    assert.notEqual(contactSourceWriteEpoch(db), sourceEpoch, 'Restore invalidates previously opened source forms.');
 
     const preRestore = new Database(
       resolveBackupPath(backupDirectory, restored.preRestoreBackup.filename),
