@@ -1,4 +1,4 @@
-# Development handoff — 8 October 2026
+# Development handoff — 9 October 2026
 
 Current development delivery: the web and iOS interface now share Today,
 People, Calendar, and Settings, with secondary tools disclosed when requested.
@@ -8,9 +8,12 @@ source `1ccab87d7acdb6d19d4d0a8f9ca913496245ff00`. The exact bundle passes the
 offline journey and normal/largest-text navigation checks. Installation
 preserves every row in all 26 current SQLite tables; schema 18, integrity,
 foreign keys, and bundle receipt checks pass. Its inspected launch retains the
-owner's unfinished Google connection. A signed iPhone UI preview contains the
-same verified bundle, but TIE Fighter currently has no usable connection tunnel;
-the physical phone retains its previously installed build 12. See the
+owner's unfinished Google connection. On 9 October, the signed iPhone UI preview
+with the same verified bundle was installed in place on TIE Fighter. Fresh
+metadata confirms 1.0.0/build 12; launch succeeds and the same process (4414)
+is present in a subsequent device process check. No app uninstall, data reset,
+or personal phone database copy was performed. This confirms installation and
+process startup, not a visual or Google-sync round trip. See the
 [interface audit and verification](ui-ux-audit-2026-10-08.md).
 
 Production delivery remains the Calendar-only server rollout. The owner

@@ -122,8 +122,14 @@ It reuses the compatible compiled build-12 native binary; it is not a newly
 compiled native release or a TestFlight upload.
 
 This UI update is in the existing draft PR; it has not been deployed to the live
-Cloudflare site. The physical iPhone's current connection has no usable tunnel,
-so its previously installed build 12 has not been replaced by this UI preview.
+Cloudflare site. On 9 October, TIE Fighter became available and the verified
+signed preview was installed over its existing app. Installation succeeds,
+fresh metadata confirms 1.0.0/build 12, launch succeeds, and process 4414 remains
+present in the subsequent device process check. Package hash and strict
+signature checks were repeated before installation. The app was not uninstalled
+or reset, and no personal phone database was copied. These device checks confirm
+installation and process startup; physical UI behavior and owner Google sync
+still require a real user round trip.
 
 ## Design references
 
