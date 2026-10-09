@@ -17,7 +17,7 @@ export default function ErrorPage({
       role="alert"
       aria-labelledby="error-heading"
     >
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary text-rose-600 shadow-sm">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary text-primary shadow-sm">
         <AlertTriangle className="h-7 w-7" aria-hidden="true" />
       </div>
       <p className="mt-6 text-xs font-semibold uppercase tracking-[0.18em] text-primary">A temporary snag</p>

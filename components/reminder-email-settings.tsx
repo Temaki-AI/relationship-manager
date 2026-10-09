@@ -123,7 +123,7 @@ export function ReminderEmailSettings() {
           <p className="text-xs text-success" role="status">Email alerts are on for due reminders and contact or child birthdays. Quiet hours use your selected time zone.</p>
         )}
         {settings && settings.failedCount > 0 && (
-          <p className="text-xs text-amber-800" role="status">
+          <p className="text-xs text-warning" role="status">
             {settings.failedCount} {settings.failedCount === 1 ? 'email alert could' : 'email alerts could'} not be delivered after retries. Check Reminders and Calendar for anything due.
           </p>
         )}

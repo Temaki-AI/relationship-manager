@@ -98,7 +98,7 @@ export function ImportReportView({ id }: { id: string }) {
         <h1 className="text-2xl font-bold sm:text-3xl">{report ? phase : 'Import report'}</h1>
         {report && <p className="break-words text-sm text-muted-foreground">{report.job.filename} · {report.job.total.toLocaleString()} rows</p>}
       </header>
-      {error && <div role="alert" className="rounded-xl border border-red-200 bg-danger-soft p-4 text-sm text-red-900">
+      {error && <div role="alert" className="rounded-xl border border-red-200 bg-danger-soft p-4 text-sm text-destructive">
         <p>{error}</p><p className="mt-1">Refresh the saved report before trying again. Already imported rows will not be imported twice.</p>
         <Button className="mt-3" variant="outline" disabled={busy || loading} onClick={() => setReload((value) => value + 1)}><RefreshCw className="h-4 w-4" />Refresh report</Button>
       </div>}
@@ -144,7 +144,7 @@ export function ImportReportView({ id }: { id: string }) {
           {!report.rows.length && <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">No rows in this view.</p>}
           {report.rows.map((row) => <article key={row.row_number} className="rounded-xl border border-border/70 bg-card p-4">
             <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><h3 className="break-words font-semibold">{row.name}</h3><p className="mt-1 break-words text-xs text-muted-foreground">Row {row.row_number}{row.email && ` · ${row.email}`}{row.phone && ` · ${row.phone}`}{row.birthday && ` · Birthday ${row.birthday}`}</p></div>
-              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${row.state === 'review' || row.state === 'invalid' ? 'bg-warning-soft text-amber-900' : row.state === 'imported' ? 'bg-success-soft text-success' : 'bg-muted text-muted-foreground'}`}>{IMPORT_STATE_LABELS[row.state]}</span>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${row.state === 'review' || row.state === 'invalid' ? 'bg-warning-soft text-warning' : row.state === 'imported' ? 'bg-success-soft text-success' : 'bg-muted text-muted-foreground'}`}>{IMPORT_STATE_LABELS[row.state]}</span>
             </div>
             {row.message && <p className="mt-2 text-sm text-muted-foreground">{row.message}</p>}
             {!!row.matches.length && <p className="mt-2 text-sm">Possible existing matches: {row.matches.map((match, index) => <span key={match.id}>{index > 0 && ', '}<Link className="text-primary underline underline-offset-2" href={`/contacts/${match.id}`} target="_blank" rel="noopener noreferrer">{match.name} (opens new tab)</Link></span>)}</p>}

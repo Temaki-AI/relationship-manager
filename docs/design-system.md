@@ -4,6 +4,8 @@ The approved direction combines a clean mobile layout with a warm, personal pale
 
 The implemented component reference is available at `/design-system` inside an authenticated web workspace. Its names and field values are explicitly illustrative. Today, People, Calendar and Settings remain the four main destinations across web and iPhone.
 
+Actual implementation screenshots: [iPhone Today](design/implementation/ios-today.png) and [web component reference](design/implementation/web-component-reference.png), both captured with synthetic example data. Delivery and verification are recorded in [the implementation record](design-system-delivery.md).
+
 ## Foundations
 
 The source of truth is [`packages/design/src/tokens.ts`](../packages/design/src/tokens.ts). Web generates `app/design-tokens.css`; Tailwind consumes its semantic variables and the shared type/radius/motion values. Native imports the same tokens through `apps/mobile/src/theme.ts`.

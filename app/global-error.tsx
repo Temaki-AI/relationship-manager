@@ -9,7 +9,7 @@ export default function GlobalError({ reset }: { reset: () => void }) {
       <body>
         <main className="flex min-h-screen items-center justify-center bg-background px-5 text-foreground">
           <section className="max-w-lg text-center" role="alert" aria-labelledby="global-error-heading">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary text-rose-600 shadow-sm">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary text-primary shadow-sm">
               <AlertTriangle className="h-7 w-7" aria-hidden="true" />
             </div>
             <p className="mt-6 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Everclose CRM needs a moment</p>

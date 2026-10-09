@@ -278,7 +278,7 @@ export default function AdvancedRecoveryPage() {
                 <div className="flex items-start gap-3">
                   {restore.state === 'completed' || restore.state === 'rolled_back'
                     ? <CheckCircle2 className="mt-0.5 h-5 w-5 text-success" />
-                    : <ShieldCheck className="mt-0.5 h-5 w-5 text-amber-700" />}
+                    : <ShieldCheck className="mt-0.5 h-5 w-5 text-warning" />}
                   <div>
                     <CardTitle className="text-lg">{restore.state === 'rolled_back' ? 'Rollback complete'
                       : restore.state === 'completed' ? 'Restore complete' : 'Current restore'}</CardTitle>

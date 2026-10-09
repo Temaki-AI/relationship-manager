@@ -95,10 +95,10 @@ function DirectoryLoadError({
   return (
     <div role="alert" className="rounded-xl border border-amber-300 bg-warning-soft p-4 text-amber-950">
       <div className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">This contact list could not be loaded</p>
-          <p className="mt-1 text-xs leading-relaxed text-amber-900">{message}</p>
+          <p className="mt-1 text-xs leading-relaxed text-warning">{message}</p>
           <Button type="button" variant="outline" size="sm" className="mt-3" disabled={retrying} onClick={onRetry}>
             <RefreshCw className={`h-3.5 w-3.5 ${retrying ? 'animate-spin' : ''}`} aria-hidden="true" />
             {retrying ? 'Trying again...' : 'Try again'}

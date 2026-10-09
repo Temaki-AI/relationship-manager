@@ -157,11 +157,11 @@ export function PhotoInput({ id, name, value, onChange }: PhotoInputProps) {
         </div>
       </div>
       <p id={descriptionId} className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
-        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-emerald-600" aria-hidden="true" />
+        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-success" aria-hidden="true" />
         Photos are cropped, resized, and stripped of metadata in this browser before being stored inside your Everclose CRM database.
       </p>
       {hasInertRemotePhoto && (
-        <p className="mt-2 rounded-lg border border-amber-200/70 bg-warning-soft/50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
+        <p className="mt-2 rounded-lg border border-amber-200/70 bg-warning-soft/50 px-3 py-2 text-[11px] leading-relaxed text-warning">
           A remote photo URL is stored for compatibility but is not loaded, protecting your IP address and viewing activity. Upload a local photo to replace it.
         </p>
       )}

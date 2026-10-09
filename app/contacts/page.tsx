@@ -651,7 +651,7 @@ export default function ContactsPage() {
               />
 
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                <ShieldCheck className="h-3.5 w-3.5 text-success" />
                 Files go only to this Everclose CRM installation and are never sent to a third-party service.
               </div>
             </div>
@@ -896,7 +896,7 @@ export default function ContactsPage() {
                         </div>
                       </div>
 
-                      <div className={`mb-3 rounded-lg px-3 py-2 ${rhythm.kind === 'ready' ? 'bg-warning-soft text-amber-900' : rhythm.kind === 'due-soon' ? 'bg-info-soft text-sky-900' : rhythm.kind === 'on-track' ? 'bg-success-soft text-emerald-900' : 'bg-stone-50 text-stone-700'}`}>
+                      <div className={`mb-3 rounded-lg px-3 py-2 ${rhythm.kind === 'ready' ? 'bg-warning-soft text-warning' : rhythm.kind === 'due-soon' ? 'bg-info-soft text-info' : rhythm.kind === 'on-track' ? 'bg-success-soft text-success' : 'bg-stone-50 text-stone-700'}`}>
                         <p className="text-xs font-semibold">{rhythm.label}</p>
                         <p className="mt-0.5 text-[11px] leading-relaxed">{rhythm.detail}</p>
                       </div>

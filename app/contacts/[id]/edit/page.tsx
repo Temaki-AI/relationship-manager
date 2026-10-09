@@ -286,7 +286,7 @@ export default function EditContact() {
                   <div className="space-y-3">
                     <div>
                       <h2 id="edit-conflict-heading" className="font-semibold">This contact changed somewhere else</h2>
-                      <p className="mt-1 text-sm text-amber-900">
+                      <p className="mt-1 text-sm text-warning">
                         Your draft is still here and was not overwritten. Open the latest version in a new tab to compare, or discard this draft and reload.
                       </p>
                     </div>

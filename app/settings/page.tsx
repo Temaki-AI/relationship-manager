@@ -492,7 +492,7 @@ export default function SettingsPage() {
           <CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="font-semibold text-sky-950">Advanced recovery</p>
-              <p className="mt-1 text-sm text-sky-900/80">
+              <p className="mt-1 text-sm text-info/80">
                 Capture and verify larger cloud snapshots, or safely resume an interrupted restore.
               </p>
             </div>
@@ -530,7 +530,7 @@ export default function SettingsPage() {
         <Card className="min-w-0 border-border/70 shadow-card md:col-span-2">
           <CardContent className="flex flex-col gap-5 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
-              <div className={`rounded-xl p-2.5 ${automaticCurrent ? 'bg-success-soft text-success' : 'bg-warning-soft text-amber-700'}`}>
+              <div className={`rounded-xl p-2.5 ${automaticCurrent ? 'bg-success-soft text-success' : 'bg-warning-soft text-warning'}`}>
                 <ShieldCheck className="h-5 w-5" />
               </div>
               <div className="min-w-0">
@@ -550,7 +550,7 @@ export default function SettingsPage() {
                         ? 'bg-success-soft text-success'
                         : automaticDisabled
                           ? 'bg-muted text-muted-foreground'
-                          : 'bg-amber-100 text-amber-800'
+                          : 'bg-amber-100 text-warning'
                     }`}>
                       {automaticBackup.state}
                     </span>
@@ -641,7 +641,7 @@ export default function SettingsPage() {
             />
           </div>
           <div className="flex flex-col gap-3 rounded-xl border border-emerald-200/60 bg-card/70 p-4 lg:col-span-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="max-w-2xl text-xs leading-relaxed text-emerald-900">
+            <p className="max-w-2xl text-xs leading-relaxed text-success">
               The passphrase never leaves this browser and cannot be recovered by Everclose CRM. Use at least {PORTABLE_BACKUP_MINIMUM_PASSPHRASE_LENGTH} characters and store it separately from the encrypted file.
             </p>
             <Button
@@ -749,7 +749,7 @@ export default function SettingsPage() {
       <Card className="border border-amber-200/70 bg-warning-soft/30 shadow-sm animate-fade-in-up">
         <CardHeader className="pb-3">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-amber-100 p-2.5 text-amber-700">
+            <div className="rounded-xl bg-amber-100 p-2.5 text-warning">
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
@@ -763,7 +763,7 @@ export default function SettingsPage() {
         <CardContent className="grid gap-5 lg:grid-cols-2">
           <div className="space-y-3 rounded-xl border border-amber-200/60 bg-card/70 p-4">
             <div className="flex items-center gap-2">
-              <Upload className="h-4 w-4 text-amber-700" />
+              <Upload className="h-4 w-4 text-warning" />
               <p className="text-sm font-semibold">Restore from a file</p>
             </div>
             <label htmlFor="restore-file" className="sr-only">Backup file to restore</label>
@@ -855,7 +855,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.65fr)]">
           <div className="space-y-3 rounded-xl border border-red-200/70 bg-card/75 p-4 text-sm">
-            <p className="font-semibold text-red-900">This action has no in-app recovery point.</p>
+            <p className="font-semibold text-destructive">This action has no in-app recovery point.</p>
             <p className="leading-relaxed text-muted-foreground">
               {cloud ? 'This removes CRM records, workspace preferences, retry receipts, and files managed by this workspace. Your Google account, sign-in identity, and billing plan are not deleted. If interrupted, erasure can be resumed.' : 'Everclose CRM deletes its database records, compacts deleted SQLite pages, truncates its recovery log, and removes every recognized managed backup artifact. Your sign-in password and deployment configuration remain unchanged.'}
             </p>
@@ -865,7 +865,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-3 rounded-xl border border-red-200/70 bg-card/75 p-4">
-            <label htmlFor="erasure-confirmation" className="text-sm font-semibold text-red-900">
+            <label htmlFor="erasure-confirmation" className="text-sm font-semibold text-destructive">
               Type <span className="font-mono">{WORKSPACE_ERASURE_CONFIRMATION}</span> to continue
             </label>
             <Input
@@ -878,7 +878,7 @@ export default function SettingsPage() {
               disabled={busyAction !== null || restoring}
               aria-describedby="erasure-warning"
             />
-            <p id="erasure-warning" className="text-xs leading-relaxed text-red-800">
+            <p id="erasure-warning" className="text-xs leading-relaxed text-destructive">
               Do not continue until you have exported anything you want to keep.
             </p>
             <Button

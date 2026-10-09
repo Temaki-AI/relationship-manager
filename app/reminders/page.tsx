@@ -212,7 +212,7 @@ export default function RemindersPage() {
           <div className="flex items-start gap-3">
             <div className={`rounded-xl p-2.5 ${
               notifications.status === 'enabled'
-                ? 'bg-success-soft text-emerald-600'
+                ? 'bg-success-soft text-success'
                 : 'bg-muted text-muted-foreground'
             }`}>
               {notifications.status === 'enabled'
@@ -231,7 +231,7 @@ export default function RemindersPage() {
                     : 'Everclose CRM checks for due relationship reminders and birthday alerts while it is open in this browser. Delivery after the app is closed is not guaranteed.'}
               </p>
               <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
+                <ShieldCheck className="h-3.5 w-3.5 text-success" aria-hidden="true" />
                 Notification previews never include contact names, titles, or notes.
               </p>
             </div>

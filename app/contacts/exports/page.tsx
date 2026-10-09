@@ -137,7 +137,7 @@ export default function ContactExportsPage() {
       </div>
       {createAttempt && <p className="mt-3 text-xs text-muted-foreground">If starting failed, choose {createAttempt.format === 'csv' ? 'Prepare CSV' : 'Prepare vCard'} again to retry the same request safely.</p>}
     </div>
-    {error && <div role="alert" className="rounded-xl border border-red-200 bg-danger-soft p-4 text-sm text-red-900"><p>{error}</p><Button className="mt-3" variant="outline" onClick={() => setReload((value) => value + 1)}><RefreshCw className="h-4 w-4" />Refresh status</Button></div>}
+    {error && <div role="alert" className="rounded-xl border border-red-200 bg-danger-soft p-4 text-sm text-destructive"><p>{error}</p><Button className="mt-3" variant="outline" onClick={() => setReload((value) => value + 1)}><RefreshCw className="h-4 w-4" />Refresh status</Button></div>}
     {loading && <p role="status">Loading exports...</p>}
     {!loading && !jobs.length && <div className="rounded-2xl border border-dashed p-8 text-center"><Download className="mx-auto h-8 w-8 text-muted-foreground" /><h2 className="mt-4 font-semibold">No exports yet</h2><p className="mt-2 text-sm text-muted-foreground">Choose a format above to make your first contacts file.</p></div>}
     {jobs.map((job) => {

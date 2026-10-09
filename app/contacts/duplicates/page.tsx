@@ -347,7 +347,7 @@ export default function DuplicateContactsPage() {
             </p>
           </div>
           {data && data.groupCount > 0 && (
-            <span className="w-fit rounded-full bg-warning-soft px-3 py-1.5 text-xs font-semibold text-amber-700">
+            <span className="w-fit rounded-full bg-warning-soft px-3 py-1.5 text-xs font-semibold text-warning">
               {data.groupCount} possible {data.groupCount === 1 ? 'match' : 'matches'}
             </span>
           )}
@@ -374,7 +374,7 @@ export default function DuplicateContactsPage() {
       <Card className="border-0 bg-gradient-to-br from-rose-50 via-white to-amber-50 shadow-sm">
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-card p-2.5 text-emerald-600 shadow-sm">
+            <div className="rounded-xl bg-card p-2.5 text-success shadow-sm">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
@@ -420,7 +420,7 @@ export default function DuplicateContactsPage() {
       ) : !data || data.groups.length === 0 ? (
         <Card className="border-border/70 shadow-card animate-scale-in">
           <CardContent className="py-16 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-success-soft text-emerald-600">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-success-soft text-success">
               <CheckCircle2 className="h-7 w-7" />
             </div>
             <h2 className="mt-4 text-lg font-semibold">Your people are tidy</h2>
@@ -458,7 +458,7 @@ export default function DuplicateContactsPage() {
                       </CardTitle>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {group.reasons.map((reason) => (
-                          <span key={`${reason.kind}:${reason.value}`} className="rounded-full border border-amber-200 bg-warning-soft px-2.5 py-1 text-[11px] font-medium text-amber-800">
+                          <span key={`${reason.kind}:${reason.value}`} className="rounded-full border border-amber-200 bg-warning-soft px-2.5 py-1 text-[11px] font-medium text-warning">
                             {reasonLabel(reason.kind)}: {reason.value}
                           </span>
                         ))}

@@ -1,5 +1,19 @@
 # Development handoff — 9 October 2026
 
+Latest interface delivery: the approved **Modern + Warm** design is implemented
+across web and iPhone, with canonical shared tokens, reusable components and an
+authenticated web component reference at `/design-system`. The independently
+verified `Everclose-Modern-Warm-b5ca465.ipa` is installed in place on TIE Fighter.
+Fresh metadata confirms 1.0.0/build 12; iOS initially blocks its launch because
+the phone is locked. Normal and maximum-text native hierarchy checks, 52 web
+screen audits, 13 selected contracts, 22 mobile cases, types/lint, web compilation
+and Hermes bundling pass. The complete offline journey also passes in 276.685 seconds with a
+fresh-query harness after its initial stale-handle failure. No personal database
+copy or reset occurred. See the [design system](design-system.md) and
+[exact package/delivery record](design-system-delivery.md). The owner-ready
+simulator retains the preceding UI described below; the full web branch remains
+undeployed. The records below preserve preceding delivery evidence.
+
 Current development delivery: the web and iOS interface now share Today,
 People, Calendar, and Settings, with secondary tools disclosed when requested.
 Profiles separate Overview, Activity, and Details. The user-ready simulator

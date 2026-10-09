@@ -88,7 +88,7 @@ export function FirstCircleJourney({ snapshot, onChanged }: { snapshot: FirstSte
             <h2 id="first-circle-title" className="max-w-2xl text-2xl font-bold tracking-tight sm:text-3xl">Start close, not wide.</h2>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Choose a few people you want to show up for. Add one detail, then capture a real conversation or plan when to reach out. You never need to import everyone.</p>
           </div>
-          <span className="w-fit shrink-0 rounded-full border border-rose-200 bg-card/80 px-3 py-1.5 text-xs font-semibold text-rose-800">{snapshot.circleCount} in your circle</span>
+          <span className="w-fit shrink-0 rounded-full border border-rose-200 bg-card/80 px-3 py-1.5 text-xs font-semibold text-primary">{snapshot.circleCount} in your circle</span>
         </div>
 
         <div className="mt-6 grid items-start gap-4 lg:grid-cols-[1.1fr_0.9fr]">
@@ -104,7 +104,7 @@ export function FirstCircleJourney({ snapshot, onChanged }: { snapshot: FirstSte
             {snapshot.circlePeople.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {snapshot.circlePeople.map((person) => (
-                  <Link key={person.id} href={`/contacts/${person.id}`} className="rounded-full border border-rose-200 bg-secondary px-3 py-1.5 text-xs font-semibold text-rose-900 hover:bg-rose-100">{person.name}</Link>
+                  <Link key={person.id} href={`/contacts/${person.id}`} className="rounded-full border border-rose-200 bg-secondary px-3 py-1.5 text-xs font-semibold text-primary hover:bg-rose-100">{person.name}</Link>
                 ))}
               </div>
             )}
@@ -147,7 +147,7 @@ export function FirstCircleJourney({ snapshot, onChanged }: { snapshot: FirstSte
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
             <div className="rounded-xl border border-border/70 bg-muted p-4 shadow-sm sm:p-5">
               <div className="flex items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-800"><CalendarDays className="h-4 w-4" aria-hidden="true" /></span>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-warning"><CalendarDays className="h-4 w-4" aria-hidden="true" /></span>
                 <div>
                   <h3 className="font-semibold">02 / Remember a detail</h3>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">A birthday or your preferred check-in rhythm gives future you a reason to reconnect.</p>

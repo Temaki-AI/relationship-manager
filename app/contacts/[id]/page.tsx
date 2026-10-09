@@ -192,8 +192,8 @@ async function loadContactResponse(id: string, signal?: AbortSignal): Promise<Co
 
 const interactionTypeConfig: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
   call: { icon: Phone, color: 'text-blue-600', bg: 'bg-blue-100' },
-  message: { icon: MessageSquare, color: 'text-emerald-600', bg: 'bg-emerald-100' },
-  meetup: { icon: Coffee, color: 'text-amber-600', bg: 'bg-amber-100' },
+  message: { icon: MessageSquare, color: 'text-success', bg: 'bg-emerald-100' },
+  meetup: { icon: Coffee, color: 'text-warning', bg: 'bg-amber-100' },
   email: { icon: Mail, color: 'text-purple-600', bg: 'bg-purple-100' },
 };
 
@@ -210,8 +210,8 @@ const RELATIONSHIP_LABEL_OPTIONS = [
 ];
 
 function getTimelineToneClasses(tone: TimelineItem['tone']) {
-  if (tone === 'urgent') return 'bg-secondary text-rose-700 border-rose-200/60';
-  if (tone === 'warm') return 'bg-warning-soft text-amber-700 border-amber-200/60';
+  if (tone === 'urgent') return 'bg-secondary text-primary border-rose-200/60';
+  if (tone === 'warm') return 'bg-warning-soft text-warning border-amber-200/60';
   return 'bg-slate-50 text-slate-700 border-slate-200/60';
 }
 
@@ -1371,7 +1371,7 @@ export default function ContactDetail() {
                 <CalendarClock className="h-4 w-4 text-primary" aria-hidden="true" />
                 <h2 className="text-sm font-semibold">Check-in rhythm</h2>
               </div>
-              <p className={`mt-3 text-base font-semibold ${rhythm.kind === 'ready' ? 'text-amber-900' : 'text-foreground'}`}>{rhythm.label}</p>
+              <p className={`mt-3 text-base font-semibold ${rhythm.kind === 'ready' ? 'text-warning' : 'text-foreground'}`}>{rhythm.label}</p>
               <p className="mt-1 text-sm text-muted-foreground">{rhythm.detail}</p>
               <p className="mt-3 border-t border-border/60 pt-3 text-xs text-muted-foreground">This is a reminder preference, not a measure of relationship quality.</p>
             </CardContent>
@@ -1818,7 +1818,7 @@ export default function ContactDetail() {
                 {children.length > 0 ? children.map((child) => (
                   <div key={child.id} className="group flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/80 p-3">
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <div className="rounded-lg bg-warning-soft p-2 text-amber-700">
+                      <div className="rounded-lg bg-warning-soft p-2 text-warning">
                         <Baby className="h-4 w-4" aria-hidden="true" />
                       </div>
                       <div className="min-w-0">
@@ -1934,7 +1934,7 @@ export default function ContactDetail() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {giftIdeas.map((idea) => (
-                        <span key={idea} className="px-3 py-1 text-xs rounded-full bg-warning-soft text-amber-700 border border-amber-200/50">
+                        <span key={idea} className="px-3 py-1 text-xs rounded-full bg-warning-soft text-warning border border-amber-200/50">
                           {idea}
                         </span>
                       ))}
@@ -2050,7 +2050,7 @@ export default function ContactDetail() {
                           {interactionEditConflict && (
                             <div role="alert" className="rounded-lg border border-amber-300 bg-warning-soft p-3 text-sm text-amber-950">
                               <p className="font-medium">This interaction changed somewhere else.</p>
-                              <p className="mt-1 text-amber-900">Your draft is still here and was not overwritten.</p>
+                              <p className="mt-1 text-warning">Your draft is still here and was not overwritten.</p>
                               <div className="mt-2 flex flex-wrap gap-2">
                                 <Link
                                   href={`/contacts/${id}`}
@@ -2285,7 +2285,7 @@ export default function ContactDetail() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2">
                         <span className="font-medium text-sm capitalize">{plan.type}</span>
-                        <span className={`text-xs ${isOverdue ? 'text-rose-600 font-medium' : 'text-muted-foreground'}`}>
+                        <span className={`text-xs ${isOverdue ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
                           {isOverdue ? 'Overdue · ' : ''}{formatDate(plan.planned_date)}
                         </span>
                       </div>
@@ -2302,7 +2302,7 @@ export default function ContactDetail() {
                         aria-label={`Mark plan as done: ${planLabel}`}
                         type="button"
                       >
-                        <Check className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                        <Check className="h-4 w-4 text-success" aria-hidden="true" />
                       </Button>
                       <Button
                         onClick={() => setRelationshipDeleteTarget({

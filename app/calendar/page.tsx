@@ -66,15 +66,15 @@ const EVENT_STYLES: Record<CalendarEventKind, {
     label: 'Birthdays',
     icon: CakeSlice,
     dot: 'bg-secondary0',
-    chip: 'border-rose-200 bg-secondary text-rose-800',
-    panel: 'bg-rose-100 text-rose-700',
+    chip: 'border-rose-200 bg-secondary text-primary',
+    panel: 'bg-rose-100 text-primary',
   },
   reminder: {
     label: 'Reminders',
     icon: Bell,
     dot: 'bg-warning-soft0',
-    chip: 'border-amber-200 bg-warning-soft text-amber-900',
-    panel: 'bg-amber-100 text-amber-800',
+    chip: 'border-amber-200 bg-warning-soft text-warning',
+    panel: 'bg-amber-100 text-warning',
   },
   plan: {
     label: 'Plans',
@@ -737,7 +737,7 @@ export default function CalendarPage() {
       </Card>
 
       {truncated && (
-        <p role="status" className="rounded-lg border border-amber-200 bg-warning-soft px-4 py-3 text-sm text-amber-900">
+        <p role="status" className="rounded-lg border border-amber-200 bg-warning-soft px-4 py-3 text-sm text-warning">
           This date range contains more than 5,000 events. Choose another month to see more; filters apply to the events already downloaded.
         </p>
       )}

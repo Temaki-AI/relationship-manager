@@ -107,8 +107,12 @@ final class OfflineJournalTests: XCTestCase {
         journal.terminate()
         journal.launch()
         XCTAssertTrue(journal.wait(for: .runningForeground, timeout: 20), "Journal did not return to the foreground")
-        let today = journal.buttons["Today"].firstMatch
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND isHittable == true"), object: today)
+        // Redirecting after launch replaces the native tab view. Resolve the
+        // current element on each poll rather than retaining its first handle.
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let today = self.journal.buttons["Today"].firstMatch
+            return today.exists && today.isHittable
+        }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 20), .completed, "Journal navigation did not become interactive after restart")
     }
 
